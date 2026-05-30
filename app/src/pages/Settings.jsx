@@ -380,7 +380,7 @@ export default function Settings() {
         <div className="settings-row">
           <div className="settings-row-info">
             <h4>Versão</h4>
-            <p>1.0.0 — Rotina de Alto Desempenho</p>
+            <p>1.0.0 — Rotina</p>
           </div>
         </div>
       </div>

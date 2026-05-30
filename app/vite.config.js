@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'Rotina de Alto Desempenho',
+        name: 'Rotina',
         short_name: 'Rotina',
         description: 'Organizador pessoal de alto desempenho',
         theme_color: '#0D0C0B',
