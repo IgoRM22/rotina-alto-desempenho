@@ -248,7 +248,7 @@ export default function Notes() {
               value={noteForm.content}
               onChange={e => setNoteForm(f => ({ ...f, content: e.target.value }))}
               placeholder="Escreva aqui..."
-              style={{ fontFamily: 'var(--ff-s)', fontSize: 16, lineHeight: 1.7 }}
+              style={{ fontFamily: 'var(--ff-s)', fontSize: 16, lineHeight: 1.7, minHeight: '45vh' }}
             />
           </div>
         </Modal>

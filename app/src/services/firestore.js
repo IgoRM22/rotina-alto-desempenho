@@ -124,3 +124,40 @@ export const listenTodoCategories = (cb) => {
 
 export const saveTodoCategories = (cats) =>
   setDoc(userDoc('settings', 'prefs'), { todoCategories: cats }, { merge: true })
+
+// ── Schedule Categories ───────────────────────────────────────────────────────
+const DEFAULT_SCHEDULE_CATS = [
+  { value: 'saude', label: 'Saúde / Treino' },
+  { value: 'corp', label: 'Trabalho' },
+  { value: 'projeto', label: 'Projeto / Fundador' },
+  { value: 'mente', label: 'Mente / Planejamento' },
+  { value: 'estudo', label: 'Estudo / Leitura' },
+  { value: 'familia', label: 'Familia' },
+  { value: 'trem', label: 'Deslocamento' },
+  { value: 'pessoal', label: 'Pessoal' },
+]
+
+export const listenScheduleCategories = (cb) => {
+  const ref = userDoc('settings', 'prefs')
+  return onSnapshot(ref, snap => {
+    const data = snap.data()
+    cb(data?.scheduleCategories ?? DEFAULT_SCHEDULE_CATS)
+  })
+}
+
+export const saveScheduleCategories = (cats) =>
+  setDoc(userDoc('settings', 'prefs'), { scheduleCategories: cats }, { merge: true })
+
+// ── Goal Categories ───────────────────────────────────────────────────────────
+const DEFAULT_GOAL_CATS = ['projeto', 'saude', 'corp', 'estudo', 'familia', 'pessoal']
+
+export const listenGoalCategories = (cb) => {
+  const ref = userDoc('settings', 'prefs')
+  return onSnapshot(ref, snap => {
+    const data = snap.data()
+    cb(data?.goalCategories ?? DEFAULT_GOAL_CATS)
+  })
+}
+
+export const saveGoalCategories = (cats) =>
+  setDoc(userDoc('settings', 'prefs'), { goalCategories: cats }, { merge: true })

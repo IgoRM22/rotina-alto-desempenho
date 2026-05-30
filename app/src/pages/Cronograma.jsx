@@ -20,6 +20,7 @@ import {
   addImportantDate,
   updateImportantDate,
   deleteImportantDate,
+  listenScheduleCategories,
 } from '../services/firestore'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
@@ -297,6 +298,7 @@ const importantTypeLabel = (type) => IMPORTANT_TYPES.find((entry) => entry.value
 export default function Cronograma() {
   const [items, setItems] = useState([])
   const [importantDates, setImportantDates] = useState([])
+  const [categories, setCategories] = useState(CATEGORIES)
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showImportantModal, setShowImportantModal] = useState(false)
@@ -332,6 +334,11 @@ export default function Cronograma() {
   }, [])
 
   useEffect(() => {
+    const unsub = listenScheduleCategories(setCategories)
+    return unsub
+  }, [])
+
+  useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000)
     return () => clearInterval(timer)
   }, [])
@@ -341,6 +348,7 @@ export default function Cronograma() {
   const todayDay = DAYS[(now.getDay() + 6) % 7]
 
   const planMeta = useMemo(() => getIsoWeekMeta(planDate), [planDate])
+  const isCurrentWeek = useMemo(() => planMeta.key === getIsoWeekMeta(new Date()).key, [planMeta.key])
   const calendarYear = calendarCursor.getFullYear()
   const calendarMonth = calendarCursor.getMonth()
   const calendarLabel = calendarCursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -373,10 +381,13 @@ export default function Cronograma() {
 
   const dayFlows = useMemo(() => {
     return DAYS.reduce((acc, day) => {
-      acc[day] = insertNowMarker(day, buildDayFlow(grouped[day] || []), todayDay, nowMin, nowLabel)
+      const flow = buildDayFlow(grouped[day] || [])
+      acc[day] = isCurrentWeek
+        ? insertNowMarker(day, flow, todayDay, nowMin, nowLabel)
+        : flow
       return acc
     }, {})
-  }, [grouped, todayDay, nowMin, nowLabel])
+  }, [grouped, todayDay, nowMin, nowLabel, isCurrentWeek])
 
   const visibleDays = activeDay === 'Todos'
     ? DAYS.filter((day) => grouped[day]?.length > 0 || day === todayDay)
@@ -605,7 +616,7 @@ export default function Cronograma() {
           {item.description && <div className="schedule-desc">{item.description}</div>}
           <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className={`pill pill-${item.category || 'pessoal'}`}>
-              {CATEGORIES.find((category) => category.value === item.category)?.label || item.category}
+              {categories.find((category) => category.value === item.category)?.label || item.category}
             </span>
             {item.repeat ? (
               <span className="schedule-repeat">
@@ -631,7 +642,7 @@ export default function Cronograma() {
   }
 
   const renderListCluster = (cluster, day, idx) => {
-    if (cluster.events.length === 1) {
+    if (cluster.laneCount <= 1) {
       return renderItem(cluster.events[0].item, { key: `${day}-single-${idx}` })
     }
 
@@ -675,9 +686,9 @@ export default function Cronograma() {
                 <RiArrowRightSLine size={16} aria-hidden="true" />
               </button>
               <button className="btn btn-ghost btn-sm" onClick={resetPlanToCurrent}>Hoje</button>
-              <button className="btn btn-ghost btn-sm" onClick={handleCloneWeek}>
+              <button className="btn btn-ghost btn-sm plan-nav-clone" onClick={handleCloneWeek}>
                 <RiFileCopyLine size={14} aria-hidden="true" />
-                Clonar +1 semana
+                <span className="plan-clone-text">Clonar +1 semana</span>
               </button>
             </div>
           </div>
@@ -803,7 +814,7 @@ export default function Cronograma() {
                     return (
                       <div
                         key={`bar-cluster-${day}-${idx}`}
-                        className={`calendar-bars-cluster ${segment.events.length > 1 ? 'is-overlap' : ''}`}
+                        className={`calendar-bars-cluster ${segment.laneCount > 1 ? 'is-overlap' : ''}`}
                         style={{ height: `${clusterHeight}px` }}
                       >
                         {eventVisuals.map((event) => {
@@ -996,7 +1007,7 @@ export default function Cronograma() {
           <div className="field">
             <label>Categoria</label>
             <select value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}>
-              {CATEGORIES.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}
+              {categories.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}
             </select>
           </div>
 

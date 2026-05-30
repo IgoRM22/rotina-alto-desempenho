@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { exportAll, importAll, listenTodoCategories, saveTodoCategories } from '../services/firestore'
+import { exportAll, importAll, listenTodoCategories, saveTodoCategories, listenScheduleCategories, saveScheduleCategories, listenGoalCategories, saveGoalCategories } from '../services/firestore'
 import { useAuth } from '../context/AuthContext'
 import Toast from '../components/Toast'
 
@@ -10,10 +10,17 @@ export default function Settings() {
   const fileRef = useRef()
   const [categories, setCategories] = useState([])
   const [newCat, setNewCat] = useState('')
+  const [scheduleCategories, setScheduleCategories] = useState([])
+  const [newSchedCatValue, setNewSchedCatValue] = useState('')
+  const [newSchedCatLabel, setNewSchedCatLabel] = useState('')
+  const [goalCategories, setGoalCategories] = useState([])
+  const [newGoalCat, setNewGoalCat] = useState('')
 
   useEffect(() => {
-    const unsub = listenTodoCategories(setCategories)
-    return unsub
+    const u1 = listenTodoCategories(setCategories)
+    const u2 = listenScheduleCategories(setScheduleCategories)
+    const u3 = listenGoalCategories(setGoalCategories)
+    return () => { u1(); u2(); u3() }
   }, [])
 
   const addCategory = async () => {
@@ -25,6 +32,30 @@ export default function Settings() {
 
   const removeCategory = async (cat) => {
     await saveTodoCategories(categories.filter(c => c !== cat))
+  }
+
+  const addSchedCategory = async () => {
+    const v = newSchedCatValue.trim().toLowerCase()
+    const l = newSchedCatLabel.trim()
+    if (!v || !l || scheduleCategories.some(c => c.value === v)) return
+    await saveScheduleCategories([...scheduleCategories, { value: v, label: l }])
+    setNewSchedCatValue('')
+    setNewSchedCatLabel('')
+  }
+
+  const removeSchedCategory = async (val) => {
+    await saveScheduleCategories(scheduleCategories.filter(c => c.value !== val))
+  }
+
+  const addGoalCategory = async () => {
+    const v = newGoalCat.trim().toLowerCase()
+    if (!v || goalCategories.includes(v)) return
+    await saveGoalCategories([...goalCategories, v])
+    setNewGoalCat('')
+  }
+
+  const removeGoalCategory = async (cat) => {
+    await saveGoalCategories(goalCategories.filter(c => c !== cat))
   }
 
   const showToast = (msg, type = 'success') => {
@@ -159,6 +190,66 @@ export default function Settings() {
             placeholder="Nova categoria..."
           />
           <button className="btn btn-primary" onClick={addCategory}>Adicionar</button>
+        </div>
+      </div>
+
+      {/* Schedule Categories */}
+      <div className="settings-section">
+        <h2 className="settings-section-title">Categorias do Cronograma</h2>
+        <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
+          Categorias usadas nos eventos do cronograma. Cada categoria tem um valor interno e um rótulo exibido.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+          {scheduleCategories.map(cat => (
+            <div key={cat.value} className="cat-tag">
+              <span>{cat.label} <em style={{ opacity: 0.5, fontSize: 11 }}>({cat.value})</em></span>
+              <button className="cat-tag-remove" onClick={() => removeSchedCategory(cat.value)}>×</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input
+            className="cat-input"
+            value={newSchedCatValue}
+            onChange={e => setNewSchedCatValue(e.target.value)}
+            placeholder="valor (ex: treino)"
+            style={{ flex: '1 1 120px' }}
+          />
+          <input
+            className="cat-input"
+            value={newSchedCatLabel}
+            onChange={e => setNewSchedCatLabel(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addSchedCategory()}
+            placeholder="rótulo (ex: Treino)"
+            style={{ flex: '1 1 120px' }}
+          />
+          <button className="btn btn-primary" onClick={addSchedCategory}>Adicionar</button>
+        </div>
+      </div>
+
+      {/* Goal Categories */}
+      <div className="settings-section">
+        <h2 className="settings-section-title">Categorias das Metas</h2>
+        <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
+          Categorias usadas nas metas e objetivos.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+          {goalCategories.map(cat => (
+            <div key={cat} className="cat-tag">
+              <span>{cat}</span>
+              <button className="cat-tag-remove" onClick={() => removeGoalCategory(cat)}>×</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="cat-input"
+            value={newGoalCat}
+            onChange={e => setNewGoalCat(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addGoalCategory()}
+            placeholder="Nova categoria..."
+          />
+          <button className="btn btn-primary" onClick={addGoalCategory}>Adicionar</button>
         </div>
       </div>
 
