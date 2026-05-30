@@ -95,7 +95,7 @@ export default function Metas() {
         <button className="btn btn-primary" onClick={openAdd}>+ Nova meta</button>
       </div>
 
-      <div className="tabs" style={{ overflowX: 'auto' }}>
+      <div className="tabs goals-tabs">
         {filters.map(f => (
           <button key={f} className={`tab-btn ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
             {f}

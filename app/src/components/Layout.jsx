@@ -1,5 +1,13 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
+import {
+  RiCalendarScheduleLine,
+  RiCheckboxCircleLine,
+  RiFlag2Line,
+  RiHome5Line,
+  RiSettings3Line,
+  RiStickyNoteLine,
+} from '@remixicon/react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Layout({ children }) {
@@ -33,22 +41,28 @@ export default function Layout({ children }) {
       <nav className="mobile-nav">
         <ul className="mobile-nav-list">
           <li><NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon">✦</span>Home
+            <span className="mobile-nav-icon"><RiHome5Line size={18} aria-hidden="true" /></span>
+            <span className="mobile-nav-label">Home</span>
           </NavLink></li>
           <li><NavLink to="/cronograma" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon">⊞</span>Agenda
+            <span className="mobile-nav-icon"><RiCalendarScheduleLine size={18} aria-hidden="true" /></span>
+            <span className="mobile-nav-label">Agenda</span>
           </NavLink></li>
           <li><NavLink to="/todos" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon">☑</span>Tarefas
+            <span className="mobile-nav-icon"><RiCheckboxCircleLine size={18} aria-hidden="true" /></span>
+            <span className="mobile-nav-label">Tarefas</span>
           </NavLink></li>
           <li><NavLink to="/metas" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon">◎</span>Metas
+            <span className="mobile-nav-icon"><RiFlag2Line size={18} aria-hidden="true" /></span>
+            <span className="mobile-nav-label">Metas</span>
           </NavLink></li>
           <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon">✎</span>Notes
+            <span className="mobile-nav-icon"><RiStickyNoteLine size={18} aria-hidden="true" /></span>
+            <span className="mobile-nav-label">Notas</span>
           </NavLink></li>
           <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon">⚙</span>Config
+            <span className="mobile-nav-icon"><RiSettings3Line size={18} aria-hidden="true" /></span>
+            <span className="mobile-nav-label">Ajustes</span>
           </NavLink></li>
         </ul>
       </nav>
