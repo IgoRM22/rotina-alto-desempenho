@@ -47,6 +47,147 @@ body::after {
   z-index: 9999;
 }
 
+body.auth-locked {
+  overflow: hidden;
+}
+
+body.auth-locked nav,
+body.auth-locked main,
+body.auth-locked footer {
+  display: none;
+}
+
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+body:not(.auth-locked) .auth-screen {
+  display: none;
+}
+
+.auth-card {
+  width: min(460px, 100%);
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  padding: 32px;
+}
+
+.auth-kicker {
+  font-size: 11px;
+  color: var(--coral);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.auth-card h1 {
+  font-family: var(--ff-s);
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+
+.auth-copy {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-field span {
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-field input {
+  background: #11100f;
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.auth-field input:focus {
+  border-color: var(--coral);
+}
+
+#auth-login {
+  margin-top: 4px;
+  border: 1px solid rgba(224,100,69,.45);
+  background: rgba(224,100,69,.12);
+  color: var(--text);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+#auth-login:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.auth-status {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.auth-status[data-state="error"] {
+  color: #FF9A86;
+}
+
+.session-controls {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 140;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(13,12,11,0.9);
+  border: 1px solid var(--border2);
+  padding: 8px 10px;
+  backdrop-filter: blur(10px);
+}
+
+.session-controls span {
+  font-size: 11px;
+  color: var(--text2);
+}
+
+.session-controls button {
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text);
+  padding: 6px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.session-controls[hidden] {
+  display: none !important;
+}
+
 /* ── NAV ── */
 nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -256,6 +397,10 @@ footer cite { font-size: 11px; color: var(--text3); letter-spacing: 0.1em; text-
 @media (max-width: 720px) {
   main, footer { padding: 0 24px; }
   nav { padding: 0 24px; }
+  .auth-card { padding: 24px; }
+  .auth-card h1 { font-size: 30px; }
+  .session-controls { left: 16px; right: 16px; justify-content: space-between; }
+  .session-controls span { max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nav-links { display: none; }
   #hero { padding-top: 96px; }
   #hero h1 { font-size: 52px; }
@@ -269,6 +414,7 @@ footer cite { font-size: 11px; color: var(--text3); letter-spacing: 0.1em; text-
 @media print {
   body { background: #fff; color: #111; }
   body::after { display: none; }
+  .auth-screen, .session-controls { display: none; }
   nav { display: none; }
   #hero { padding-top: 48px; }
   .fade { opacity: 1; transform: none; }
@@ -276,7 +422,27 @@ footer cite { font-size: 11px; color: var(--text3); letter-spacing: 0.1em; text-
 }
 </style>
 </head>
-<body>
+<body class="auth-locked">
+
+<div class="auth-screen" id="auth-screen" aria-live="polite">
+  <div class="auth-card">
+    <p class="auth-kicker">Acesso Privado</p>
+    <h1>Entre para acessar sua rotina</h1>
+    <p class="auth-copy">Este painel esta restrito a uma unica conta autorizada no Firebase Authentication.</p>
+    <form id="auth-form" class="auth-form">
+      <label class="auth-field">
+        <span>Email</span>
+        <input id="auth-email" type="email" autocomplete="username" required>
+      </label>
+      <label class="auth-field">
+        <span>Senha</span>
+        <input id="auth-password" type="password" autocomplete="current-password" required>
+      </label>
+      <button id="auth-login" type="submit">Entrar</button>
+    </form>
+    <p id="auth-status" class="auth-status">Conecte-se para continuar.</p>
+  </div>
+</div>
 
 <nav>
   <a class="nav-brand" href="#hero">Rotina ↗</a>
@@ -907,6 +1073,11 @@ footer cite { font-size: 11px; color: var(--text3); letter-spacing: 0.1em; text-
   </div>
 </footer>
 
+<div class="session-controls" id="session-controls" hidden>
+  <span id="session-email">conta autenticada</span>
+  <button id="auth-logout" type="button">Sair</button>
+</div>
+
 <script>
 function showTab(id, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -924,6 +1095,126 @@ document.querySelectorAll('.fade').forEach(el => obs.observe(el));
 document.querySelectorAll('.pc').forEach((card, i) => {
   card.style.transitionDelay = (i * 0.08) + 's';
 });
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+const OWNER_EMAIL = "igor.ramosr@hotmail.com";
+const firebaseConfig = {
+  apiKey: "AIzaSyCEBaj98-yD7LK1fNGUqGOAvgjDxTwqfRs",
+  authDomain: "vidapessoal-ebf84.firebaseapp.com",
+  projectId: "vidapessoal-ebf84",
+  storageBucket: "vidapessoal-ebf84.firebasestorage.app",
+  messagingSenderId: "169315733008",
+  appId: "1:169315733008:web:421d6e9fdf78f39dac4495",
+};
+
+const body = document.body;
+const authForm = document.getElementById("auth-form");
+const emailInput = document.getElementById("auth-email");
+const passwordInput = document.getElementById("auth-password");
+const loginButton = document.getElementById("auth-login");
+const logoutButton = document.getElementById("auth-logout");
+const statusText = document.getElementById("auth-status");
+const sessionControls = document.getElementById("session-controls");
+const sessionEmail = document.getElementById("session-email");
+
+const requiredConfig = ["apiKey", "authDomain", "projectId", "appId"];
+const hasMissingConfig = requiredConfig.some((key) => {
+  const value = firebaseConfig[key];
+  return !value || value.startsWith("COLE_AQUI_");
+});
+
+const ownerEmail = OWNER_EMAIL.trim().toLowerCase();
+
+const setStatus = (message, isError = false) => {
+  statusText.textContent = message;
+  statusText.dataset.state = isError ? "error" : "ok";
+};
+
+const lockApp = () => {
+  body.classList.add("auth-locked");
+  sessionControls.hidden = true;
+};
+
+const unlockApp = (email) => {
+  body.classList.remove("auth-locked");
+  sessionEmail.textContent = email;
+  sessionControls.hidden = false;
+};
+
+if (hasMissingConfig) {
+  setStatus("Preencha firebaseConfig no index.html para ativar o acesso privado.", true);
+} else {
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  const isOwner = (user) => {
+    const currentEmail = (user?.email || "").trim().toLowerCase();
+    return currentEmail === ownerEmail;
+  };
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      lockApp();
+      setStatus("Conecte-se com sua conta para continuar.");
+      return;
+    }
+
+    if (!isOwner(user)) {
+      await signOut(auth);
+      lockApp();
+      setStatus("Conta sem permissao para acessar este painel.", true);
+      return;
+    }
+
+    unlockApp(user.email || ownerEmail);
+    setStatus("Acesso liberado.");
+  });
+
+  authForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    if (!email || !password) {
+      setStatus("Informe email e senha.", true);
+      return;
+    }
+
+    setStatus("Validando acesso...");
+    loginButton.disabled = true;
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      passwordInput.value = "";
+    } catch (error) {
+      setStatus("Falha no login. Verifique email e senha.", true);
+    } finally {
+      loginButton.disabled = false;
+    }
+  });
+
+  logoutButton.addEventListener("click", async () => {
+    await signOut(auth);
+    setStatus("Sessao encerrada.");
+  });
+
+  window.getOwnerIdToken = async () => {
+    const user = auth.currentUser;
+    if (!user || !isOwner(user)) {
+      throw new Error("Not authenticated as owner");
+    }
+    return user.getIdToken();
+  };
+}
 </script>
 </body>
 </html>
