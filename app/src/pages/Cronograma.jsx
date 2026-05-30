@@ -335,17 +335,6 @@ export default function Cronograma() {
   )
 }
 
-  useEffect(() => {
-    const unsub = listenSchedule((data) => {
-      if (data.length === 0 && loading) {
-        Promise.all(SEED_ITEMS.map(i => addScheduleItem(i)))
-      } else {
-        setItems(data)
-        setLoading(false)
-      }
-    })
-    return unsub
-  }, [])
 
   const grouped = DAYS.reduce((acc, day) => {
     const dayItems = items.filter(i => i.day === day)
