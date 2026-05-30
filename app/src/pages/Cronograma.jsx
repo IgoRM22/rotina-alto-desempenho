@@ -25,22 +25,22 @@ import {
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 
-const DAYS = ['Segunda', 'Ter\u00E7a', 'Quarta', 'Quinta', 'Sexta', 'S\u00E1bado', 'Domingo']
-const DAYS_SHORT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S\u00E1b', 'Dom']
+const DAYS = ['Domingo', 'Segunda', 'Ter\u00E7a', 'Quarta', 'Quinta', 'Sexta', 'S\u00E1bado']
+const DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S\u00E1b']
 const MONTH_LABELS = Array.from(
   { length: 12 },
   (_, month) => new Date(2024, month, 1).toLocaleDateString('pt-BR', { month: 'long' }),
 )
 
 const CATEGORIES = [
-  { value: 'saude', label: 'Sa\u00FAde / Treino' },
-  { value: 'corp', label: 'Trabalho' },
-  { value: 'projeto', label: 'Projeto / Fundador' },
-  { value: 'mente', label: 'Mente / Planejamento' },
-  { value: 'estudo', label: 'Estudo / Leitura' },
-  { value: 'familia', label: 'Familia' },
-  { value: 'trem', label: 'Deslocamento' },
-  { value: 'pessoal', label: 'Pessoal' },
+  { value: 'saude', color: '#5BA689' },
+  { value: 'corp', color: '#4B8FD4' },
+  { value: 'projeto', color: '#E06445' },
+  { value: 'mente', color: '#8B7EC4' },
+  { value: 'estudo', color: '#C4607A' },
+  { value: 'familia', color: '#C49A3A' },
+  { value: 'trem', color: '#7A7570' },
+  { value: 'pessoal', color: '#8B7EC4' },
 ]
 
 const REPEAT_OPTIONS = [
@@ -61,7 +61,7 @@ const IMPORTANT_TYPES = [
 const EMPTY_FORM = {
   timeStart: '',
   timeEnd: '',
-  day: 'Segunda',
+  day: 'Domingo',
   name: '',
   description: '',
   category: 'projeto',
@@ -123,11 +123,27 @@ const fmtDuration = (min) => {
   return h > 0 ? `${h}h` : `${m}min`
 }
 
+const colorWithAlpha = (hex, alpha, fallback = `rgba(224,100,69,${alpha})`) => {
+  if (typeof hex !== 'string') return fallback
+  const clean = hex.trim()
+  if (!/^#[0-9a-fA-F]{6}$/.test(clean)) return fallback
+  const r = parseInt(clean.slice(1, 3), 16)
+  const g = parseInt(clean.slice(3, 5), 16)
+  const b = parseInt(clean.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+const formatCategoryValue = (value) => {
+  const safe = String(value || '').trim()
+  if (!safe) return ''
+  return safe.charAt(0).toUpperCase() + safe.slice(1)
+}
+
 const getItemDays = (item) => {
   if (!item.repeat) return [item.day]
   if (item.repeat === 'daily') return DAYS
   if (item.repeat === 'weekdays') return ['Segunda', 'Ter\u00E7a', 'Quarta', 'Quinta', 'Sexta']
-  if (item.repeat === 'weekend') return ['S\u00E1bado', 'Domingo']
+  if (item.repeat === 'weekend') return ['Domingo', 'S\u00E1bado']
   if (item.repeat === 'custom' && item.repeatDays?.length) return item.repeatDays
   return [item.day]
 }
@@ -174,6 +190,30 @@ const getIsoWeekMeta = (baseDate) => {
   }
 }
 
+const getWeekMeta = (baseDate) => {
+  const date = new Date(baseDate)
+  const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+  weekStart.setHours(0, 0, 0, 0)
+
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+
+  const legacyKeySet = new Set()
+  const cursor = new Date(weekStart)
+  while (cursor <= weekEnd) {
+    legacyKeySet.add(getIsoWeekMeta(cursor).key)
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return {
+    scope: 'week',
+    key: `SW-${toDateKey(weekStart)}`,
+    label: `Semana ${weekStart.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${weekEnd.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`,
+    legacyKeys: Array.from(legacyKeySet),
+  }
+}
+
 const shiftPlanDate = (baseDate, step) => {
   const next = new Date(baseDate)
   next.setDate(next.getDate() + (step * 7))
@@ -182,7 +222,7 @@ const shiftPlanDate = (baseDate, step) => {
 
 const buildMonthCells = (year, month) => {
   const first = new Date(year, month, 1)
-  const startOffset = (first.getDay() + 6) % 7
+  const startOffset = first.getDay()
   const totalDays = new Date(year, month + 1, 0).getDate()
 
   return Array.from({ length: 42 }, (_, idx) => {
@@ -239,17 +279,20 @@ const buildDayClusters = (dayItems) => {
 
   const clusters = []
   let group = [events[0]]
+  let groupStartMin = events[0].startMin
   let groupEnd = events[0].endMin
 
   for (let i = 1; i < events.length; i++) {
     const current = events[i]
-    if (current.startMin < groupEnd) {
+    // Encavalamento somente quando os itens iniciam no mesmo minuto.
+    if (current.startMin === groupStartMin) {
       group.push(current)
       groupEnd = Math.max(groupEnd, current.endMin)
       continue
     }
     clusters.push(toCluster(group))
     group = [current]
+    groupStartMin = current.startMin
     groupEnd = current.endMin
   }
   clusters.push(toCluster(group))
@@ -316,6 +359,7 @@ export default function Cronograma() {
     return new Date(current.getFullYear(), current.getMonth(), 1)
   })
 
+  const currentWeekMeta = useMemo(() => getWeekMeta(now), [now])
   const legacyWeekKey = useMemo(() => getIsoWeekMeta(new Date()).key, [])
 
   useEffect(() => {
@@ -345,10 +389,10 @@ export default function Cronograma() {
 
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const nowLabel = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  const todayDay = DAYS[(now.getDay() + 6) % 7]
+  const todayDay = DAYS[now.getDay()]
 
-  const planMeta = useMemo(() => getIsoWeekMeta(planDate), [planDate])
-  const isCurrentWeek = useMemo(() => planMeta.key === getIsoWeekMeta(new Date()).key, [planMeta.key])
+  const planMeta = useMemo(() => getWeekMeta(planDate), [planDate])
+  const isCurrentWeek = useMemo(() => planMeta.key === currentWeekMeta.key, [planMeta.key, currentWeekMeta.key])
   const calendarYear = calendarCursor.getFullYear()
   const calendarMonth = calendarCursor.getMonth()
   const calendarLabel = calendarCursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -365,10 +409,10 @@ export default function Cronograma() {
   const scopedItems = useMemo(() => {
     return items.filter((item) => {
       if (item.planScope && item.planScope !== 'week') return false
-      if (item.planKey) return item.planKey === planMeta.key
-      return planMeta.key === legacyWeekKey
+      if (item.planKey) return item.planKey === planMeta.key || planMeta.legacyKeys.includes(item.planKey)
+      return planMeta.key === currentWeekMeta.key || planMeta.legacyKeys.includes(legacyWeekKey)
     })
-  }, [items, planMeta.key, legacyWeekKey])
+  }, [items, planMeta.key, planMeta.legacyKeys, currentWeekMeta.key, legacyWeekKey])
 
   const grouped = useMemo(() => {
     return DAYS.reduce((acc, day) => {
@@ -388,6 +432,43 @@ export default function Cronograma() {
       return acc
     }, {})
   }, [grouped, todayDay, nowMin, nowLabel, isCurrentWeek])
+
+  const categoryOptions = useMemo(() => {
+    const input = Array.isArray(categories) ? categories : []
+    const seen = new Set()
+    const result = []
+
+    input.forEach((entry) => {
+      let value = ''
+      let color = ''
+
+      if (typeof entry === 'string') {
+        value = entry.trim().toLowerCase()
+        color = CATEGORIES.find((cat) => cat.value === value)?.color || '#E06445'
+      } else {
+        value = String(entry?.value || '').trim().toLowerCase()
+        color = String(entry?.color || '').trim() || CATEGORIES.find((cat) => cat.value === value)?.color || '#E06445'
+      }
+
+      if (!value || seen.has(value)) return
+      seen.add(value)
+      result.push({ value, color })
+    })
+
+    return result.length ? result : CATEGORIES
+  }, [categories])
+
+  const categoryColorMap = useMemo(() => {
+    return categoryOptions.reduce((acc, entry) => {
+      acc[entry.value] = entry.color || '#E06445'
+      return acc
+    }, {})
+  }, [categoryOptions])
+
+  const getCategoryColor = (value) => {
+    const key = String(value || '').trim().toLowerCase()
+    return categoryColorMap[key] || '#E06445'
+  }
 
   const visibleDays = activeDay === 'Todos'
     ? DAYS.filter((day) => grouped[day]?.length > 0 || day === todayDay)
@@ -431,7 +512,7 @@ export default function Cronograma() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ ...EMPTY_FORM, day: activeDay !== 'Todos' ? activeDay : 'Segunda' })
+    setForm({ ...EMPTY_FORM, day: activeDay !== 'Todos' ? activeDay : 'Domingo' })
     setShowModal(true)
   }
 
@@ -460,8 +541,10 @@ export default function Cronograma() {
     }
 
     const targetDate = shiftPlanDate(planDate, 1)
-    const targetMeta = getIsoWeekMeta(targetDate)
-    const existingOnTarget = items.filter((item) => item.planKey === targetMeta.key).length
+    const targetMeta = getWeekMeta(targetDate)
+    const existingOnTarget = items.filter(
+      (item) => item.planKey === targetMeta.key || targetMeta.legacyKeys.includes(item.planKey),
+    ).length
 
     if (existingOnTarget > 0) {
       const proceed = window.confirm(
@@ -607,16 +690,23 @@ export default function Cronograma() {
 
   const renderItem = (item, options = {}) => {
     const key = options.key || item.id
+    const categoryColor = getCategoryColor(item.category)
+    const categoryPillStyle = {
+      color: categoryColor,
+      background: colorWithAlpha(categoryColor, 0.14),
+      border: `1px solid ${colorWithAlpha(categoryColor, 0.42)}`,
+    }
+
     return (
       <div key={key} className={`schedule-item ${options.compact ? 'is-compact' : ''}`}>
         <div className="schedule-time">{fmtTime(item)}</div>
-        <div className={`schedule-bar bar-${item.category || 'default'}`} />
+        <div className="schedule-bar" style={{ background: categoryColor }} />
         <div className="schedule-body">
           <div className="schedule-name">{item.name}</div>
           {item.description && <div className="schedule-desc">{item.description}</div>}
           <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className={`pill pill-${item.category || 'pessoal'}`}>
-              {categories.find((category) => category.value === item.category)?.label || item.category}
+            <span className="pill" style={categoryPillStyle}>
+              {formatCategoryValue(item.category) || 'Categoria'}
             </span>
             {item.repeat ? (
               <span className="schedule-repeat">
@@ -685,7 +775,7 @@ export default function Cronograma() {
               <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(1)} aria-label="Proxima semana">
                 <RiArrowRightSLine size={16} aria-hidden="true" />
               </button>
-              <button className="btn btn-ghost btn-sm" onClick={resetPlanToCurrent}>Hoje</button>
+              <button className="btn btn-ghost btn-sm plan-nav-today" onClick={resetPlanToCurrent}>Hoje</button>
               <button className="btn btn-ghost btn-sm plan-nav-clone" onClick={handleCloneWeek}>
                 <RiFileCopyLine size={14} aria-hidden="true" />
                 <span className="plan-clone-text">Clonar +1 semana</span>
@@ -820,16 +910,20 @@ export default function Cronograma() {
                         {eventVisuals.map((event) => {
                           const laneWidth = 100 / segment.laneCount
                           const left = event.lane * laneWidth
+                          const eventColor = getCategoryColor(event.item.category)
                           return (
                             <button
                               key={`${event.item.id}-${event.lane}`}
                               type="button"
-                              className={`calendar-bar-item cal-cat-${event.item.category || 'default'}`}
+                              className="calendar-bar-item"
                               style={{
                                 top: `${event.top}px`,
                                 height: `${event.height}px`,
                                 left: `calc(${left}% + 2px)`,
                                 width: `calc(${laneWidth}% - 4px)`,
+                                borderLeftColor: eventColor,
+                                borderColor: colorWithAlpha(eventColor, 0.34),
+                                background: colorWithAlpha(eventColor, 0.18),
                               }}
                               title={`${fmtTime(event.item)} - ${event.item.name}`}
                               onClick={() => openEdit(event.item)}
@@ -852,40 +946,51 @@ export default function Cronograma() {
       {view === 'calendario' && (
         <div className="month-calendar-wrap">
           <div className="month-calendar-toolbar">
-            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => moveCalendarMonth(-1)} aria-label="Mes anterior">
-              <RiArrowLeftSLine size={16} aria-hidden="true" />
-            </button>
-            <div className="schedule-plan-label">
-              <RiCalendar2Line size={13} aria-hidden="true" />
-              {calendarLabel}
+            <div className="month-calendar-nav" aria-label="Navegacao mensal">
+              <button
+                type="button"
+                className="month-calendar-arrow"
+                onClick={() => moveCalendarMonth(-1)}
+                aria-label="Mes anterior"
+              >
+                <RiArrowLeftSLine size={16} aria-hidden="true" />
+              </button>
+              <div className="month-calendar-period" aria-live="polite">{calendarLabel}</div>
+              <button
+                type="button"
+                className="month-calendar-arrow"
+                onClick={() => moveCalendarMonth(1)}
+                aria-label="Proximo mes"
+              >
+                <RiArrowRightSLine size={16} aria-hidden="true" />
+              </button>
             </div>
-            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => moveCalendarMonth(1)} aria-label="Proximo mes">
-              <RiArrowRightSLine size={16} aria-hidden="true" />
-            </button>
 
-            <select
-              className="calendar-select"
-              value={calendarMonth}
-              onChange={(e) => setCalendarCursor(new Date(calendarYear, Number(e.target.value), 1))}
-              aria-label="Mes"
-            >
-              {MONTH_LABELS.map((month, index) => (
-                <option key={month} value={index}>{month}</option>
-              ))}
-            </select>
+            <div className="month-calendar-actions">
+              <select
+                className="calendar-select"
+                value={calendarMonth}
+                onChange={(e) => setCalendarCursor(new Date(calendarYear, Number(e.target.value), 1))}
+                aria-label="Mes"
+              >
+                {MONTH_LABELS.map((month, index) => (
+                  <option key={month} value={index}>{month}</option>
+                ))}
+              </select>
 
-            <select
-              className="calendar-select"
-              value={calendarYear}
-              onChange={(e) => setCalendarCursor(new Date(Number(e.target.value), calendarMonth, 1))}
-              aria-label="Ano"
-            >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+              <select
+                className="calendar-select"
+                value={calendarYear}
+                onChange={(e) => setCalendarCursor(new Date(Number(e.target.value), calendarMonth, 1))}
+                aria-label="Ano"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
 
-            <button className="btn btn-ghost btn-sm" onClick={resetCalendarToCurrent}>Hoje</button>
+              <button className="btn btn-ghost btn-sm" onClick={resetCalendarToCurrent}>Hoje</button>
+            </div>
           </div>
 
           <div className="month-calendar-grid" role="grid" aria-label="Calendario mensal">
@@ -1007,7 +1112,9 @@ export default function Cronograma() {
           <div className="field">
             <label>Categoria</label>
             <select value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}>
-              {categories.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}
+              {categoryOptions.map((category) => (
+                <option key={category.value} value={category.value}>{formatCategoryValue(category.value)}</option>
+              ))}
             </select>
           </div>
 

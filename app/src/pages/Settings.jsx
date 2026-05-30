@@ -1,5 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { exportAll, importAll, listenTodoCategories, saveTodoCategories, listenScheduleCategories, saveScheduleCategories, listenGoalCategories, saveGoalCategories } from '../services/firestore'
+import {
+  exportAll,
+  importAll,
+  listenTodoCategories,
+  saveTodoCategories,
+  listenScheduleCategories,
+  saveScheduleCategories,
+  listenGoalCategories,
+  saveGoalCategories,
+  replaceScheduleCategoryInItems,
+} from '../services/firestore'
 import { useAuth } from '../context/AuthContext'
 import Toast from '../components/Toast'
 
@@ -8,11 +18,13 @@ export default function Settings() {
   const [toast, setToast] = useState(null)
   const [importing, setImporting] = useState(false)
   const fileRef = useRef()
+  const schedColorRefs = useRef({})
+  const newSchedColorRef = useRef()
   const [categories, setCategories] = useState([])
   const [newCat, setNewCat] = useState('')
   const [scheduleCategories, setScheduleCategories] = useState([])
   const [newSchedCatValue, setNewSchedCatValue] = useState('')
-  const [newSchedCatLabel, setNewSchedCatLabel] = useState('')
+  const [newSchedCatColor, setNewSchedCatColor] = useState('#E06445')
   const [goalCategories, setGoalCategories] = useState([])
   const [newGoalCat, setNewGoalCat] = useState('')
 
@@ -31,20 +43,60 @@ export default function Settings() {
   }
 
   const removeCategory = async (cat) => {
+    const ok = window.confirm(`Apagar a categoria "${cat}"? Essa alteracao sera salva no banco de dados.`)
+    if (!ok) return
     await saveTodoCategories(categories.filter(c => c !== cat))
+    showToast('Categoria removida do banco de dados.')
   }
 
   const addSchedCategory = async () => {
     const v = newSchedCatValue.trim().toLowerCase()
-    const l = newSchedCatLabel.trim()
-    if (!v || !l || scheduleCategories.some(c => c.value === v)) return
-    await saveScheduleCategories([...scheduleCategories, { value: v, label: l }])
+    if (!v || scheduleCategories.some(c => c.value === v)) return
+    await saveScheduleCategories([...scheduleCategories, { value: v, color: newSchedCatColor }])
     setNewSchedCatValue('')
-    setNewSchedCatLabel('')
+    setNewSchedCatColor('#E06445')
   }
 
   const removeSchedCategory = async (val) => {
-    await saveScheduleCategories(scheduleCategories.filter(c => c.value !== val))
+    if (scheduleCategories.length <= 1) {
+      showToast('Mantenha pelo menos 1 categoria no cronograma.', 'error')
+      return
+    }
+
+    const remaining = scheduleCategories.filter(c => c.value !== val)
+    const fallback = remaining[0]?.value || 'projeto'
+    const ok = window.confirm(
+      `Apagar a categoria "${val}"?\n\nIsso remove a categoria do banco de dados e move itens existentes para "${fallback}".`,
+    )
+    if (!ok) return
+
+    const movedCount = await replaceScheduleCategoryInItems(val, fallback)
+    await saveScheduleCategories(remaining)
+    showToast(
+      movedCount > 0
+        ? `Categoria removida. ${movedCount} item(ns) foram movidos para "${fallback}".`
+        : 'Categoria removida do banco de dados.',
+    )
+  }
+
+  const updateSchedCategoryColor = async (val, color) => {
+    await saveScheduleCategories(
+      scheduleCategories.map((cat) => (cat.value === val ? { ...cat, color } : cat)),
+    )
+  }
+
+  const normalizeSchedColor = (color) => {
+    const safe = String(color || '').trim()
+    if (/^#[0-9a-fA-F]{6}$/.test(safe)) return safe.toUpperCase()
+    return '#E06445'
+  }
+
+  const openSchedColorPicker = (value) => {
+    schedColorRefs.current[value]?.click()
+  }
+
+  const openNewSchedColorPicker = () => {
+    newSchedColorRef.current?.click()
   }
 
   const addGoalCategory = async () => {
@@ -55,7 +107,16 @@ export default function Settings() {
   }
 
   const removeGoalCategory = async (cat) => {
+    const ok = window.confirm(`Apagar a categoria "${cat}"? Essa alteracao sera salva no banco de dados.`)
+    if (!ok) return
     await saveGoalCategories(goalCategories.filter(c => c !== cat))
+    showToast('Categoria removida do banco de dados.')
+  }
+
+  const handleLogout = async () => {
+    const ok = window.confirm('Deseja sair da conta agora?')
+    if (!ok) return
+    await logout()
   }
 
   const showToast = (msg, type = 'success') => {
@@ -83,6 +144,15 @@ export default function Settings() {
   const handleImport = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    const proceed = window.confirm(
+      'Importar backup pode sobrescrever dados existentes. Deseja continuar?',
+    )
+    if (!proceed) {
+      e.target.value = ''
+      return
+    }
+
     setImporting(true)
     try {
       const text = await file.text()
@@ -124,7 +194,7 @@ export default function Settings() {
             <h4>Encerrar sessão</h4>
             <p>Você precisará fazer login novamente.</p>
           </div>
-          <button className="btn btn-ghost" onClick={logout}>Sair</button>
+          <button className="btn btn-ghost" onClick={handleLogout}>Sair</button>
         </div>
       </div>
 
@@ -197,12 +267,39 @@ export default function Settings() {
       <div className="settings-section">
         <h2 className="settings-section-title">Categorias do Cronograma</h2>
         <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
-          Categorias usadas nos eventos do cronograma. Cada categoria tem um valor interno e um rótulo exibido.
+          Categorias usadas nos eventos do cronograma. Clique no nome da categoria para trocar a cor.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
           {scheduleCategories.map(cat => (
             <div key={cat.value} className="cat-tag">
-              <span>{cat.label} <em style={{ opacity: 0.5, fontSize: 11 }}>({cat.value})</em></span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => openSchedColorPicker(cat.value)}
+                title={`Alterar cor de ${cat.value}`}
+                style={{
+                  padding: '0',
+                  fontSize: 13,
+                  color: normalizeSchedColor(cat.color),
+                  border: 'none',
+                  background: 'transparent',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: 2,
+                }}
+              >
+                {cat.value}
+              </button>
+              <input
+                ref={(el) => {
+                  if (el) schedColorRefs.current[cat.value] = el
+                  else delete schedColorRefs.current[cat.value]
+                }}
+                type="color"
+                value={normalizeSchedColor(cat.color)}
+                onChange={(e) => updateSchedCategoryColor(cat.value, e.target.value)}
+                title={`Cor de ${cat.value}`}
+                style={{ display: 'none' }}
+              />
               <button className="cat-tag-remove" onClick={() => removeSchedCategory(cat.value)}>×</button>
             </div>
           ))}
@@ -212,17 +309,26 @@ export default function Settings() {
             className="cat-input"
             value={newSchedCatValue}
             onChange={e => setNewSchedCatValue(e.target.value)}
-            placeholder="valor (ex: treino)"
-            style={{ flex: '1 1 120px' }}
+            onKeyDown={e => e.key === 'Enter' && addSchedCategory()}
+            placeholder="nova categoria (ex: treino)"
+            style={{ flex: '1 1 160px' }}
           />
           <input
-            className="cat-input"
-            value={newSchedCatLabel}
-            onChange={e => setNewSchedCatLabel(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addSchedCategory()}
-            placeholder="rótulo (ex: Treino)"
-            style={{ flex: '1 1 120px' }}
+            ref={newSchedColorRef}
+            type="color"
+            value={normalizeSchedColor(newSchedCatColor)}
+            onChange={e => setNewSchedCatColor(e.target.value)}
+            title="Cor da nova categoria"
+            style={{ display: 'none' }}
           />
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={openNewSchedColorPicker}
+            style={{ color: normalizeSchedColor(newSchedCatColor), textDecoration: 'underline', textUnderlineOffset: 2 }}
+          >
+            Cor da nova categoria
+          </button>
           <button className="btn btn-primary" onClick={addSchedCategory}>Adicionar</button>
         </div>
       </div>

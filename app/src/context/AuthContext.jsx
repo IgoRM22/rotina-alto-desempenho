@@ -7,32 +7,75 @@ import {
   signOut,
 } from 'firebase/auth'
 import { auth, googleProvider } from '../firebase'
-import { OWNER_UID } from '../config'
+import {
+  ACCESS_CONTROL_DOC_PATH,
+  getAccessControlConfig,
+  isEmailAuthorized,
+} from '../services/firestore'
 
 const AuthContext = createContext(null)
+const ACCESS_DENIED_MESSAGE = 'Infelizmente voce nao pode usar o app. Apenas pessoas autorizadas pelo administrador.'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined) // undefined = loading
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    let active = true
+
     // Handle redirect result first
     getRedirectResult(auth).catch(() => {})
 
-    return onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      if (!active) return
+
       if (!u) {
         setUser(null)
         return
       }
-      if (u.uid !== OWNER_UID) {
-        signOut(auth)
-        setUser(null)
-        setError('Acesso negado. Esta página é privada e só pode ser acessada pelo administrador.')
-        return
-      }
-      setError(null)
-      setUser(u)
+
+      setUser(undefined)
+
+      ;(async () => {
+        try {
+          const accessConfig = await getAccessControlConfig()
+
+          if (!active) return
+
+          const canAccess = accessConfig.exists && isEmailAuthorized(u.email, accessConfig)
+          if (!canAccess) {
+            await signOut(auth).catch(() => {})
+            if (!active) return
+
+            setUser(null)
+            if (!accessConfig.exists) {
+              setError(`Lista de acesso nao configurada em ${ACCESS_CONTROL_DOC_PATH}. Solicite ao administrador.`)
+            } else {
+              setError(ACCESS_DENIED_MESSAGE)
+            }
+
+            if (typeof window !== 'undefined') {
+              window.alert(ACCESS_DENIED_MESSAGE)
+            }
+            return
+          }
+
+          setError(null)
+          setUser(u)
+        } catch {
+          await signOut(auth).catch(() => {})
+          if (!active) return
+
+          setUser(null)
+          setError('Nao foi possivel validar seu acesso agora. Tente novamente.')
+        }
+      })()
     })
+
+    return () => {
+      active = false
+      unsubscribe()
+    }
   }, [])
 
   const login = async () => {

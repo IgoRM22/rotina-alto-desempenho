@@ -54,6 +54,9 @@ const EMPTY_FORM = {
   quarter: INIT.quarter,
 }
 
+const PROGRESS_MARKS = [0, 25, 50, 75, 100]
+const clampProgress = (value) => Math.max(0, Math.min(100, Number(value) || 0))
+
 const fmtTimeframe = (goal) => {
   const tf = goal.timeframe
   if (tf === 'longo_prazo') return 'Longo Prazo'
@@ -124,12 +127,14 @@ export default function Metas() {
   const handleSave = async () => {
     if (!form.title.trim()) return
     try {
+      const safeProgress = clampProgress(form.progress)
       const data = {
         title: form.title.trim(),
         description: form.description,
         timeframe: form.timeframe,
         category: form.category,
-        progress: Number(form.progress),
+        progress: safeProgress,
+        done: safeProgress >= 100,
         targetDate: form.targetDate,
       }
       if (form.timeframe !== 'longo_prazo') {
@@ -157,11 +162,17 @@ export default function Metas() {
   }
 
   const toggleDone = async (goal) => {
-    await updateGoal(goal.id, { done: !goal.done, progress: goal.done ? goal.progress : 100 })
+    if (goal.done) {
+      const reopenedProgress = clampProgress(goal.progress) >= 100 ? 95 : clampProgress(goal.progress)
+      await updateGoal(goal.id, { done: false, progress: reopenedProgress })
+      return
+    }
+    await updateGoal(goal.id, { done: true, progress: 100 })
   }
 
   const updateProgress = async (goal, value) => {
-    await updateGoal(goal.id, { progress: Number(value) })
+    const safe = clampProgress(value)
+    await updateGoal(goal.id, { progress: safe, done: safe >= 100 })
   }
 
   const showToast = (msg, type = 'success') => {
@@ -180,6 +191,14 @@ export default function Metas() {
     return ''
   }, [activeFilter, selectedWeek, selectedMonth, selectedQuarter, selectedYear])
 
+  const resetToToday = () => {
+    const now = new Date()
+    setSelectedYear(now.getFullYear())
+    setSelectedWeek(getISOWeek(now))
+    setSelectedMonth(now.getMonth())
+    setSelectedQuarter(getQuarter(now.getMonth()))
+  }
+
   return (
     <div className="page">
       <div className="page-header metas-page-header">
@@ -193,6 +212,7 @@ export default function Metas() {
             <span className="year-label">{selectedYear}</span>
             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y + 1)} aria-label="Próximo ano">›</button>
           </div>
+          <button className="btn btn-ghost btn-sm" onClick={resetToToday}>Hoje</button>
           <button className="btn btn-primary" onClick={openAdd}>+ Nova meta</button>
         </div>
       </div>
@@ -261,15 +281,26 @@ export default function Metas() {
             {goal.description && <p className="goal-desc">{goal.description}</p>}
 
             <div className="goal-progress-row">
+              <span className="goal-progress-pct">Progresso: {clampProgress(goal.progress)}%</span>
+            </div>
+
+            <div className="goal-progress-row goal-progress-slider">
               <input
                 type="range"
                 min="0"
                 max="100"
-                value={goal.progress || 0}
+                step="5"
+                value={clampProgress(goal.progress)}
                 onChange={e => updateProgress(goal, e.target.value)}
                 className="goal-range"
+                style={{ '--goal-progress': `${clampProgress(goal.progress)}%` }}
               />
-              <span className="goal-progress-pct">{goal.progress || 0}%</span>
+            </div>
+
+            <div className="goal-progress-scale" aria-hidden="true">
+              {PROGRESS_MARKS.map((mark) => (
+                <span key={mark}>{mark}</span>
+              ))}
             </div>
           </div>
         ))}
@@ -368,10 +399,17 @@ export default function Metas() {
               type="range"
               min="0"
               max="100"
-              value={form.progress}
-              onChange={e => setForm(f => ({ ...f, progress: e.target.value }))}
+              step="5"
+              value={clampProgress(form.progress)}
+              onChange={e => setForm(f => ({ ...f, progress: Number(e.target.value) }))}
               className="goal-range"
+              style={{ '--goal-progress': `${clampProgress(form.progress)}%` }}
             />
+            <div className="goal-progress-scale" aria-hidden="true" style={{ marginTop: 8 }}>
+              {PROGRESS_MARKS.map((mark) => (
+                <span key={mark}>{mark}</span>
+              ))}
+            </div>
           </div>
         </Modal>
       )}

@@ -8,6 +8,75 @@ import { OWNER_UID } from '../config'
 // Base path: /users/{uid}/{collection}
 const base = (col) => collection(db, 'users', OWNER_UID, col)
 const userDoc = (col, id) => doc(db, 'users', OWNER_UID, col, id)
+const accessControlDoc = () => doc(db, 'system', 'accessControl')
+
+export const ACCESS_CONTROL_DOC_PATH = 'system/accessControl'
+
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase()
+
+const normalizeEmailList = (list) => {
+  if (!Array.isArray(list)) return []
+
+  const unique = new Set()
+  list.forEach((entry) => {
+    const safe = normalizeEmail(entry)
+    if (safe) unique.add(safe)
+  })
+
+  return Array.from(unique)
+}
+
+export const getAccessControlConfig = async () => {
+  const snap = await getDoc(accessControlDoc())
+  if (!snap.exists()) return { exists: false, allowedEmails: [] }
+
+  const data = snap.data()
+  return {
+    exists: true,
+    allowedEmails: normalizeEmailList(data?.allowedEmails),
+  }
+}
+
+export const ensureAccessControlConfig = async (ownerEmail) => {
+  const owner = normalizeEmail(ownerEmail)
+  const current = await getAccessControlConfig()
+
+  if (!current.exists) {
+    const allowedEmails = owner ? [owner] : []
+    await setDoc(
+      accessControlDoc(),
+      {
+        allowedEmails,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    )
+    return { exists: true, allowedEmails, created: true }
+  }
+
+  if (owner && !current.allowedEmails.includes(owner)) {
+    const allowedEmails = [...current.allowedEmails, owner]
+    await setDoc(
+      accessControlDoc(),
+      {
+        allowedEmails,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    )
+    return { exists: true, allowedEmails, created: false }
+  }
+
+  return { ...current, created: false }
+}
+
+export const isEmailAuthorized = (email, config) => {
+  const safeEmail = normalizeEmail(email)
+  if (!safeEmail) return false
+
+  const allowedEmails = normalizeEmailList(config?.allowedEmails)
+  return allowedEmails.includes(safeEmail)
+}
 
 // ── Inspirations (people + quotes) ──────────────────────────────────────────
 export const listenInspirations = (cb) =>
@@ -52,6 +121,29 @@ export const addScheduleItem = (data) =>
 
 export const updateScheduleItem = (id, data) => updateDoc(userDoc('schedule', id), data)
 export const deleteScheduleItem = (id) => deleteDoc(userDoc('schedule', id))
+
+export const replaceScheduleCategoryInItems = async (fromCategory, toCategory) => {
+  const from = String(fromCategory || '').trim().toLowerCase()
+  const to = String(toCategory || '').trim().toLowerCase()
+
+  if (!from || !to || from === to) return 0
+
+  const snap = await getDocs(base('schedule'))
+  const targets = snap.docs.filter((entry) => {
+    const currentCategory = String(entry.data()?.category || '').trim().toLowerCase()
+    return currentCategory === from
+  })
+
+  await Promise.all(
+    targets.map((entry) =>
+      updateDoc(userDoc('schedule', entry.id), {
+        category: to,
+        updatedAt: serverTimestamp(),
+      })),
+  )
+
+  return targets.length
+}
 
 // ── Important Dates / Calendario ────────────────────────────────────────────
 export const listenImportantDates = (cb) =>
@@ -127,26 +219,74 @@ export const saveTodoCategories = (cats) =>
 
 // ── Schedule Categories ───────────────────────────────────────────────────────
 const DEFAULT_SCHEDULE_CATS = [
-  { value: 'saude', label: 'Saúde / Treino' },
-  { value: 'corp', label: 'Trabalho' },
-  { value: 'projeto', label: 'Projeto / Fundador' },
-  { value: 'mente', label: 'Mente / Planejamento' },
-  { value: 'estudo', label: 'Estudo / Leitura' },
-  { value: 'familia', label: 'Familia' },
-  { value: 'trem', label: 'Deslocamento' },
-  { value: 'pessoal', label: 'Pessoal' },
+  { value: 'saude', color: '#5BA689' },
+  { value: 'corp', color: '#4B8FD4' },
+  { value: 'projeto', color: '#E06445' },
+  { value: 'mente', color: '#8B7EC4' },
+  { value: 'estudo', color: '#C4607A' },
+  { value: 'familia', color: '#C49A3A' },
+  { value: 'trem', color: '#7A7570' },
+  { value: 'pessoal', color: '#8B7EC4' },
 ]
+
+const normalizeHexColor = (value, fallback = '#E06445') => {
+  if (typeof value !== 'string') return fallback
+  const clean = value.trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(clean)) return clean.toUpperCase()
+  if (/^#[0-9a-fA-F]{3}$/.test(clean)) {
+    const [r, g, b] = clean.slice(1)
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase()
+  }
+  return fallback
+}
+
+const scheduleColorFallback = (value) => {
+  return DEFAULT_SCHEDULE_CATS.find((entry) => entry.value === value)?.color || '#E06445'
+}
+
+const normalizeScheduleCategory = (entry) => {
+  if (typeof entry === 'string') {
+    const value = entry.trim().toLowerCase()
+    if (!value) return null
+    return { value, color: scheduleColorFallback(value) }
+  }
+
+  if (!entry || typeof entry !== 'object') return null
+
+  const value = String(entry.value || '').trim().toLowerCase()
+  if (!value) return null
+
+  return {
+    value,
+    color: normalizeHexColor(entry.color, scheduleColorFallback(value)),
+  }
+}
+
+const normalizeScheduleCategories = (list) => {
+  const input = Array.isArray(list) ? list : []
+  const mapped = input.map(normalizeScheduleCategory).filter(Boolean)
+
+  const seen = new Set()
+  const deduped = []
+  mapped.forEach((entry) => {
+    if (seen.has(entry.value)) return
+    seen.add(entry.value)
+    deduped.push(entry)
+  })
+
+  return deduped.length ? deduped : DEFAULT_SCHEDULE_CATS
+}
 
 export const listenScheduleCategories = (cb) => {
   const ref = userDoc('settings', 'prefs')
   return onSnapshot(ref, snap => {
     const data = snap.data()
-    cb(data?.scheduleCategories ?? DEFAULT_SCHEDULE_CATS)
+    cb(normalizeScheduleCategories(data?.scheduleCategories))
   })
 }
 
 export const saveScheduleCategories = (cats) =>
-  setDoc(userDoc('settings', 'prefs'), { scheduleCategories: cats }, { merge: true })
+  setDoc(userDoc('settings', 'prefs'), { scheduleCategories: normalizeScheduleCategories(cats) }, { merge: true })
 
 // ── Goal Categories ───────────────────────────────────────────────────────────
 const DEFAULT_GOAL_CATS = ['projeto', 'saude', 'corp', 'estudo', 'familia', 'pessoal']

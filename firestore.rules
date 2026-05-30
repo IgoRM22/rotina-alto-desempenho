@@ -1,12 +1,49 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only the owner UID can read/write their own data
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId && userId == 'xTs3D5SePzed6eWo72e56oqFoBd2';
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // All other paths are denied
+    function userEmail() {
+      return request.auth.token.email;
+    }
+
+    function hasAccessConfig() {
+      return exists(/databases/$(database)/documents/system/accessControl);
+    }
+
+    // Checks if logged-in e-mail is in the allowedEmails list.
+    function isAuthorizedEmail() {
+      return isSignedIn()
+        && userEmail() != null
+        && hasAccessConfig()
+        && get(/databases/$(database)/documents/system/accessControl).data.allowedEmails is list
+        && get(/databases/$(database)/documents/system/accessControl).data.allowedEmails.hasAny([userEmail()]);
+    }
+
+    // Checks if logged-in e-mail is the adminEmail defined in the document.
+    function isAdmin() {
+      return isSignedIn()
+        && userEmail() != null
+        && hasAccessConfig()
+        && get(/databases/$(database)/documents/system/accessControl).data.adminEmail == userEmail();
+    }
+
+    // All shared app data — readable/writable only by authorized e-mails.
+    match /users/{userId}/{document=**} {
+      allow read, write: if isAuthorizedEmail();
+    }
+
+    // Access-control document.
+    // - read: any authenticated user (needed to validate login before access)
+    // - write: adminEmail only (set this manually in Firebase Console first)
+    match /system/accessControl {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // All other paths are denied.
     match /{document=**} {
       allow read, write: if false;
     }

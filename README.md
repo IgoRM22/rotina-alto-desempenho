@@ -2,13 +2,30 @@
 
 Static site on GitHub Pages with Firebase as backend.
 
-## Private access mode (single account)
+## Access control (authorized e-mails)
 This project uses Google login via Firebase Authentication.
 
 Access rule:
-- First Google account that logs in becomes the official account for this browser.
-- Next logins must use that same account.
-- To change official account, clear local storage for the site in your browser.
+- App data is shared from owner path: /users/xTs3D5SePzed6eWo72e56oqFoBd2.
+- A user can enter only if their authenticated e-mail is in Firestore document:
+  - /system/accessControl
+  - field: allowedEmails (array of strings)
+- If e-mail is not authorized, login is blocked and user is signed out.
+
+Recommended setup:
+1. In Firestore, create document /system/accessControl.
+2. Add field allowedEmails with a list of authorized e-mails.
+3. Keep e-mails in lowercase for consistency.
+
+Example:
+```json
+{
+  "allowedEmails": [
+    "admin@email.com",
+    "pessoa.autorizada@email.com"
+  ]
+}
+```
 
 Important limitation:
 - GitHub Pages serves static files publicly.

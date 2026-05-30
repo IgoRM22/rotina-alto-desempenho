@@ -18,14 +18,14 @@ export default function AuthScreen() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <p className="auth-kicker">Acesso Privado</p>
+        <p className="auth-kicker">Acesso Controlado</p>
         <h1>Rotina de<br />Alto Desempenho</h1>
-        <p className="auth-copy">Página pessoal e privada.</p>
+        <p className="auth-copy">Uso liberado somente para e-mails autorizados pelo administrador.</p>
 
         <div className="auth-blocked-notice">
-          <strong>🔒 Página bloqueada</strong>
-          Esta página é privada e só pode ser acessada pelo administrador.
-          Se você não é o administrador, não terá acesso.
+          <strong>🔒 Acesso autorizado</strong>
+          Se seu e-mail não estiver cadastrado na lista de autorizados,
+          o app bloqueia o login automaticamente.
         </div>
 
         <button
