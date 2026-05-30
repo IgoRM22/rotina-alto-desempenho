@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotina de Alto Desempenho</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0D0C0B;
+  --s1:       #161514;
+  --s2:       #1E1D1B;
+  --border:   rgba(237,232,224,0.07);
+  --border2:  rgba(237,232,224,0.13);
+  --text:     #EDE8E0;
+  --text2:    #8A8480;
+  --text3:    #5A5654;
+  --coral:    #E06445;
+  --sage:     #5BA689;
+  --blue:     #4B8FD4;
+  --gold:     #C49A3A;
+  --pink:     #C4607A;
+  --muted:    #7A7570;
+  --violet:   #8B7EC4;
+  --ff-s: 'Cormorant Garamond', Georgia, serif;
+  --ff-b: 'DM Sans', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ff-b);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  backdrop-filter: blur(14px);
+  background: rgba(13,12,11,0.82);
+  border-bottom: 1px solid var(--border);
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 52px;
+}
+.nav-brand { font-family: var(--ff-s); font-size: 18px; font-weight: 400; letter-spacing: 0.01em; color: var(--text); text-decoration: none; }
+.nav-links { display: flex; gap: 28px; list-style: none; }
+.nav-links a { font-size: 11px; font-weight: 400; color: var(--text3); text-decoration: none; letter-spacing: 0.1em; text-transform: uppercase; transition: color .2s; }
+.nav-links a:hover { color: var(--text2); }
+
+/* ── LAYOUT ── */
+main { max-width: 920px; margin: 0 auto; padding: 0 52px; }
+section { padding: 96px 0; border-bottom: 1px solid var(--border); }
+section:last-child { border-bottom: none; }
+
+/* ── SECTION HEADER ── */
+.sh { margin-bottom: 56px; position: relative; }
+.sh-num {
+  font-family: var(--ff-s); font-size: 130px; font-weight: 300;
+  color: var(--text); opacity: 0.035;
+  position: absolute; top: -36px; left: -10px;
+  line-height: 1; pointer-events: none; user-select: none;
+}
+.sh-label { font-size: 11px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; display: block; margin-bottom: 12px; }
+.sh h2 { font-family: var(--ff-s); font-size: 52px; font-weight: 400; line-height: 1.05; letter-spacing: -0.015em; }
+
+/* ── HERO ── */
+#hero { padding-top: 156px; padding-bottom: 96px; }
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 11px; color: var(--coral); letter-spacing: 0.12em;
+  text-transform: uppercase; font-weight: 500; margin-bottom: 28px;
+}
+.hero-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--coral); }
+#hero h1 {
+  font-family: var(--ff-s); font-size: 86px; font-weight: 400;
+  line-height: 1.0; letter-spacing: -0.025em; margin-bottom: 32px;
+}
+#hero h1 em { font-style: italic; color: var(--text2); }
+#hero .subtitle { font-size: 16px; color: var(--text2); max-width: 540px; line-height: 1.75; margin-bottom: 68px; font-weight: 300; }
+.hero-stats { display: flex; gap: 52px; }
+.hs-val { font-family: var(--ff-s); font-size: 44px; font-weight: 400; color: var(--text); display: block; line-height: 1; margin-bottom: 6px; }
+.hs-lab { font-size: 12px; color: var(--text3); letter-spacing: 0.04em; }
+
+/* ── PRINCIPLES ── */
+.principles-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border);
+}
+.pc {
+  background: var(--bg); padding: 36px 32px;
+  transition: background .25s;
+}
+.pc:hover { background: var(--s1); }
+.pc-dot { width: 10px; height: 10px; border-radius: 50%; margin-bottom: 24px; }
+.pc h3 { font-family: var(--ff-s); font-size: 24px; font-weight: 400; margin-bottom: 12px; letter-spacing: -0.01em; line-height: 1.2; }
+.pc p { font-size: 13px; color: var(--text2); line-height: 1.7; }
+.pc-tag { font-size: 10px; color: var(--coral); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; margin-bottom: 8px; display: block; }
+
+/* ── PULL QUOTE ── */
+.pq { padding: 56px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 56px 0 0; }
+.pq blockquote { font-family: var(--ff-s); font-size: 34px; font-style: italic; font-weight: 300; line-height: 1.4; max-width: 700px; }
+.pq cite { display: block; font-size: 11px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; font-style: normal; margin-top: 20px; }
+
+/* ── WEEKLY GRID ── */
+.week-wrap { overflow-x: auto; }
+.week-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 620px; }
+.week-table th { font-size: 11px; font-weight: 400; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; padding: 10px 6px; text-align: center; border-bottom: 1px solid var(--border); }
+.week-table th.wth-day { font-weight: 500; color: var(--text2); }
+.week-table td { padding: 3px; vertical-align: top; }
+.wtd-time { font-size: 11px; color: var(--text3); padding: 9px 14px 9px 0; white-space: nowrap; text-align: right; font-weight: 300; }
+.wc {
+  border-radius: 3px; padding: 7px 8px;
+  font-size: 11px; font-weight: 400; text-align: center;
+  min-height: 38px; display: flex; align-items: center;
+  justify-content: center; line-height: 1.3;
+}
+.wc-empty { min-height: 38px; }
+.wc-saude  { background: rgba(91,166,137,.1);  color: #5BA689; }
+.wc-corp   { background: rgba(75,143,212,.1);  color: #4B8FD4; }
+.wc-projeto{ background: rgba(224,100,69,.12); color: #E06445; font-weight: 500; }
+.wc-mente  { background: rgba(139,126,196,.1); color: #8B7EC4; }
+.wc-trem   { background: rgba(122,117,112,.1); color: #7A7570; }
+.wc-familia{ background: rgba(196,154,58,.1);  color: #C49A3A; }
+.wc-estudo { background: rgba(196,96,122,.1);  color: #C4607A; }
+.legend { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 24px; }
+.li { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text2); }
+.ld { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.week-note { font-size: 12px; color: var(--text3); margin-top: 20px; padding: 14px 18px; border-left: 2px solid var(--coral); line-height: 1.6; }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 52px; }
+.tab-btn {
+  padding: 12px 26px; font-family: var(--ff-b); font-size: 13px; font-weight: 400;
+  color: var(--text3); background: transparent; border: none;
+  border-bottom: 2px solid transparent; cursor: pointer;
+  transition: all .2s; margin-bottom: -1px; letter-spacing: 0.01em;
+}
+.tab-btn:hover { color: var(--text2); }
+.tab-btn.active { color: var(--text); border-bottom-color: var(--coral); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── TIMELINE ── */
+.timeline { display: flex; flex-direction: column; }
+.tl-item {
+  display: grid; grid-template-columns: 96px 3px 1fr;
+  gap: 0 20px; padding: 22px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tl-item:last-child { border-bottom: none; }
+.tl-time { font-size: 12px; color: var(--text3); text-align: right; padding-top: 4px; font-weight: 300; line-height: 1.4; }
+.tl-bar { width: 3px; border-radius: 3px; min-height: 24px; flex-shrink: 0; }
+.tl-body {}
+.tl-head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; flex-wrap: wrap; }
+.tl-pill { font-size: 10px; font-weight: 500; padding: 2px 9px; border-radius: 20px; letter-spacing: 0.04em; white-space: nowrap; }
+.tl-special { font-size: 10px; font-weight: 500; color: var(--coral); letter-spacing: 0.06em; text-transform: uppercase; }
+.tl-name { font-family: var(--ff-s); font-size: 21px; font-weight: 400; letter-spacing: -0.01em; line-height: 1.2; color: var(--text); }
+.tl-desc { font-size: 13px; color: var(--text2); line-height: 1.7; }
+.tl-note { font-size: 13px; color: rgba(224,100,69,.85); line-height: 1.65; margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--coral); }
+
+.type-saude .tl-bar   { background: var(--sage); }
+.type-corp .tl-bar    { background: var(--blue); }
+.type-projeto .tl-bar { background: var(--coral); }
+.type-mente .tl-bar   { background: var(--violet); }
+.type-trem .tl-bar    { background: var(--muted); }
+.type-familia .tl-bar { background: var(--gold); }
+.type-estudo .tl-bar  { background: var(--pink); }
+
+.pill-saude  { background: rgba(91,166,137,.12);  color: var(--sage); }
+.pill-corp   { background: rgba(75,143,212,.12);  color: var(--blue); }
+.pill-projeto{ background: rgba(224,100,69,.12);  color: var(--coral); }
+.pill-mente  { background: rgba(139,126,196,.12); color: var(--violet); }
+.pill-trem   { background: rgba(122,117,112,.12); color: var(--muted); }
+.pill-familia{ background: rgba(196,154,58,.12);  color: var(--gold); }
+.pill-estudo { background: rgba(196,96,122,.12);  color: var(--pink); }
+
+/* ── PROJECT ── */
+.proj-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 52px; }
+.ps { background: var(--bg); padding: 32px; }
+.ps-val { font-family: var(--ff-s); font-size: 52px; font-weight: 400; color: var(--coral); display: block; line-height: 1; margin-bottom: 10px; }
+.ps-lab { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.sessions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 40px; }
+.sess { background: var(--bg); padding: 28px; }
+.sess-time { font-family: var(--ff-s); font-size: 38px; font-weight: 400; color: var(--coral); margin-bottom: 10px; line-height: 1; }
+.sess-name { font-size: 13px; font-weight: 500; margin-bottom: 7px; color: var(--text); }
+.sess-desc { font-size: 12px; color: var(--text2); line-height: 1.65; }
+.proj-framework { background: var(--s1); border: 1px solid var(--border); padding: 36px; margin-bottom: 40px; }
+.proj-framework h3 { font-family: var(--ff-s); font-size: 28px; font-weight: 400; margin-bottom: 20px; letter-spacing: -0.01em; }
+.fw-steps { display: flex; flex-direction: column; gap: 16px; }
+.fw-step { display: flex; gap: 16px; align-items: flex-start; }
+.fw-n { font-family: var(--ff-s); font-size: 28px; font-weight: 300; color: var(--text3); line-height: 1; flex-shrink: 0; width: 28px; }
+.fw-c h4 { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+.fw-c p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+.proj-hat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.hat { padding: 20px; border: 1px solid var(--border); border-radius: 2px; text-align: center; }
+.hat-time { font-size: 12px; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+.hat-name { font-family: var(--ff-s); font-size: 22px; font-weight: 400; margin-bottom: 4px; }
+.hat-sub { font-size: 12px; color: var(--text2); }
+
+/* ── DEVELOPMENT ── */
+.dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+.dev-card { border-top: 2px solid var(--border2); padding-top: 24px; }
+.dev-card h3 { font-family: var(--ff-s); font-size: 26px; font-weight: 400; margin-bottom: 20px; letter-spacing: -0.01em; }
+.dev-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.dev-list li { font-size: 13px; color: var(--text2); padding-left: 18px; position: relative; line-height: 1.65; }
+.dev-list li::before { content: '—'; position: absolute; left: 0; color: var(--text3); }
+.dev-list .em { color: var(--text); font-weight: 500; display: block; }
+.dev-note { font-size: 13px; color: var(--text2); background: var(--s1); border: 1px solid var(--border); padding: 20px 24px; line-height: 1.7; }
+
+/* ── BALANCE ── */
+.bal-items { display: flex; flex-direction: column; }
+.bi {
+  display: grid; grid-template-columns: 56px 1fr;
+  gap: 0 28px; padding: 28px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: start;
+}
+.bi:last-child { border-bottom: none; }
+.bi-num { font-family: var(--ff-s); font-size: 44px; font-weight: 300; color: var(--text3); line-height: 1; }
+.bi h3 { font-family: var(--ff-s); font-size: 24px; font-weight: 400; margin-bottom: 8px; letter-spacing: -0.01em; }
+.bi p { font-size: 13px; color: var(--text2); line-height: 1.7; }
+
+/* ── FOOTER ── */
+footer { max-width: 920px; margin: 0 auto; padding: 80px 52px 100px; border-top: 1px solid var(--border); }
+footer blockquote { font-family: var(--ff-s); font-size: 28px; font-style: italic; font-weight: 300; color: var(--text2); margin-bottom: 18px; max-width: 640px; line-height: 1.45; }
+footer cite { font-size: 11px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
+.foot-meta { margin-top: 56px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text3); border-top: 1px solid var(--border); padding-top: 24px; flex-wrap: wrap; gap: 12px; }
+.foot-tag { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--coral); }
+
+/* ── FADE ANIMATION ── */
+.fade { opacity: 0; transform: translateY(18px); transition: opacity .65s ease, transform .65s ease; }
+.fade.in { opacity: 1; transform: translateY(0); }
+.fade-d1 { transition-delay: .1s; }
+.fade-d2 { transition-delay: .2s; }
+.fade-d3 { transition-delay: .3s; }
+.fade-d4 { transition-delay: .4s; }
+.fade-d5 { transition-delay: .5s; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 720px) {
+  main, footer { padding: 0 24px; }
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  #hero { padding-top: 96px; }
+  #hero h1 { font-size: 52px; }
+  .hero-stats { flex-direction: column; gap: 28px; }
+  .principles-grid, .dev-grid { grid-template-columns: 1fr; }
+  .proj-stats, .sessions, .proj-hat { grid-template-columns: 1fr; }
+  .bi { grid-template-columns: 40px 1fr; }
+  .sh h2 { font-size: 38px; }
+}
+
+@media print {
+  body { background: #fff; color: #111; }
+  body::after { display: none; }
+  nav { display: none; }
+  #hero { padding-top: 48px; }
+  .fade { opacity: 1; transform: none; }
+  section { padding: 48px 0; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="#hero">Rotina ↗</a>
+  <ul class="nav-links">
+    <li><a href="#fundamentos">Fundamentos</a></li>
+    <li><a href="#stack">Semana</a></li>
+    <li><a href="#cronograma">Cronograma</a></li>
+    <li><a href="#projeto">Projeto</a></li>
+    <li><a href="#desenvolvimento">Desenvolvimento</a></li>
+    <li><a href="#equilibrio">Equilíbrio</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <span class="hero-eyebrow">Rotina de Alto Desempenho</span>
+  <h1>Do Produto<br><em>ao Projeto</em></h1>
+  <p class="subtitle">Um sistema diário construído sobre os hábitos de Guilherme Benchimol, adaptado para profissionais de produto digital com sonho de empreender.</p>
+  <div class="hero-stats">
+    <div><span class="hs-val">~7h45</span><span class="hs-lab">por semana no projeto pessoal</span></div>
+    <div><span class="hs-val">6</span><span class="hs-lab">princípios fundamentais</span></div>
+    <div><span class="hs-val">1</span><span class="hs-lab">sonho construído com método</span></div>
+  </div>
+</section>
+
+<!-- ── FUNDAMENTOS ── -->
+<section id="fundamentos" class="fade">
+  <div class="sh">
+    <span class="sh-num">01</span>
+    <span class="sh-label">A base de tudo</span>
+    <h2>Os Fundamentos</h2>
+  </div>
+  <div class="principles-grid">
+    <div class="pc fade fade-d1">
+      <div class="pc-dot" style="background:var(--sage)"></div>
+      <span class="pc-tag">Benchimol</span>
+      <h3>Treino é inegociável</h3>
+      <p>"No meu dia a dia, jamais fico sem fazer atividades físicas." Benchimol treina musculação e tênis todos os dias antes do trabalho. Nos dias de empresa, acorde mais cedo — mas não pule. É o hábito que sustenta todos os outros.</p>
+    </div>
+    <div class="pc fade fade-d2">
+      <div class="pc-dot" style="background:var(--violet)"></div>
+      <span class="pc-tag">Benchimol</span>
+      <h3>Planejar à noite, executar de manhã</h3>
+      <p>"Ao final de todos os dias, separo 30 a 40 minutos para organizar meu dia seguinte." Você chega no trabalho já sabendo o que vai fazer. Esse ritual noturno elimina a paralisia matinal e preserva energia para decisões reais.</p>
+    </div>
+    <div class="pc fade fade-d3">
+      <div class="pc-dot" style="background:var(--coral)"></div>
+      <span class="pc-tag">Para empreendedores com emprego</span>
+      <h3>A hora do fundador</h3>
+      <p>Nos dias remotos, das 7h30 às 8h15, antes do trabalho existir. Mente fresca, sem notificações, sem demandas. É quando Reid Hoffman, Sara Blakely e centenas de fundadores construíram seus projetos antes de "largar tudo".</p>
+    </div>
+    <div class="pc fade fade-d4">
+      <div class="pc-dot" style="background:var(--muted)"></div>
+      <span class="pc-tag">Para quem tem 3h de trem/semana</span>
+      <h3>O trem é seu, não da empresa</h3>
+      <p>150 horas por ano de conteúdo de produto e negócio, sem tirar tempo de mais nada. O trem de ida é aprendizado ativo — podcast, livro, newsletter. O trem de volta é descompressão. Não leve trabalho no bolso.</p>
+    </div>
+    <div class="pc fade fade-d5">
+      <div class="pc-dot" style="background:var(--gold)"></div>
+      <span class="pc-tag">Benchimol</span>
+      <h3>Família na agenda, não o que sobra</h3>
+      <p>"O segredo é estar com a mente sã, fazer esportes e ficar próximo da família." Proteja o horário pós-18h com a mesma seriedade de uma reunião importante. Não é estratégia de vida — é estratégia de desempenho.</p>
+    </div>
+    <div class="pc">
+      <div class="pc-dot" style="background:var(--blue)"></div>
+      <span class="pc-tag">Benchimol</span>
+      <h3>Performance sustentável, não sprint</h3>
+      <p>"Se pudesse voltar atrás, buscaria metas audaciosas, mas sem descuidar da felicidade." Benchimol mais maduro enfatiza equilíbrio. O sonho de empreender deve ser construído de forma que você ainda goste de quem é no processo.</p>
+    </div>
+  </div>
+  <div class="pq fade">
+    <blockquote>"Todas as coisas que você começa a repetir depois de algumas semanas se transformam em hábito."</blockquote>
+    <cite>— Guilherme Benchimol, LinkedIn</cite>
+  </div>
+</section>
+
+<!-- ── STACK SEMANAL ── -->
+<section id="stack" class="fade">
+  <div class="sh">
+    <span class="sh-num">02</span>
+    <span class="sh-label">Visão completa</span>
+    <h2>Stack Semanal</h2>
+  </div>
+  <div class="week-wrap">
+    <table class="week-table">
+      <thead>
+        <tr>
+          <th style="text-align:right; padding-right:14px">Horário</th>
+          <th class="wth-day">Segunda</th>
+          <th class="wth-day">Terça ★</th>
+          <th class="wth-day">Quarta</th>
+          <th class="wth-day">Quinta ★</th>
+          <th class="wth-day">Sexta</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="wtd-time">~5h50–7h30</td>
+          <td><div class="wc wc-saude">treino</div></td>
+          <td><div class="wc wc-saude">treino ↑cedo</div></td>
+          <td><div class="wc wc-saude">treino</div></td>
+          <td><div class="wc wc-saude">treino ↑cedo</div></td>
+          <td><div class="wc wc-saude">treino</div></td>
+        </tr>
+        <tr>
+          <td class="wtd-time">7h30–8h15</td>
+          <td><div class="wc wc-projeto">✦ fundador</div></td>
+          <td><div class="wc wc-trem">trem→ produto</div></td>
+          <td><div class="wc wc-projeto">✦ fundador</div></td>
+          <td><div class="wc wc-trem">trem→ produto</div></td>
+          <td><div class="wc wc-projeto">✦ fundador</div></td>
+        </tr>
+        <tr>
+          <td class="wtd-time">9h–12h</td>
+          <td><div class="wc wc-corp">trabalho ↑</div></td>
+          <td><div class="wc wc-corp">trabalho ↑</div></td>
+          <td><div class="wc wc-corp">trabalho ↑</div></td>
+          <td><div class="wc wc-corp">trabalho ↑</div></td>
+          <td><div class="wc wc-corp">trabalho ↑</div></td>
+        </tr>
+        <tr>
+          <td class="wtd-time">almoço</td>
+          <td><div class="wc wc-estudo">leitura 20'</div></td>
+          <td><div class="wc wc-corp">pausa</div></td>
+          <td><div class="wc wc-estudo">leitura 20'</div></td>
+          <td><div class="wc wc-corp">pausa</div></td>
+          <td><div class="wc wc-estudo">leitura 20'</div></td>
+        </tr>
+        <tr>
+          <td class="wtd-time">13h–17h30</td>
+          <td><div class="wc wc-corp">trabalho ↓</div></td>
+          <td><div class="wc wc-corp">trabalho ↓</div></td>
+          <td><div class="wc wc-corp">trabalho ↓</div></td>
+          <td><div class="wc wc-corp">trabalho ↓</div></td>
+          <td><div class="wc wc-corp">trabalho ↓</div></td>
+        </tr>
+        <tr>
+          <td class="wtd-time">17h30–18h15</td>
+          <td><div class="wc wc-mente">planejar</div></td>
+          <td><div class="wc wc-trem">trem→ casa</div></td>
+          <td><div class="wc wc-mente">planejar</div></td>
+          <td><div class="wc wc-trem">trem→ casa</div></td>
+          <td><div class="wc wc-mente">planejar</div></td>
+        </tr>
+        <tr>
+          <td class="wtd-time">18h30–19h</td>
+          <td><div class="wc wc-empty"></div></td>
+          <td><div class="wc wc-projeto">projeto 30'</div></td>
+          <td><div class="wc wc-empty"></div></td>
+          <td><div class="wc wc-projeto">projeto 30'</div></td>
+          <td><div class="wc wc-empty"></div></td>
+        </tr>
+        <tr>
+          <td class="wtd-time">noite</td>
+          <td><div class="wc wc-familia">família</div></td>
+          <td><div class="wc wc-familia">família</div></td>
+          <td><div class="wc wc-familia">família</div></td>
+          <td><div class="wc wc-familia">família</div></td>
+          <td><div class="wc wc-familia">família</div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="legend">
+    <div class="li"><div class="ld" style="background:var(--sage)"></div>saúde / treino</div>
+    <div class="li"><div class="ld" style="background:var(--coral)"></div>✦ projeto pessoal</div>
+    <div class="li"><div class="ld" style="background:var(--blue)"></div>trabalho (produto)</div>
+    <div class="li"><div class="ld" style="background:var(--violet)"></div>planejamento</div>
+    <div class="li"><div class="ld" style="background:var(--muted)"></div>transporte / conteúdo</div>
+    <div class="li"><div class="ld" style="background:var(--gold)"></div>família</div>
+    <div class="li"><div class="ld" style="background:var(--pink)"></div>leitura / estudo</div>
+  </div>
+  <p class="week-note">★ Terça e quinta são os dias na empresa (trem). O projeto pessoal nesses dias é a mini-sessão de 30 min após a volta. Nos dias remotos, a hora do fundador (7h30–8h15) é o bloco principal da semana.</p>
+</section>
+
+<!-- ── CRONOGRAMA ── -->
+<section id="cronograma" class="fade">
+  <div class="sh">
+    <span class="sh-num">03</span>
+    <span class="sh-label">Dia a dia</span>
+    <h2>Cronograma</h2>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('remoto', this)">Seg · Qua · Sex — remoto</button>
+    <button class="tab-btn" onclick="showTab('empresa', this)">Ter · Qui — empresa</button>
+    <button class="tab-btn" onclick="showTab('fds', this)">Fim de semana</button>
+  </div>
+
+  <!-- REMOTO -->
+  <div id="remoto" class="tab-panel active">
+    <div class="timeline">
+      <div class="tl-item type-saude">
+        <div class="tl-time">05h50<br>07h30</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-saude">saúde</span></div>
+          <div class="tl-name">Treino físico</div>
+          <div class="tl-desc">Musculação, corrida ou o que você curte. Sem música — foco no corpo e na respiração, como Benchimol faz. A fundação que sustenta tudo o que vem depois.</div>
+        </div>
+      </div>
+      <div class="tl-item type-projeto">
+        <div class="tl-time">07h30<br>08h15</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-projeto">projeto pessoal</span><span class="tl-special">✦ hora do fundador</span></div>
+          <div class="tl-name">A hora do fundador</div>
+          <div class="tl-desc">Antes do trabalho tomar conta do dia. 45 minutos com foco exclusivo no seu projeto — validar hipóteses, escrever, pesquisar mercado, prototipar. A mente está fresca e sem notificações.</div>
+          <div class="tl-note">Nos dias remotos você tem esse luxo. Use sem culpa — é seu projeto, não procrastinação.</div>
+        </div>
+      </div>
+      <div class="tl-item type-corp">
+        <div class="tl-time">08h15<br>08h45</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-corp">produto</span></div>
+          <div class="tl-name">Café + leitura de produto</div>
+          <div class="tl-desc">1–2 newsletters enquanto toma café. Product Hunt, Substack de referências do seu mercado, artigos salvos. Você chega no trabalho já "aquecido" sobre o setor.</div>
+        </div>
+      </div>
+      <div class="tl-item type-corp">
+        <div class="tl-time">09h00<br>12h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-corp">trabalho profundo</span></div>
+          <div class="tl-name">Bloco de PM — alta energia</div>
+          <div class="tl-desc">As tarefas mais complexas: discovery, escrita de spec, análise de dados, decisões de roadmap. Energia no pico — não desperdice com emails e reuniões que poderiam ser assíncronas.</div>
+        </div>
+      </div>
+      <div class="tl-item type-estudo">
+        <div class="tl-time">12h00<br>13h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-estudo">estudo</span></div>
+          <div class="tl-name">Almoço + leitura técnica</div>
+          <div class="tl-desc">Coma devagar, sem tela. Nos últimos 20 minutos: capítulo do livro atual ou artigo técnico de produto ou negócio. Benchimol relê partes importantes antes de avançar — qualidade sobre quantidade.</div>
+        </div>
+      </div>
+      <div class="tl-item type-corp">
+        <div class="tl-time">13h00<br>17h30</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-corp">trabalho operacional</span></div>
+          <div class="tl-name">Reuniões + execução</div>
+          <div class="tl-desc">Reviews, syncs, stakeholders. Concentre reuniões na tarde — é quando a criatividade baixa e a colaboração ganha. Últimos 30 min: feche pendências e prepare o que vai para amanhã.</div>
+        </div>
+      </div>
+      <div class="tl-item type-mente">
+        <div class="tl-time">17h30<br>18h10</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-mente">planejamento</span></div>
+          <div class="tl-name">Ritual noturno — 30–40 min</div>
+          <div class="tl-desc">Revise o dia, defina as 3 prioridades de amanhã. Uma delas pode ser para o projeto pessoal. Benchimol faz isso todos os dias sem exceção. Você para de chegar no dia seguinte sem saber por onde começar.</div>
+        </div>
+      </div>
+      <div class="tl-item type-familia">
+        <div class="tl-time">18h10<br>22h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-familia">família</span></div>
+          <div class="tl-name">Jantar + desconexão real</div>
+          <div class="tl-desc">Trabalho encerrado. Jantar, lazer, conversa. Benchimol: "ficar próximo da família é parte do segredo." Não é o que sobra após o trabalho — é parte deliberada da estratégia de desempenho.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMPRESA -->
+  <div id="empresa" class="tab-panel">
+    <div class="timeline">
+      <div class="tl-item type-saude">
+        <div class="tl-time">05h30<br>07h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-saude">saúde</span></div>
+          <div class="tl-name">Treino antecipado</div>
+          <div class="tl-desc">Nesses dias acorde mais cedo. Com o trem e o dia pesado, se deixar para depois do trabalho raramente vai acontecer. O treino é a âncora mais importante — não abra mão dela.</div>
+        </div>
+      </div>
+      <div class="tl-item type-trem">
+        <div class="tl-time">07h00<br>08h30</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-trem">trem → empresa</span></div>
+          <div class="tl-name">Commute de ida — aprendizado ativo</div>
+          <div class="tl-desc">Podcast de produto ou negócio, audiobook, newsletter salva. Você chega aquecido e energizado, sem ter gasto energia mental. São ~150h por ano absorvidas sem tirar tempo de nada.</div>
+          <div class="tl-note">Sugestões: Lenny's Podcast, Masters of Scale, How I Built This, Startups and Shit.</div>
+        </div>
+      </div>
+      <div class="tl-item type-corp">
+        <div class="tl-time">09h00<br>12h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-corp">trabalho presencial</span></div>
+          <div class="tl-name">Manhã — colaboração de alto valor</div>
+          <div class="tl-desc">Priorize o que só funciona presencialmente: workshops, decisões difíceis com stakeholders, alinhamentos de equipe. Não venha ao escritório para fazer o que você faz remotamente.</div>
+        </div>
+      </div>
+      <div class="tl-item type-corp">
+        <div class="tl-time">12h00<br>13h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-corp">pausa</span></div>
+          <div class="tl-name">Almoço — recarga real</div>
+          <div class="tl-desc">Sem tela, sem assuntos de trabalho. Nos dias de maior esforço, a pausa do almoço é mais importante, não menos. É a recarga para a tarde.</div>
+        </div>
+      </div>
+      <div class="tl-item type-corp">
+        <div class="tl-time">13h00<br>17h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-corp">trabalho presencial</span></div>
+          <div class="tl-name">Tarde no escritório</div>
+          <div class="tl-desc">Tarefas que se beneficiam do presencial. Tente sair às 17h — com o trem, chegar às 18h30 já é suficientemente tarde. Sair às 18h pode significar chegar às 19h30.</div>
+        </div>
+      </div>
+      <div class="tl-item type-trem">
+        <div class="tl-time">17h00<br>18h30</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-trem">trem → casa</span></div>
+          <div class="tl-name">Commute de volta — descompressão</div>
+          <div class="tl-desc">Não leve trabalho no bolso. Música, podcast leve ou simplesmente descanse. Você precisa chegar em casa com energia, não já esgotado. Esse tempo é seu.</div>
+        </div>
+      </div>
+      <div class="tl-item type-projeto">
+        <div class="tl-time">18h30<br>19h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-projeto">projeto pessoal</span></div>
+          <div class="tl-name">Mini-sessão do fundador — 30 min</div>
+          <div class="tl-desc">Versão reduzida da hora do fundador. Apenas 30 minutos, mas consistente. Pode ser: revisar anotações do podcast do trem, escrever uma hipótese, atualizar um doc. Consistência importa mais que duração.</div>
+        </div>
+      </div>
+      <div class="tl-item type-mente">
+        <div class="tl-time">19h00<br>19h20</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-mente">planejamento</span></div>
+          <div class="tl-name">Planejamento rápido — 15–20 min</div>
+          <div class="tl-desc">Versão compacta do ritual do Benchimol. O essencial: 3 prioridades de amanhã. Não precisa ser elaborado — mas precisa acontecer.</div>
+        </div>
+      </div>
+      <div class="tl-item type-familia">
+        <div class="tl-time">19h20<br>22h00</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-familia">família</span></div>
+          <div class="tl-name">Jantar + descanso merecido</div>
+          <div class="tl-desc">Dia mais pesado exige descanso mais intencional. Proteja essa janela — é a recompensa e a recuperação. Qualidade do sono desta noite define a energia de amanhã.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIM DE SEMANA -->
+  <div id="fds" class="tab-panel">
+    <div class="timeline">
+      <div class="tl-item type-saude">
+        <div class="tl-time">Sáb<br>06h30–08h</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-saude">saúde</span></div>
+          <div class="tl-name">Treino prazeroso</div>
+          <div class="tl-desc">Tênis, bike, corrida ao ar livre. Benchimol mantém o esporte no fim de semana não como obrigação, mas como prazer e qualidade de vida. Escolha algo que você genuinamente curte.</div>
+        </div>
+      </div>
+      <div class="tl-item type-projeto">
+        <div class="tl-time">Sáb<br>08h30–11h30</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-projeto">projeto pessoal</span><span class="tl-special">✦ bloco principal</span></div>
+          <div class="tl-name">Bloco profundo do projeto — 3 horas</div>
+          <div class="tl-desc">A sessão mais importante da semana. Sem notificações, com foco total. Pode ser: validar com usuários, construir MVP, escrever estratégia de go-to-market, pesquisar o mercado a fundo.</div>
+          <div class="tl-note">Trate como reunião inegociável consigo mesmo. Use como sprint de discovery: defina uma pergunta a responder e vá a fundo.</div>
+        </div>
+      </div>
+      <div class="tl-item type-familia">
+        <div class="tl-time">Sáb<br>11h30–17h</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-familia">família</span></div>
+          <div class="tl-name">Tarde inteiramente livre</div>
+          <div class="tl-desc">Projeto encerrado no almoço. Benchimol fala muito sobre aproveitar os "pequenos momentos." A tarde de sábado é inteiramente sua e de quem você ama — sem agenda, sem culpa.</div>
+        </div>
+      </div>
+      <div class="tl-item type-estudo">
+        <div class="tl-time">Sáb<br>17h–18h30</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-estudo">estudo</span></div>
+          <div class="tl-name">Leitura — sessão principal da semana</div>
+          <div class="tl-desc">A sessão de leitura mais longa da semana. Benchimol lê 1 livro a cada 2–3 meses, relendo partes importantes. Escolha livros de negócio, produto ou empreendedorismo que alimentem o projeto atual.</div>
+        </div>
+      </div>
+      <div class="tl-item type-familia">
+        <div class="tl-time">Dom<br>manhã</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-familia">família</span></div>
+          <div class="tl-name">Manhã completamente livre</div>
+          <div class="tl-desc">Nada de projeto, nada de trabalho. Recarregar não é fraqueza — é parte da performance sustentável. Café demorado, lazer, familia.</div>
+        </div>
+      </div>
+      <div class="tl-item type-projeto">
+        <div class="tl-time">Dom<br>14h–15h</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-projeto">projeto pessoal</span></div>
+          <div class="tl-name">Revisão semanal do projeto — 1 hora</div>
+          <div class="tl-desc">O que avancei essa semana? Qual é a próxima hipótese a testar? Defina 1 entregável concreto para a próxima semana. Pequeno mas consistente.</div>
+        </div>
+      </div>
+      <div class="tl-item type-mente">
+        <div class="tl-time">Dom<br>18h–18h40</div>
+        <div class="tl-bar"></div>
+        <div class="tl-body">
+          <div class="tl-head"><span class="tl-pill pill-mente">planejamento</span></div>
+          <div class="tl-name">Planejamento da semana inteira</div>
+          <div class="tl-desc">Versão ampliada do ritual do Benchimol. Veja a semana toda: quando é a hora do fundador, qual o objetivo do projeto, o que é prioridade no trabalho. Você começa segunda já orientado.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROJETO PESSOAL ── -->
+<section id="projeto" class="fade">
+  <div class="sh">
+    <span class="sh-num">04</span>
+    <span class="sh-label">O sonho com método</span>
+    <h2>O Projeto Pessoal</h2>
+  </div>
+  <div class="proj-stats">
+    <div class="ps">
+      <span class="ps-val">~7h45</span>
+      <span class="ps-lab">por semana dedicadas ao projeto, sem comprometer trabalho ou família</span>
+    </div>
+    <div class="ps">
+      <span class="ps-val">150h</span>
+      <span class="ps-lab">por ano de conteúdo de produto e negócio absorvidos no trem</span>
+    </div>
+    <div class="ps">
+      <span class="ps-val">1</span>
+      <span class="ps-lab">entregável concreto por semana — pequeno e consistente vence grande e esporádico</span>
+    </div>
+  </div>
+
+  <p style="font-size:13px; color:var(--text2); margin-bottom:28px;">A distribuição das ~7h45 semanais ocorre em três tipos de sessão:</p>
+  <div class="sessions">
+    <div class="sess">
+      <div class="sess-time">3×45'</div>
+      <div class="sess-name">Hora do Fundador</div>
+      <div class="sess-desc">Seg, Qua e Sex antes do trabalho. Mente fresca, foco total. Para as tarefas mais criativas: ideação, escrita, validação.</div>
+    </div>
+    <div class="sess">
+      <div class="sess-time">2×30'</div>
+      <div class="sess-name">Mini-sessão</div>
+      <div class="sess-desc">Ter e Qui após a volta do trem. Consistência mesmo nos dias pesados. Para tarefas menores: revisar notas, atualizar docs, pesquisa rápida.</div>
+    </div>
+    <div class="sess">
+      <div class="sess-time">3h+1h</div>
+      <div class="sess-name">Bloco do Fim de Semana</div>
+      <div class="sess-desc">3h no sábado de manhã (bloco profundo) + 1h no domingo (revisão semanal). Para trabalho pesado: prototipagem, conversas com usuários, builds.</div>
+    </div>
+  </div>
+
+  <div class="proj-framework">
+    <h3>O Framework Semanal</h3>
+    <div class="fw-steps">
+      <div class="fw-step">
+        <div class="fw-n">1</div>
+        <div class="fw-c">
+          <h4>Defina 1 pergunta para a semana</h4>
+          <p>No planejamento de domingo: qual é a hipótese mais importante a testar ou avançar? Uma pergunta clara direciona todas as sessões menores ao longo da semana.</p>
+        </div>
+      </div>
+      <div class="fw-step">
+        <div class="fw-n">2</div>
+        <div class="fw-c">
+          <h4>Use o trem como laboratório de mercado</h4>
+          <p>O que você aprender nos podcasts do trem vai diretamente para as suas sessões. Conecte o aprendizado passivo ao trabalho ativo — anote hipóteses em tempo real.</p>
+        </div>
+      </div>
+      <div class="fw-step">
+        <div class="fw-n">3</div>
+        <div class="fw-c">
+          <h4>Entregue 1 coisa concreta por semana</h4>
+          <p>Uma entrevista com potencial usuário. Uma landing page. Um doc de estratégia. Um protótipo de baixa fidelidade. Pequeno e tangível — não um plano de negócios de 40 páginas.</p>
+        </div>
+      </div>
+      <div class="fw-step">
+        <div class="fw-n">4</div>
+        <div class="fw-c">
+          <h4>Aplique seus skills de PM no projeto</h4>
+          <p>Você trabalha com discovery, comportamento de usuário, métricas e roadmap. Cada decisão que você toma no trabalho é treinamento direto para o seu negócio. Não são mundos separados.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:13px; color:var(--text2); margin-bottom:16px; font-weight:500;">A regra dos 3 chapéus — separar os papéis por bloco de tempo:</p>
+  <div class="proj-hat">
+    <div class="hat">
+      <div class="hat-time">7h30 – 8h15</div>
+      <div class="hat-name" style="color:var(--coral)">Fundador</div>
+      <div class="hat-sub">Seu projeto, suas hipóteses, sua visão</div>
+    </div>
+    <div class="hat">
+      <div class="hat-time">9h00 – 18h00</div>
+      <div class="hat-name" style="color:var(--blue)">PM</div>
+      <div class="hat-sub">Produto da empresa, com total dedicação</div>
+    </div>
+    <div class="hat">
+      <div class="hat-time">após 18h</div>
+      <div class="hat-name" style="color:var(--gold)">Pessoa</div>
+      <div class="hat-sub">Família, descanso, vida</div>
+    </div>
+  </div>
+  <p style="font-size:13px; color:var(--text3); margin-top:16px; line-height:1.65;">Misturar os três em qualquer bloco gera culpa e drena energia. O Benchimol é rígido nisso: cada coisa tem seu tempo. Quando estiver na hora do fundador, não pense no trabalho. Quando estiver no trabalho, não pense no projeto. Quando estiver em família, esteja em família.</p>
+</section>
+
+<!-- ── DESENVOLVIMENTO ── -->
+<section id="desenvolvimento" class="fade">
+  <div class="sh">
+    <span class="sh-num">05</span>
+    <span class="sh-label">Crescimento contínuo</span>
+    <h2>Leitura & Desenvolvimento</h2>
+  </div>
+  <div class="dev-grid">
+    <div class="dev-card">
+      <h3>Leitura — método Benchimol</h3>
+      <ul class="dev-list">
+        <li><span class="em">1 livro a cada 2–3 meses</span>Qualidade sobre quantidade. Benchimol relê partes importantes antes de avançar para o próximo. Absorver profundamente vale mais do que colecionar títulos.</li>
+        <li><span class="em">Sessão principal: sábado 17h–18h30</span>1,5h de leitura focada na sessão mais longa da semana. Mais 20 min no almoço dos dias remotos.</li>
+        <li><span class="em">Sugestões para produto + empreendedorismo:</span>Inspired (Marty Cagan) · Zero to One (Peter Thiel) · The Hard Thing About Hard Things (Ben Horowitz) · Lean Startup · Continuous Discovery Habits</li>
+      </ul>
+    </div>
+    <div class="dev-card">
+      <h3>Podcasts para o trem</h3>
+      <ul class="dev-list">
+        <li><span class="em">Lenny's Podcast</span>O melhor podcast de produto do mundo. Entrevistas com os melhores PMs e fundadores. Episódios de 60–90 min — perfeito para o trem.</li>
+        <li><span class="em">How I Built This (NPR)</span>Histórias de fundadores sobre como construíram empresas icônicas. Motivação e aprendizado combinados.</li>
+        <li><span class="em">Masters of Scale (Reid Hoffman)</span>Filosofia de crescimento de negócios por um dos melhores investidores do mundo.</li>
+        <li><span class="em">Startups and Shit</span>Conteúdo brasileiro de qualidade sobre empreendedorismo e startups.</li>
+      </ul>
+    </div>
+    <div class="dev-card">
+      <h3>Newsletters semanais</h3>
+      <ul class="dev-list">
+        <li><span class="em">Lenny's Newsletter</span>Frameworks práticos de produto toda semana. Leitura de 10 min no café da manhã remoto.</li>
+        <li><span class="em">Product Hunt Daily</span>O que está sendo construído no mundo. Excelente para ver oportunidades de mercado.</li>
+        <li><span class="em">The Pragmatic Engineer</span>Para entender melhor o lado técnico — fundamental para PMs que lideram engenharia.</li>
+        <li><span class="em">Stratechery (Ben Thompson)</span>Análise estratégica profunda da indústria de tecnologia.</li>
+      </ul>
+    </div>
+    <div class="dev-card">
+      <h3>Aprendizado no projeto</h3>
+      <ul class="dev-list">
+        <li><span class="em">Entrevistas com usuários</span>Pelo menos 1 conversa por quinzena com potencial usuário do seu projeto. A habilidade de discovery que você usa no trabalho serve diretamente aqui.</li>
+        <li><span class="em">Análise de concorrentes</span>30 min de análise de produto por semana. Documente o que você aprende — vira insumo para a hora do fundador.</li>
+        <li><span class="em">Comunidades</span>Product Hunt, Indie Hackers, Comunidade Tera, grupos no LinkedIn. Aprenda com quem está construindo.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="dev-note">
+    <strong style="display:block; margin-bottom:6px;">O trem vale muito mais do que parece.</strong>
+    São ~3 horas por semana — que em 1 ano somam ~150 horas de conteúdo de produto e negócio absorvidas sem tirar tempo de mais nada. Em 5 anos, você terá investido mais de 750 horas em aprendizado apenas no trajeto. Isso é equivalente a um MBA em horas de estudo.
+  </div>
+</section>
+
+<!-- ── EQUILÍBRIO ── -->
+<section id="equilibrio" class="fade">
+  <div class="sh">
+    <span class="sh-num">06</span>
+    <span class="sh-label">Para durar anos, não semanas</span>
+    <h2>Como Sustentar</h2>
+  </div>
+  <div class="bal-items">
+    <div class="bi">
+      <div class="bi-num">01</div>
+      <div>
+        <h3>Monitore como executivo, não como perfeccionista</h3>
+        <p>Benchimol monitora sono e composição corporal como KPIs. Você pode começar simples: qualidade do sono, quantos dias treinou, se fez o planejamento noturno, se entregou o entregável do projeto. O que você mede, você melhora — mas medir demais paralisa. Escolha 3–4 indicadores e observe a tendência, não o número perfeito.</p>
+      </div>
+    </div>
+    <div class="bi">
+      <div class="bi-num">02</div>
+      <div>
+        <h3>Seu trabalho de produto é o laboratório do projeto</h3>
+        <p>Você passa 8h por dia resolvendo problemas reais de usuários, mediando decisões de roadmap, interpretando dados. Cada framework que você usa no trabalho funciona direto no seu projeto. Não separe os aprendizados — deixe um alimentar o outro. O PM que você é hoje está treinando o fundador de amanhã.</p>
+      </div>
+    </div>
+    <div class="bi">
+      <div class="bi-num">03</div>
+      <div>
+        <h3>Dormir é estratégia, não fraqueza</h3>
+        <p>Benchimol dorme às 22h–22h30 e monitora a qualidade do sono como um KPI pessoal. Sacrificar sono para ganhar mais horas no projeto é matematicamente negativo: você perde muito mais em qualidade de pensamento do que ganha em tempo bruto. 7–8 horas protegidas é uma decisão de negócio, não de conforto.</p>
+      </div>
+    </div>
+    <div class="bi">
+      <div class="bi-num">04</div>
+      <div>
+        <h3>1 entregável por semana — sem exceção</h3>
+        <p>O erro de quem quer empreender com agenda cheia é tentar fazer muito e não avançar nada. Um entregável pequeno e tangível por semana cria momentum real. Em 1 ano, são 52 entregas concretas. Isso é mais progresso do que a maioria das pessoas faz em anos de "quando eu tiver tempo".</p>
+      </div>
+    </div>
+    <div class="bi">
+      <div class="bi-num">05</div>
+      <div>
+        <h3>O equilíbrio é a própria estratégia</h3>
+        <p>Benchimol levou anos para aprender: "se pudesse voltar atrás, buscaria metas audaciosas, mas sem descuidar da felicidade." O sonho de empreender vale a pena — mas construído de uma forma que você ainda goste de quem você é no processo. A rotina acima não é uma concessão ao equilíbrio. É o equilíbrio que torna a ambição sustentável.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <blockquote>"Metas audaciosas, mas sem descuidar da felicidade. O segredo é gostar do que se faz, organizar-se bem e manter cabeça e corpo no lugar."</blockquote>
+  <cite>— Guilherme Benchimol</cite>
+  <div class="foot-meta">
+    <span>Rotina de Alto Desempenho — Produto &amp; Empreendedorismo</span>
+    <span class="foot-tag">Inspirado em Guilherme Benchimol</span>
+  </div>
+</footer>
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); } });
+}, { threshold: 0.08 });
+
+document.querySelectorAll('.fade').forEach(el => obs.observe(el));
+
+document.querySelectorAll('.pc').forEach((card, i) => {
+  card.style.transitionDelay = (i * 0.08) + 's';
+});
+</script>
+</body>
+</html>

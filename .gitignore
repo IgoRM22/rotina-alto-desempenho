@@ -1,0 +1,13 @@
+# Logs
+firebase-debug.log*
+
+# Node modules
+functions/node_modules/
+
+# Runtime config
+.functions/
+.firebase/
+
+# OS
+.DS_Store
+Thumbs.db
