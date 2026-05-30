@@ -23,7 +23,7 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [toast, setToast] = useState(null)
-  const [form, setForm] = useState({ name: '', role: '', quote: '' })
+  const [form, setForm] = useState({ name: '', role: '', quote: '', imageUrl: '' })
 
   useEffect(() => {
     const unsub = listenInspirations((data) => {
@@ -40,13 +40,13 @@ export default function Home() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ name: '', role: '', quote: '' })
+    setForm({ name: '', role: '', quote: '', imageUrl: '' })
     setShowModal(true)
   }
 
   const openEdit = (item) => {
     setEditing(item)
-    setForm({ name: item.name, role: item.role || '', quote: item.quote || '' })
+    setForm({ name: item.name, role: item.role || '', quote: item.quote || '', imageUrl: item.imageUrl || '' })
     setShowModal(true)
   }
 
@@ -90,8 +90,21 @@ export default function Home() {
               <button className="btn btn-ghost btn-sm" onClick={() => openEdit(item)}>editar</button>
               <button className="btn btn-danger btn-sm" onClick={() => handleDelete(item.id)}>×</button>
             </div>
-            <p className="inspiration-name">{item.name}</p>
-            <p className="inspiration-role">{item.role}</p>
+            <div className="inspiration-header">
+              {item.imageUrl && (
+                <div className="inspiration-avatar">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    onError={e => { e.currentTarget.style.display = 'none' }}
+                  />
+                </div>
+              )}
+              <div className="inspiration-meta">
+                <p className="inspiration-name">{item.name}</p>
+                <p className="inspiration-role">{item.role}</p>
+              </div>
+            </div>
             <blockquote className="inspiration-quote">"{item.quote}"</blockquote>
           </div>
         ))}
@@ -114,6 +127,20 @@ export default function Home() {
             <label>Papel / Empresa</label>
             <input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="Ex: Fundador da XP" />
           </div>
+          <div className="field">
+            <label>URL da foto (opcional)</label>
+            <input value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} placeholder="https://...jpg" />
+          </div>
+          {form.imageUrl && (
+            <div style={{ marginBottom: 14 }}>
+              <img
+                src={form.imageUrl}
+                alt="preview"
+                style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border2)' }}
+                onError={e => { e.currentTarget.style.display = 'none' }}
+              />
+            </div>
+          )}
           <div className="field">
             <label>Frase</label>
             <textarea rows={3} value={form.quote} onChange={e => setForm(f => ({ ...f, quote: e.target.value }))} placeholder="Frase inspiradora..." />
