@@ -1,15 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /public/{docId} {
-      allow read: if true;
-      allow write: if false;
+    // Only the owner UID can read/write their own data
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId && userId == 'xTs3D5SePzed6eWo72e56oqFoBd2';
     }
 
-    match /leads/{docId} {
-      allow read, write: if false;
-    }
-
+    // All other paths are denied
     match /{document=**} {
       allow read, write: if false;
     }
