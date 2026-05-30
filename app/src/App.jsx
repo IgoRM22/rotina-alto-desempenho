@@ -8,6 +8,7 @@ import Cronograma from './pages/Cronograma'
 import Todos from './pages/Todos'
 import Metas from './pages/Metas'
 import Settings from './pages/Settings'
+import Notes from './pages/Notes'
 
 export default function App() {
   const { user } = useAuth()
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/cronograma" element={<Cronograma />} />
         <Route path="/todos" element={<Todos />} />
         <Route path="/metas" element={<Metas />} />
+        <Route path="/notes" element={<Notes />} />
         <Route path="/config" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

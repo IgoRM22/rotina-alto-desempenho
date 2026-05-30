@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { listenTodos, addTodo, updateTodo, deleteTodo } from '../services/firestore'
+import { listenTodos, addTodo, updateTodo, deleteTodo, listenTodoCategories } from '../services/firestore'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 
@@ -9,12 +9,13 @@ const PRIORITIES = [
   { value: 'baixa', label: 'Baixa', color: 'var(--text3)' },
 ]
 
-const CATEGORIES = ['trabalho', 'projeto', 'pessoal', 'saude', 'familia', 'estudo']
+const DEFAULT_CATEGORIES = ['trabalho', 'projeto', 'pessoal', 'saude', 'familia', 'estudo']
 
 const EMPTY_FORM = { title: '', note: '', priority: 'media', category: 'projeto', dueDate: '' }
 
 export default function Todos() {
   const [todos, setTodos] = useState([])
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -22,8 +23,9 @@ export default function Todos() {
   const [filter, setFilter] = useState('pendentes')
 
   useEffect(() => {
-    const unsub = listenTodos(setTodos)
-    return unsub
+    const u1 = listenTodos(setTodos)
+    const u2 = listenTodoCategories(setCategories)
+    return () => { u1(); u2() }
   }, [])
 
   const filtered = todos.filter(t => {
@@ -160,7 +162,7 @@ export default function Todos() {
             <div className="field">
               <label>Categoria</label>
               <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                {categories.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
           </div>

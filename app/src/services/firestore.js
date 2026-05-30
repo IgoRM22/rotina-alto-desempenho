@@ -57,7 +57,7 @@ export const deleteScheduleItem = (id) => deleteDoc(userDoc('schedule', id))
 import { getDocs } from 'firebase/firestore'
 
 export const exportAll = async () => {
-  const cols = ['inspirations', 'todos', 'goals', 'schedule']
+  const cols = ['inspirations', 'todos', 'goals', 'schedule', 'notebooks', 'notes']
   const result = {}
   for (const col of cols) {
     const snap = await getDocs(base(col))
@@ -67,7 +67,7 @@ export const exportAll = async () => {
 }
 
 export const importAll = async (json) => {
-  const cols = ['inspirations', 'todos', 'goals', 'schedule']
+  const cols = ['inspirations', 'todos', 'goals', 'schedule', 'notebooks', 'notes']
   for (const col of cols) {
     if (!json[col]) continue
     for (const item of json[col]) {
@@ -76,3 +76,40 @@ export const importAll = async (json) => {
     }
   }
 }
+
+// ── Notes / Notebooks ─────────────────────────────────────────────────────────
+export const listenNotebooks = (cb) =>
+  onSnapshot(query(base('notebooks'), orderBy('createdAt', 'asc')), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+
+export const addNotebook = (data) =>
+  addDoc(base('notebooks'), { ...data, createdAt: serverTimestamp() })
+
+export const updateNotebook = (id, data) => updateDoc(userDoc('notebooks', id), data)
+export const deleteNotebook = (id) => deleteDoc(userDoc('notebooks', id))
+
+export const listenNotes = (cb) =>
+  onSnapshot(query(base('notes'), orderBy('createdAt', 'desc')), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+
+export const addNote = (data) =>
+  addDoc(base('notes'), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+
+export const updateNote = (id, data) =>
+  updateDoc(userDoc('notes', id), { ...data, updatedAt: serverTimestamp() })
+
+export const deleteNote = (id) => deleteDoc(userDoc('notes', id))
+
+// ── Custom Todo Categories ────────────────────────────────────────────────────
+const DEFAULT_CATS = ['trabalho', 'projeto', 'pessoal', 'saude', 'familia', 'estudo']
+
+export const listenTodoCategories = (cb) => {
+  const ref = userDoc('settings', 'prefs')
+  return onSnapshot(ref, snap => {
+    const data = snap.data()
+    cb(data?.todoCategories ?? DEFAULT_CATS)
+  })
+}
+
+export const saveTodoCategories = (cats) =>
+  setDoc(userDoc('settings', 'prefs'), { todoCategories: cats }, { merge: true })

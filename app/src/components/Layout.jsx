@@ -15,6 +15,7 @@ export default function Layout({ children }) {
           <li><NavLink to="/cronograma" className={({ isActive }) => isActive ? 'active' : ''}>Cronograma</NavLink></li>
           <li><NavLink to="/todos" className={({ isActive }) => isActive ? 'active' : ''}>Tarefas</NavLink></li>
           <li><NavLink to="/metas" className={({ isActive }) => isActive ? 'active' : ''}>Metas</NavLink></li>
+          <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>Notes</NavLink></li>
           <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>Config</NavLink></li>
         </ul>
 
@@ -42,6 +43,9 @@ export default function Layout({ children }) {
           </NavLink></li>
           <li><NavLink to="/metas" className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon">◎</span>Metas
+          </NavLink></li>
+          <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>
+            <span className="mobile-nav-icon">✎</span>Notes
           </NavLink></li>
           <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon">⚙</span>Config

@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react'
-import { exportAll, importAll } from '../services/firestore'
+import React, { useState, useRef, useEffect } from 'react'
+import { exportAll, importAll, listenTodoCategories, saveTodoCategories } from '../services/firestore'
 import { useAuth } from '../context/AuthContext'
 import Toast from '../components/Toast'
 
@@ -8,6 +8,24 @@ export default function Settings() {
   const [toast, setToast] = useState(null)
   const [importing, setImporting] = useState(false)
   const fileRef = useRef()
+  const [categories, setCategories] = useState([])
+  const [newCat, setNewCat] = useState('')
+
+  useEffect(() => {
+    const unsub = listenTodoCategories(setCategories)
+    return unsub
+  }, [])
+
+  const addCategory = async () => {
+    const v = newCat.trim().toLowerCase()
+    if (!v || categories.includes(v)) return
+    await saveTodoCategories([...categories, v])
+    setNewCat('')
+  }
+
+  const removeCategory = async (cat) => {
+    await saveTodoCategories(categories.filter(c => c !== cat))
+  }
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -98,6 +116,7 @@ export default function Settings() {
             <h4>Importar backup</h4>
             <p>Faz upload de um JSON exportado anteriormente. Dados existentes com mesmo ID serão sobrescritos.</p>
           </div>
+          {/* marker for categories section injection */}
           <div>
             <input
               ref={fileRef}
@@ -114,6 +133,32 @@ export default function Settings() {
               {importing ? 'Importando...' : '↑ Importar JSON'}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Categories */}
+      <div className="settings-section">
+        <h2 className="settings-section-title">Categorias de Tarefas</h2>
+        <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
+          Categorias usadas nas tarefas. Edite à vontade — as mudanças refletem em tempo real.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+          {categories.map(cat => (
+            <div key={cat} className="cat-tag">
+              <span>{cat}</span>
+              <button className="cat-tag-remove" onClick={() => removeCategory(cat)}>×</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="cat-input"
+            value={newCat}
+            onChange={e => setNewCat(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addCategory()}
+            placeholder="Nova categoria..."
+          />
+          <button className="btn btn-primary" onClick={addCategory}>Adicionar</button>
         </div>
       </div>
 
