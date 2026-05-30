@@ -3,6 +3,8 @@ firebase-debug.log*
 
 # Node modules
 functions/node_modules/
+app/node_modules/
+app/dist/
 
 # Runtime config
 .functions/
