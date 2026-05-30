@@ -7,7 +7,7 @@ const {FieldValue, getFirestore} = require("firebase-admin/firestore");
 initializeApp();
 const db = getFirestore();
 const OWNER_EMAIL =
-  (process.env.OWNER_EMAIL || "igor.ramosr@hotmail.com").trim().toLowerCase();
+  (process.env.OWNER_EMAIL || "").trim().toLowerCase();
 
 const allowedOrigins = [
   /^https?:\/\/localhost(:\d+)?$/,
@@ -16,15 +16,6 @@ const allowedOrigins = [
 ];
 
 const requireOwner = async (req, res) => {
-  if (!OWNER_EMAIL) {
-    logger.error("OWNER_EMAIL is not configured");
-    res.status(500).json({
-      ok: false,
-      error: "owner email is not configured",
-    });
-    return null;
-  }
-
   const authHeader = req.get("authorization") || "";
   if (!authHeader.startsWith("Bearer ")) {
     res.status(401).json({
@@ -47,7 +38,7 @@ const requireOwner = async (req, res) => {
     const decoded = await getAuth().verifyIdToken(idToken, true);
     const tokenEmail = (decoded.email || "").trim().toLowerCase();
 
-    if (tokenEmail !== OWNER_EMAIL) {
+    if (OWNER_EMAIL && tokenEmail !== OWNER_EMAIL) {
       res.status(403).json({
         ok: false,
         error: "forbidden",

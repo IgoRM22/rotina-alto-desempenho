@@ -104,6 +104,12 @@ body:not(.auth-locked) .auth-screen {
   margin-top: 20px;
 }
 
+.auth-hint {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.6;
+}
+
 .auth-field {
   display: flex;
   flex-direction: column;
@@ -428,18 +434,11 @@ footer cite { font-size: 11px; color: var(--text3); letter-spacing: 0.1em; text-
   <div class="auth-card">
     <p class="auth-kicker">Acesso Privado</p>
     <h1>Entre para acessar sua rotina</h1>
-    <p class="auth-copy">Este painel esta restrito a uma unica conta autorizada no Firebase Authentication.</p>
-    <form id="auth-form" class="auth-form">
-      <label class="auth-field">
-        <span>Email</span>
-        <input id="auth-email" type="email" autocomplete="username" required>
-      </label>
-      <label class="auth-field">
-        <span>Senha</span>
-        <input id="auth-password" type="password" autocomplete="current-password" required>
-      </label>
-      <button id="auth-login" type="submit">Entrar</button>
-    </form>
+    <p class="auth-copy">Login simples com Google. A primeira conta que entrar vira a conta oficial deste navegador.</p>
+    <div id="auth-form" class="auth-form">
+      <button id="auth-login" type="button">Entrar com Google</button>
+      <p class="auth-hint">Para trocar a conta oficial depois, limpe o armazenamento local deste site no navegador.</p>
+    </div>
     <p id="auth-status" class="auth-status">Conecte-se para continuar.</p>
   </div>
 </div>
@@ -1099,13 +1098,16 @@ document.querySelectorAll('.pc').forEach((card, i) => {
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
+  GoogleAuthProvider,
   getAuth,
+  getRedirectResult,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-const OWNER_EMAIL = "igor.ramosr@hotmail.com";
+const OWNER_EMAIL_STORAGE_KEY = "officialOwnerEmail";
 const firebaseConfig = {
   apiKey: "AIzaSyCEBaj98-yD7LK1fNGUqGOAvgjDxTwqfRs",
   authDomain: "vidapessoal-ebf84.firebaseapp.com",
@@ -1116,9 +1118,6 @@ const firebaseConfig = {
 };
 
 const body = document.body;
-const authForm = document.getElementById("auth-form");
-const emailInput = document.getElementById("auth-email");
-const passwordInput = document.getElementById("auth-password");
 const loginButton = document.getElementById("auth-login");
 const logoutButton = document.getElementById("auth-logout");
 const statusText = document.getElementById("auth-status");
@@ -1131,7 +1130,15 @@ const hasMissingConfig = requiredConfig.some((key) => {
   return !value || value.startsWith("COLE_AQUI_");
 });
 
-const ownerEmail = OWNER_EMAIL.trim().toLowerCase();
+const normalizeEmail = (value) => (value || "").trim().toLowerCase();
+
+const readOfficialOwnerEmail = () => {
+  return normalizeEmail(localStorage.getItem(OWNER_EMAIL_STORAGE_KEY));
+};
+
+const writeOfficialOwnerEmail = (email) => {
+  localStorage.setItem(OWNER_EMAIL_STORAGE_KEY, normalizeEmail(email));
+};
 
 const setStatus = (message, isError = false) => {
   statusText.textContent = message;
@@ -1154,49 +1161,89 @@ if (hasMissingConfig) {
 } else {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({prompt: "select_account"});
 
-  const isOwner = (user) => {
-    const currentEmail = (user?.email || "").trim().toLowerCase();
-    return currentEmail === ownerEmail;
+  const resolveOwnerAccess = (user) => {
+    const currentEmail = normalizeEmail(user?.email);
+    const officialEmail = readOfficialOwnerEmail();
+
+    if (!currentEmail) {
+      return {ok: false, reason: "missing-email"};
+    }
+
+    if (!officialEmail) {
+      writeOfficialOwnerEmail(currentEmail);
+      return {ok: true, email: currentEmail, firstLogin: true};
+    }
+
+    if (currentEmail !== officialEmail) {
+      return {ok: false, reason: "forbidden", officialEmail};
+    }
+
+    return {ok: true, email: currentEmail, firstLogin: false};
   };
+
+  getRedirectResult(auth).catch(() => {
+    setStatus("Falha no login com Google. Tente novamente.", true);
+  });
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       lockApp();
-      setStatus("Conecte-se com sua conta para continuar.");
+      const officialEmail = readOfficialOwnerEmail();
+      if (officialEmail) {
+        setStatus(`Conecte-se com a conta oficial: ${officialEmail}.`);
+      } else {
+        setStatus("Conecte-se com Google para definir a conta oficial.");
+      }
       return;
     }
 
-    if (!isOwner(user)) {
+    const access = resolveOwnerAccess(user);
+
+    if (!access.ok && access.reason === "missing-email") {
       await signOut(auth);
       lockApp();
-      setStatus("Conta sem permissao para acessar este painel.", true);
+      setStatus("Nao foi possivel identificar o email da conta Google.", true);
       return;
     }
 
-    unlockApp(user.email || ownerEmail);
-    setStatus("Acesso liberado.");
+    if (!access.ok && access.reason === "forbidden") {
+      await signOut(auth);
+      lockApp();
+      setStatus(`Esta nao e a conta oficial. Use: ${access.officialEmail}.`, true);
+      return;
+    }
+
+    unlockApp(access.email);
+    if (access.firstLogin) {
+      setStatus(`Conta oficial definida: ${access.email}.`);
+    } else {
+      setStatus("Acesso liberado.");
+    }
   });
 
-  authForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
-
-    if (!email || !password) {
-      setStatus("Informe email e senha.", true);
-      return;
-    }
-
-    setStatus("Validando acesso...");
+  loginButton.addEventListener("click", async () => {
+    setStatus("Abrindo login Google...");
     loginButton.disabled = true;
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      passwordInput.value = "";
+      await signInWithPopup(auth, provider);
     } catch (error) {
-      setStatus("Falha no login. Verifique email e senha.", true);
+      const code = error?.code || "";
+
+      if (code === "auth/popup-blocked") {
+        setStatus("Popup bloqueado. Redirecionando para login Google...");
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+
+      if (code === "auth/popup-closed-by-user") {
+        setStatus("Login cancelado.", true);
+      } else {
+        setStatus("Falha no login com Google. Tente novamente.", true);
+      }
     } finally {
       loginButton.disabled = false;
     }
@@ -1209,7 +1256,8 @@ if (hasMissingConfig) {
 
   window.getOwnerIdToken = async () => {
     const user = auth.currentUser;
-    if (!user || !isOwner(user)) {
+    const access = resolveOwnerAccess(user);
+    if (!user || !access.ok) {
       throw new Error("Not authenticated as owner");
     }
     return user.getIdToken();

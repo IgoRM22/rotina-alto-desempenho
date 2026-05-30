@@ -3,10 +3,12 @@
 Static site on GitHub Pages with Firebase as backend.
 
 ## Private access mode (single account)
-This project is now locked with Firebase Authentication and only one owner email is allowed.
+This project uses Google login via Firebase Authentication.
 
-Owner email configured in code:
-- `igor.ramosr@hotmail.com`
+Access rule:
+- First Google account that logs in becomes the official account for this browser.
+- Next logins must use that same account.
+- To change official account, clear local storage for the site in your browser.
 
 Important limitation:
 - GitHub Pages serves static files publicly.
@@ -16,7 +18,7 @@ Important limitation:
 - Frontend: static HTML/CSS/JS
 - Hosting: GitHub Pages
 - Backend: Firebase Functions + Firestore
-- Auth: Firebase Authentication (Email/Password)
+- Auth: Firebase Authentication (Google)
 
 ## Local structure
 - `index.html`: static website
@@ -35,7 +37,7 @@ Routes:
 Auth requirement:
 - `GET /health` is public.
 - Other routes require Firebase ID token in `Authorization: Bearer <token>`.
-- Token email must match owner email (`igor.ramosr@hotmail.com`).
+- If `OWNER_EMAIL` env var is defined on deploy, token email must match it.
 
 Example body for `POST /lead`:
 ```json
@@ -53,21 +55,28 @@ firebase use --add
 cd functions
 npm install
 cd ..
-set OWNER_EMAIL=igor.ramosr@hotmail.com
 firebase deploy --only functions,firestore
 ```
 
-On Linux/macOS replace `set` with:
+Optional hard-lock by email (Windows):
 ```bash
-export OWNER_EMAIL=igor.ramosr@hotmail.com
+set OWNER_EMAIL=seu-email@gmail.com
+firebase deploy --only functions,firestore
+```
+
+Linux/macOS:
+```bash
+export OWNER_EMAIL=seu-email@gmail.com
+firebase deploy --only functions,firestore
 ```
 
 ## Configure Firebase Auth (required)
 1. Open Firebase Console > Authentication > Sign-in method.
-2. Enable `Email/Password` provider.
-3. Create a user with email `igor.ramosr@hotmail.com`.
-4. Open Firebase Console > Project settings > Your apps > Web app config.
-5. Copy `apiKey`, `authDomain`, `projectId` and `appId` into `index.html` (`firebaseConfig` object).
+2. Enable `Google` provider.
+3. Open Authentication > Settings > Authorized domains.
+4. Add `igorm22.github.io`.
+5. Open Firebase Console > Project settings > Your apps > Web app config.
+6. Copy `apiKey`, `authDomain`, `projectId` and `appId` into `index.html` (`firebaseConfig` object).
 
 ## Deploy frontend
 Push to `main` branch. GitHub Action deploys the site automatically.
