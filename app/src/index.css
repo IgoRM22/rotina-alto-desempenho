@@ -1976,7 +1976,7 @@ body::after {
 
 /* ── RESPONSIVE ── */
 @media (max-width: 720px) {
-  .page { padding: 91px 17px 115px; }
+  .page { padding: 91px 20px 115px; }
   .page-header { margin-bottom: 41px; }
   .tabs,
   .tabs-scroll { margin-bottom: 29px; }
@@ -2191,7 +2191,7 @@ body::after {
 }
 
 @media (max-width: 420px) {
-  .page { padding: 89px 14px 113px; }
+  .page { padding: 89px 17px 113px; }
 
   .modal-overlay {
     padding: 7px 7px calc(7px + env(safe-area-inset-bottom));

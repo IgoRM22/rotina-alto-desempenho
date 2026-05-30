@@ -325,9 +325,18 @@ export default function Settings() {
             className="btn btn-ghost"
             type="button"
             onClick={openNewSchedColorPicker}
-            style={{ color: normalizeSchedColor(newSchedCatColor), textDecoration: 'underline', textUnderlineOffset: 2 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px' }}
+            title="Cor da nova categoria"
           >
-            Cor da nova categoria
+            <span style={{
+              display: 'inline-block',
+              width: 20,
+              height: 20,
+              borderRadius: 4,
+              background: normalizeSchedColor(newSchedCatColor),
+              border: '1px solid rgba(128,128,128,0.3)',
+              flexShrink: 0,
+            }} />
           </button>
           <button className="btn btn-primary" onClick={addSchedCategory}>Adicionar</button>
         </div>
