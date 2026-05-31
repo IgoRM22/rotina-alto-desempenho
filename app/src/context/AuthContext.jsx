@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import {
   onAuthStateChanged,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut,
@@ -24,9 +25,7 @@ export function AuthProvider({ children }) {
     let active = true
 
     // Handle redirect result first
-    getRedirectResult(auth).catch(() => {
-      if (active) setError('Falha no login com Google. Tente novamente.')
-    })
+    getRedirectResult(auth).catch(() => {})
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (!active) return
@@ -81,9 +80,21 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const login = () => {
+  const login = async () => {
     setError(null)
-    signInWithRedirect(auth, googleProvider)
+    try {
+      await signInWithPopup(auth, googleProvider)
+    } catch (err) {
+      if (err?.code === 'auth/popup-blocked') {
+        await signInWithRedirect(auth, googleProvider)
+        return
+      }
+      if (err?.code === 'auth/popup-closed-by-user') {
+        setError('Login cancelado.')
+        return
+      }
+      setError(`Falha no login: ${err?.code || err?.message}`)
+    }
   }
 
   const logout = () => signOut(auth)
