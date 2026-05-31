@@ -203,6 +203,27 @@ export const updateNote = (id, data) =>
 
 export const deleteNote = (id) => deleteDoc(userDoc('notes', id))
 
+// ── Access Control Management ─────────────────────────────────────────────────
+export const listenAccessControl = (cb) =>
+  onSnapshot(accessControlDoc(), snap => {
+    if (!snap.exists()) {
+      cb({ exists: false, allowedEmails: [], adminEmail: '' })
+      return
+    }
+    const data = snap.data()
+    cb({
+      exists: true,
+      allowedEmails: normalizeEmailList(data?.allowedEmails),
+      adminEmail: normalizeEmail(data?.adminEmail),
+    })
+  })
+
+export const updateAllowedEmails = (emails) =>
+  setDoc(accessControlDoc(), {
+    allowedEmails: normalizeEmailList(emails),
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
+
 // ── Custom Todo Categories ────────────────────────────────────────────────────
 const DEFAULT_CATS = ['trabalho', 'projeto', 'pessoal', 'saude', 'familia', 'estudo']
 

@@ -9,6 +9,8 @@ import {
   listenGoalCategories,
   saveGoalCategories,
   replaceScheduleCategoryInItems,
+  listenAccessControl,
+  updateAllowedEmails,
 } from '../services/firestore'
 import { useAuth } from '../context/AuthContext'
 import Toast from '../components/Toast'
@@ -27,12 +29,15 @@ export default function Settings() {
   const [newSchedCatColor, setNewSchedCatColor] = useState('#E06445')
   const [goalCategories, setGoalCategories] = useState([])
   const [newGoalCat, setNewGoalCat] = useState('')
+  const [accessControl, setAccessControl] = useState(null)
+  const [newAllowedEmail, setNewAllowedEmail] = useState('')
 
   useEffect(() => {
     const u1 = listenTodoCategories(setCategories)
     const u2 = listenScheduleCategories(setScheduleCategories)
     const u3 = listenGoalCategories(setGoalCategories)
-    return () => { u1(); u2(); u3() }
+    const u4 = listenAccessControl(setAccessControl)
+    return () => { u1(); u2(); u3(); u4() }
   }, [])
 
   const addCategory = async () => {
@@ -119,6 +124,31 @@ export default function Settings() {
     await logout()
   }
 
+  const isAdmin = accessControl?.adminEmail && accessControl.adminEmail === user?.email?.toLowerCase()
+
+  const addAllowedEmail = async () => {
+    const email = newAllowedEmail.trim().toLowerCase()
+    if (!email || accessControl?.allowedEmails?.includes(email)) return
+    try {
+      await updateAllowedEmails([...(accessControl?.allowedEmails ?? []), email])
+      setNewAllowedEmail('')
+      showToast('E-mail adicionado com sucesso.')
+    } catch {
+      showToast('Erro ao salvar. Verifique se você é o administrador.', 'error')
+    }
+  }
+
+  const removeAllowedEmail = async (email) => {
+    const ok = window.confirm(`Remover acesso de "${email}"?`)
+    if (!ok) return
+    try {
+      await updateAllowedEmails((accessControl?.allowedEmails ?? []).filter(e => e !== email))
+      showToast('Acesso removido.')
+    } catch {
+      showToast('Erro ao remover. Verifique se você é o administrador.', 'error')
+    }
+  }
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3500)
@@ -197,6 +227,62 @@ export default function Settings() {
           <button className="btn btn-ghost" onClick={handleLogout}>Sair</button>
         </div>
       </div>
+
+      {/* Access Control */}
+      {accessControl && (
+        <div className="settings-section">
+          <h2 className="settings-section-title">Controle de Acesso</h2>
+          {!accessControl.exists && (
+            <p style={{ fontSize: 13, color: 'var(--text3)' }}>
+              Documento de controle não encontrado em <code>system/accessControl</code>.
+            </p>
+          )}
+          {accessControl.exists && (
+            <>
+              <div className="settings-row">
+                <div className="settings-row-info">
+                  <h4>Administrador</h4>
+                  <p style={{ fontFamily: 'monospace', fontSize: 12 }}>{accessControl.adminEmail || '—'}</p>
+                </div>
+              </div>
+              <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+                <div className="settings-row-info">
+                  <h4>E-mails com acesso</h4>
+                  <p style={{ fontSize: 12, color: 'var(--text3)' }}>
+                    {isAdmin ? 'Apenas o administrador pode adicionar ou remover.' : 'Visível apenas para leitura.'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {(accessControl.allowedEmails ?? []).map(email => (
+                    <div key={email} className="cat-tag">
+                      <span style={{ fontSize: 12 }}>{email}</span>
+                      {isAdmin && (
+                        <button className="cat-tag-remove" onClick={() => removeAllowedEmail(email)}>×</button>
+                      )}
+                    </div>
+                  ))}
+                  {accessControl.allowedEmails?.length === 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhum e-mail autorizado.</p>
+                  )}
+                </div>
+                {isAdmin && (
+                  <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                    <input
+                      className="cat-input"
+                      type="email"
+                      value={newAllowedEmail}
+                      onChange={e => setNewAllowedEmail(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addAllowedEmail()}
+                      placeholder="novo@email.com"
+                    />
+                    <button className="btn btn-primary" onClick={addAllowedEmail}>Adicionar</button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Backup */}
       <div className="settings-section">
