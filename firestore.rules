@@ -6,7 +6,6 @@ service cloud.firestore {
     }
 
     function userEmail() {
-      // Always lower-case so stored e-mails added via Console with mixed case still match.
       return request.auth.token.email.lower();
     }
 
@@ -14,7 +13,14 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/system/accessControl);
     }
 
-    // Checks if logged-in e-mail is in the allowedEmails list.
+    // The hardcoded owner UID — always has full access.
+    function isOwner() {
+      return request.auth.uid == 'xTs3D5SePzed6eWo72e56oqFoBd2';
+    }
+
+    // Checks if logged-in e-mail is in the allowedEmails list (case-insensitive via lower()).
+    // NOTE: emails stored in allowedEmails MUST be lowercase for this to match correctly.
+    // Use the app's Settings > Controle de Acesso to add emails — they are auto-normalized.
     function isAuthorizedEmail() {
       return isSignedIn()
         && userEmail() != null
@@ -23,25 +29,22 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/system/accessControl).data.allowedEmails.hasAny([userEmail()]);
     }
 
-    // Checks if logged-in e-mail is the adminEmail defined in the document.
-    function isAdmin() {
-      return isSignedIn()
-        && userEmail() != null
-        && hasAccessConfig()
-        && get(/databases/$(database)/documents/system/accessControl).data.adminEmail == userEmail();
+    // Owner by UID OR authorized e-mail.
+    function isAuthorized() {
+      return isOwner() || isAuthorizedEmail();
     }
 
-    // All shared app data — readable/writable only by authorized e-mails.
+    // All shared app data — readable/writable only by owner or authorized e-mails.
     match /users/{userId}/{document=**} {
-      allow read, write: if isAuthorizedEmail();
+      allow read, write: if isAuthorized();
     }
 
     // Access-control document.
     // - read: any authenticated user (needed to validate login before access)
-    // - write: adminEmail only (set this manually in Firebase Console first)
+    // - write: owner UID only
     match /system/accessControl {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isOwner();
     }
 
     // All other paths are denied.

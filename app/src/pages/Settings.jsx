@@ -13,6 +13,7 @@ import {
   updateAllowedEmails,
 } from '../services/firestore'
 import { useAuth } from '../context/AuthContext'
+import { OWNER_UID } from '../config'
 import Toast from '../components/Toast'
 
 export default function Settings() {
@@ -124,7 +125,7 @@ export default function Settings() {
     await logout()
   }
 
-  const isAdmin = accessControl?.adminEmail && accessControl.adminEmail === user?.email?.toLowerCase()
+  const isAdmin = user?.uid === OWNER_UID
 
   const addAllowedEmail = async () => {
     const email = newAllowedEmail.trim().toLowerCase()
@@ -229,60 +230,71 @@ export default function Settings() {
       </div>
 
       {/* Access Control */}
-      {accessControl && (
-        <div className="settings-section">
-          <h2 className="settings-section-title">Controle de Acesso</h2>
-          {!accessControl.exists && (
-            <p style={{ fontSize: 13, color: 'var(--text3)' }}>
-              Documento de controle não encontrado em <code>system/accessControl</code>.
-            </p>
-          )}
-          {accessControl.exists && (
-            <>
-              <div className="settings-row">
-                <div className="settings-row-info">
-                  <h4>Administrador</h4>
-                  <p style={{ fontFamily: 'monospace', fontSize: 12 }}>{accessControl.adminEmail || '—'}</p>
-                </div>
-              </div>
-              <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
-                <div className="settings-row-info">
-                  <h4>E-mails com acesso</h4>
-                  <p style={{ fontSize: 12, color: 'var(--text3)' }}>
-                    {isAdmin ? 'Apenas o administrador pode adicionar ou remover.' : 'Visível apenas para leitura.'}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {(accessControl.allowedEmails ?? []).map(email => (
-                    <div key={email} className="cat-tag">
-                      <span style={{ fontSize: 12 }}>{email}</span>
-                      {isAdmin && (
-                        <button className="cat-tag-remove" onClick={() => removeAllowedEmail(email)}>×</button>
-                      )}
-                    </div>
-                  ))}
-                  {accessControl.allowedEmails?.length === 0 && (
-                    <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhum e-mail autorizado.</p>
+      <div className="settings-section">
+        <h2 className="settings-section-title">Controle de Acesso</h2>
+        {!accessControl && (
+          <p style={{ fontSize: 13, color: 'var(--text3)' }}>Carregando...</p>
+        )}
+        {accessControl && !accessControl.exists && (
+          <p style={{ fontSize: 13, color: 'var(--text3)' }}>
+            Documento <code>system/accessControl</code> não encontrado no Firestore.
+          </p>
+        )}
+        {accessControl?.exists && (
+          <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+            <div className="settings-row-info">
+              <h4>E-mails com acesso</h4>
+              <p style={{ fontSize: 12, color: 'var(--text3)' }}>
+                {isAdmin
+                  ? 'E-mails são sempre salvos em minúsculas. Remova e re-adicione qualquer e-mail com maiúsculas para corrigir.'
+                  : 'Somente o dono do app pode editar.'}
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {(accessControl.allowedEmails ?? []).map(email => (
+                <div key={email} className="cat-tag">
+                  <span style={{ fontSize: 12 }}>{email}</span>
+                  {isAdmin && (
+                    <button className="cat-tag-remove" onClick={() => removeAllowedEmail(email)}>×</button>
                   )}
                 </div>
-                {isAdmin && (
-                  <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-                    <input
-                      className="cat-input"
-                      type="email"
-                      value={newAllowedEmail}
-                      onChange={e => setNewAllowedEmail(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && addAllowedEmail()}
-                      placeholder="novo@email.com"
-                    />
-                    <button className="btn btn-primary" onClick={addAllowedEmail}>Adicionar</button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+              ))}
+              {accessControl.allowedEmails?.length === 0 && (
+                <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhum e-mail autorizado.</p>
+              )}
+            </div>
+            {isAdmin && (
+              <>
+                <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                  <input
+                    className="cat-input"
+                    type="email"
+                    value={newAllowedEmail}
+                    onChange={e => setNewAllowedEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addAllowedEmail()}
+                    placeholder="novo@email.com"
+                  />
+                  <button className="btn btn-primary" onClick={addAllowedEmail}>Adicionar</button>
+                </div>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: 12 }}
+                  onClick={async () => {
+                    try {
+                      await updateAllowedEmails(accessControl.allowedEmails)
+                      showToast('E-mails normalizados para minúsculas.')
+                    } catch {
+                      showToast('Erro ao normalizar.', 'error')
+                    }
+                  }}
+                >
+                  Normalizar e-mails (corrigir maiúsculas)
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Backup */}
       <div className="settings-section">
