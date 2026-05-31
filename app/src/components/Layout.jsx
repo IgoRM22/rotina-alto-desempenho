@@ -5,6 +5,7 @@ import {
   RiCheckboxCircleLine,
   RiFlag2Line,
   RiHome5Line,
+  RiLogoutBoxRLine,
   RiSettings3Line,
   RiStickyNoteLine,
 } from '@remixicon/react'
@@ -29,7 +30,9 @@ export default function Layout({ children }) {
 
         <div className="nav-right">
           <span className="nav-user">{user?.email}</span>
-          <button className="btn-logout" onClick={logout}>Sair</button>
+          <button className="btn-logout btn-icon" onClick={logout} aria-label="Sair">
+            <RiLogoutBoxRLine size={16} />
+          </button>
         </div>
       </nav>
 

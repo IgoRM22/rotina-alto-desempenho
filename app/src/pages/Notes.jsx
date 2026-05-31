@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import {
+  RiAddLine,
+  RiBookOpenLine,
+  RiDeleteBinLine,
+  RiStickyNoteLine,
+} from '@remixicon/react'
+import {
   listenNotebooks, addNotebook, updateNotebook, deleteNotebook,
   listenNotes, addNote, updateNote, deleteNote,
 } from '../services/firestore'
@@ -103,7 +109,9 @@ export default function Notes() {
           <span className="page-kicker">Anotações Pessoais</span>
           <h1 className="page-title">Notes</h1>
         </div>
-        <button className="btn btn-primary" onClick={openAddNote}>+ Nova nota</button>
+        <button className="btn btn-primary" onClick={openAddNote}>
+          <RiAddLine size={15} /> Nova nota
+        </button>
       </div>
 
       {/* Notebooks bar */}
@@ -112,7 +120,7 @@ export default function Notes() {
           className={`notebook-tab ${activeNb === null ? 'active' : ''}`}
           onClick={() => setActiveNb(null)}
         >
-          📋 Todas <span className="nb-count">{notes.length}</span>
+          <RiBookOpenLine size={13} /> Todas <span className="nb-count">{notes.length}</span>
         </button>
         {notebooks.map(nb => (
           <button
@@ -126,13 +134,15 @@ export default function Notes() {
             <span className="nb-count">{notes.filter(n => n.notebookId === nb.id).length}</span>
           </button>
         ))}
-        <button className="notebook-tab-add" onClick={openAddNb}>+ Caderno</button>
+        <button className="notebook-tab-add" onClick={openAddNb}>
+          <RiAddLine size={13} /> Caderno
+        </button>
       </div>
 
       {/* Notes grid */}
       {visibleNotes.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">📝</div>
+          <div className="empty-state-icon"><RiStickyNoteLine size={32} /></div>
           Nenhuma nota. Clique em "+ Nova nota" para começar.
         </div>
       ) : (
@@ -161,9 +171,12 @@ export default function Notes() {
                   <div className="note-footer">
                     <span className="note-date">{fmtDate(note.updatedAt || note.createdAt)}</span>
                     <button
-                      className="btn btn-danger btn-sm"
+                      className="btn btn-danger btn-sm btn-icon"
                       onClick={e => { e.stopPropagation(); handleDeleteNote(note.id) }}
-                    >×</button>
+                      aria-label="Apagar nota"
+                    >
+                      <RiDeleteBinLine size={13} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -208,7 +221,7 @@ export default function Notes() {
               style={{ marginTop: 12, width: '100%' }}
               onClick={() => handleDeleteNb(editingNb)}
             >
-              Excluir caderno e suas notas
+              <RiDeleteBinLine size={14} /> Excluir caderno e suas notas
             </button>
           )}
         </Modal>

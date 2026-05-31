@@ -1,5 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
 import {
+  RiCloseLine,
+  RiDownloadLine,
+  RiUploadLine,
+} from '@remixicon/react'
+import {
   exportAll,
   importAll,
   listenTodoCategories,
@@ -255,7 +260,7 @@ export default function Settings() {
                 <div key={email} className="cat-tag">
                   <span style={{ fontSize: 12 }}>{email}</span>
                   {isAdmin && (
-                    <button className="cat-tag-remove" onClick={() => removeAllowedEmail(email)}>×</button>
+                    <button className="cat-tag-remove" onClick={() => removeAllowedEmail(email)} aria-label="Remover"><RiCloseLine size={12} /></button>
                   )}
                 </div>
               ))}
@@ -306,7 +311,7 @@ export default function Settings() {
             <p>Baixa um arquivo JSON com todas as suas inspirações, tarefas, metas e cronograma.</p>
           </div>
           <button className="btn btn-primary" onClick={handleExport}>
-            ↓ Exportar JSON
+            <RiDownloadLine size={15} /> Exportar
           </button>
         </div>
 
@@ -329,7 +334,7 @@ export default function Settings() {
               onClick={() => fileRef.current?.click()}
               disabled={importing}
             >
-              {importing ? 'Importando...' : '↑ Importar JSON'}
+              {importing ? 'Importando...' : <><RiUploadLine size={15} /> Importar</>}
             </button>
           </div>
         </div>
@@ -345,7 +350,7 @@ export default function Settings() {
           {categories.map(cat => (
             <div key={cat} className="cat-tag">
               <span>{cat}</span>
-              <button className="cat-tag-remove" onClick={() => removeCategory(cat)}>×</button>
+              <button className="cat-tag-remove" onClick={() => removeCategory(cat)} aria-label="Remover"><RiCloseLine size={12} /></button>
             </div>
           ))}
         </div>
@@ -398,7 +403,7 @@ export default function Settings() {
                 title={`Cor de ${cat.value}`}
                 style={{ display: 'none' }}
               />
-              <button className="cat-tag-remove" onClick={() => removeSchedCategory(cat.value)}>×</button>
+              <button className="cat-tag-remove" onClick={() => removeSchedCategory(cat.value)} aria-label="Remover"><RiCloseLine size={12} /></button>
             </div>
           ))}
         </div>
@@ -450,7 +455,7 @@ export default function Settings() {
           {goalCategories.map(cat => (
             <div key={cat} className="cat-tag">
               <span>{cat}</span>
-              <button className="cat-tag-remove" onClick={() => removeGoalCategory(cat)}>×</button>
+              <button className="cat-tag-remove" onClick={() => removeGoalCategory(cat)} aria-label="Remover"><RiCloseLine size={12} /></button>
             </div>
           ))}
         </div>

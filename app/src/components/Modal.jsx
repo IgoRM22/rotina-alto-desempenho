@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 
 let openModalCount = 0
 
@@ -22,7 +23,9 @@ export default function Modal({ title, onClose, onSave, children, wide }) {
       <div className={`modal${wide ? ' modal-wide' : ''}`}>
         <div className="modal-header">
           <h2 className="modal-title">{title}</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close btn-icon" onClick={onClose} aria-label="Fechar">
+            <RiCloseLine size={18} />
+          </button>
         </div>
         {children}
         <div className="modal-actions">

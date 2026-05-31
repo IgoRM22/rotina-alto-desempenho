@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react'
+import {
+  RiAddLine,
+  RiCheckboxBlankLine,
+  RiDeleteBinLine,
+  RiPencilLine,
+} from '@remixicon/react'
 import { listenTodos, addTodo, updateTodo, deleteTodo, listenTodoCategories } from '../services/firestore'
+import { deadlineBadge } from '../utils/deadline'
+import { useDeadlineNotifications } from '../hooks/useDeadlineNotifications'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 
@@ -27,6 +35,8 @@ export default function Todos() {
     const u2 = listenTodoCategories(setCategories)
     return () => { u1(); u2() }
   }, [])
+
+  useDeadlineNotifications(todos)
 
   const filtered = todos.filter(t => {
     if (filter === 'pendentes') return !t.done
@@ -90,7 +100,9 @@ export default function Todos() {
             </p>
           )}
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Nova tarefa</button>
+        <button className="btn btn-primary" onClick={openAdd}>
+          <RiAddLine size={15} /> Nova tarefa
+        </button>
       </div>
 
       <div className="tabs">
@@ -102,37 +114,48 @@ export default function Todos() {
       </div>
 
       <div>
-        {filtered.map(todo => (
-          <div key={todo.id} className="todo-item">
-            <input
-              type="checkbox"
-              className="todo-check"
-              checked={todo.done}
-              onChange={() => toggle(todo)}
-            />
-            <div>
-              <div className={`todo-text ${todo.done ? 'done' : ''}`}>{todo.title}</div>
-              {todo.note && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{todo.note}</div>}
-              <div className="todo-meta">
-                {todo.category && <span className={`pill pill-${todo.category}`}>{todo.category}</span>}
-                {todo.priority && (
-                  <span style={{ color: PRIORITIES.find(p => p.value === todo.priority)?.color || 'var(--text3)', fontSize: 11 }}>
-                    {todo.priority}
-                  </span>
-                )}
-                {todo.dueDate && <span>até {todo.dueDate}</span>}
+        {filtered.map(todo => {
+          const badge = deadlineBadge(todo.dueDate)
+          return (
+            <div key={todo.id} className="todo-item">
+              <input
+                type="checkbox"
+                className="todo-check"
+                checked={todo.done}
+                onChange={() => toggle(todo)}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className={`todo-text ${todo.done ? 'done' : ''}`}>{todo.title}</div>
+                {todo.note && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{todo.note}</div>}
+                <div className="todo-meta">
+                  {todo.category && <span className={`pill pill-${todo.category}`}>{todo.category}</span>}
+                  {todo.priority && (
+                    <span style={{ color: PRIORITIES.find(p => p.value === todo.priority)?.color || 'var(--text3)', fontSize: 11 }}>
+                      {todo.priority}
+                    </span>
+                  )}
+                  {badge && !todo.done && (
+                    <span className={`deadline-badge deadline-badge--${badge.variant}`}>
+                      {badge.text}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="todo-actions">
+                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(todo)} aria-label="Editar">
+                  <RiPencilLine size={14} />
+                </button>
+                <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(todo.id)} aria-label="Apagar">
+                  <RiDeleteBinLine size={14} />
+                </button>
               </div>
             </div>
-            <div className="todo-actions">
-              <button className="btn btn-ghost btn-sm" onClick={() => openEdit(todo)}>editar</button>
-              <button className="btn btn-danger btn-sm" onClick={() => handleDelete(todo.id)}>×</button>
-            </div>
-          </div>
-        ))}
+          )
+        })}
 
         {filtered.length === 0 && (
           <div className="empty-state">
-            <div className="empty-state-icon">☑</div>
+            <div className="empty-state-icon"><RiCheckboxBlankLine size={32} /></div>
             {filter === 'pendentes' ? 'Nenhuma tarefa pendente.' : 'Nenhuma tarefa aqui.'}
           </div>
         )}

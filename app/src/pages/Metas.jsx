@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import {
+  RiAddLine,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
+  RiCheckLine,
+  RiDeleteBinLine,
+  RiFlagLine,
+  RiPencilLine,
+  RiRefreshLine,
+} from '@remixicon/react'
 import { listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories } from '../services/firestore'
+import { deadlineBadge } from '../utils/deadline'
+import { useDeadlineNotifications } from '../hooks/useDeadlineNotifications'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 
@@ -86,6 +98,8 @@ export default function Metas() {
     const u2 = listenGoalCategories(setCategories)
     return () => { u1(); u2() }
   }, [])
+
+  useDeadlineNotifications(goals)
 
   const weeksInYear = useMemo(() => getISOWeeksInYear(selectedYear), [selectedYear])
 
@@ -208,12 +222,18 @@ export default function Metas() {
         </div>
         <div className="metas-header-right">
           <div className="year-switch">
-            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y - 1)} aria-label="Ano anterior">‹</button>
+            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y - 1)} aria-label="Ano anterior">
+              <RiArrowLeftSLine size={16} />
+            </button>
             <span className="year-label">{selectedYear}</span>
-            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y + 1)} aria-label="Próximo ano">›</button>
+            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y + 1)} aria-label="Próximo ano">
+              <RiArrowRightSLine size={16} />
+            </button>
           </div>
           <button className="btn btn-ghost btn-sm" onClick={resetToToday}>Hoje</button>
-          <button className="btn btn-primary" onClick={openAdd}>+ Nova meta</button>
+          <button className="btn btn-primary" onClick={openAdd}>
+            <RiAddLine size={15} /> Nova meta
+          </button>
         </div>
       </div>
 
@@ -229,23 +249,35 @@ export default function Metas() {
       {/* Sub-period selectors */}
       {activeFilter === 'semana' && (
         <div className="period-nav">
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedWeek(w => w > 1 ? w - 1 : weeksInYear)}>‹</button>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedWeek(w => w > 1 ? w - 1 : weeksInYear)} aria-label="Semana anterior">
+            <RiArrowLeftSLine size={16} />
+          </button>
           <span className="period-nav-label">Semana {selectedWeek}</span>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedWeek(w => w < weeksInYear ? w + 1 : 1)}>›</button>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedWeek(w => w < weeksInYear ? w + 1 : 1)} aria-label="Próxima semana">
+            <RiArrowRightSLine size={16} />
+          </button>
         </div>
       )}
       {activeFilter === 'mes' && (
         <div className="period-nav">
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedMonth(m => m > 0 ? m - 1 : 11)}>‹</button>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedMonth(m => m > 0 ? m - 1 : 11)} aria-label="Mês anterior">
+            <RiArrowLeftSLine size={16} />
+          </button>
           <span className="period-nav-label">{FULL_MONTHS[selectedMonth]}</span>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedMonth(m => m < 11 ? m + 1 : 0)}>›</button>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedMonth(m => m < 11 ? m + 1 : 0)} aria-label="Próximo mês">
+            <RiArrowRightSLine size={16} />
+          </button>
         </div>
       )}
       {activeFilter === 'trimestre' && (
         <div className="period-nav">
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedQuarter(q => q > 1 ? q - 1 : 4)}>‹</button>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedQuarter(q => q > 1 ? q - 1 : 4)} aria-label="Trimestre anterior">
+            <RiArrowLeftSLine size={16} />
+          </button>
           <span className="period-nav-label">Q{selectedQuarter} — {selectedYear}</span>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedQuarter(q => q < 4 ? q + 1 : 1)}>›</button>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedQuarter(q => q < 4 ? q + 1 : 1)} aria-label="Próximo trimestre">
+            <RiArrowRightSLine size={16} />
+          </button>
         </div>
       )}
 
@@ -254,60 +286,72 @@ export default function Metas() {
       )}
 
       <div>
-        {filtered.map(goal => (
-          <div key={goal.id} className="goal-item">
-            <div className="goal-header">
-              <div className="goal-header-info">
-                <div className="goal-meta-row">
-                  <span className={`pill pill-${goal.category || 'pessoal'}`}>{goal.category}</span>
-                  <span className="goal-timeframe-badge">{fmtTimeframe(goal)}</span>
-                  {goal.targetDate && <span className="goal-timeframe-badge">→ {goal.targetDate}</span>}
+        {filtered.map(goal => {
+          const badge = deadlineBadge(goal.targetDate)
+          return (
+            <div key={goal.id} className="goal-item">
+              <div className="goal-header">
+                <div className="goal-header-info">
+                  <div className="goal-meta-row">
+                    <span className={`pill pill-${goal.category || 'pessoal'}`}>{goal.category}</span>
+                    <span className="goal-timeframe-badge">{fmtTimeframe(goal)}</span>
+                    {badge && !goal.done && (
+                      <span className={`deadline-badge deadline-badge--${badge.variant}`}>
+                        {badge.text}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className={`goal-title ${goal.done ? 'done' : ''}`}>{goal.title}</h3>
                 </div>
-                <h3 className={`goal-title ${goal.done ? 'done' : ''}`}>{goal.title}</h3>
+                <div className="goal-actions">
+                  <button
+                    className={`btn btn-sm btn-icon ${goal.done ? 'btn-ghost' : 'btn-primary'}`}
+                    onClick={() => toggleDone(goal)}
+                    title={goal.done ? 'Reabrir' : 'Concluir'}
+                    aria-label={goal.done ? 'Reabrir meta' : 'Concluir meta'}
+                  >
+                    {goal.done ? <RiRefreshLine size={14} /> : <RiCheckLine size={14} />}
+                  </button>
+                  <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(goal)} aria-label="Editar">
+                    <RiPencilLine size={14} />
+                  </button>
+                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(goal.id)} aria-label="Apagar">
+                    <RiDeleteBinLine size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="goal-actions">
-                <button
-                  className={`btn btn-sm ${goal.done ? 'btn-ghost' : 'btn-primary'}`}
-                  onClick={() => toggleDone(goal)}
-                  title={goal.done ? 'Reabrir' : 'Concluir'}
-                >
-                  {goal.done ? '↩' : '✓'}
-                </button>
-                <button className="btn btn-ghost btn-sm" onClick={() => openEdit(goal)}>editar</button>
-                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(goal.id)}>×</button>
+
+              {goal.description && <p className="goal-desc">{goal.description}</p>}
+
+              <div className="goal-progress-row">
+                <span className="goal-progress-pct">Progresso: {clampProgress(goal.progress)}%</span>
+              </div>
+
+              <div className="goal-progress-row goal-progress-slider">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={clampProgress(goal.progress)}
+                  onChange={e => updateProgress(goal, e.target.value)}
+                  className="goal-range"
+                  style={{ '--goal-progress': `${clampProgress(goal.progress)}%` }}
+                />
+              </div>
+
+              <div className="goal-progress-scale" aria-hidden="true">
+                {PROGRESS_MARKS.map((mark) => (
+                  <span key={mark}>{mark}</span>
+                ))}
               </div>
             </div>
-
-            {goal.description && <p className="goal-desc">{goal.description}</p>}
-
-            <div className="goal-progress-row">
-              <span className="goal-progress-pct">Progresso: {clampProgress(goal.progress)}%</span>
-            </div>
-
-            <div className="goal-progress-row goal-progress-slider">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={clampProgress(goal.progress)}
-                onChange={e => updateProgress(goal, e.target.value)}
-                className="goal-range"
-                style={{ '--goal-progress': `${clampProgress(goal.progress)}%` }}
-              />
-            </div>
-
-            <div className="goal-progress-scale" aria-hidden="true">
-              {PROGRESS_MARKS.map((mark) => (
-                <span key={mark}>{mark}</span>
-              ))}
-            </div>
-          </div>
-        ))}
+          )
+        })}
 
         {filtered.length === 0 && (
           <div className="empty-state">
-            <div className="empty-state-icon">◎</div>
+            <div className="empty-state-icon"><RiFlagLine size={32} /></div>
             Nenhuma meta aqui.
             {activeFilter !== 'Todos' && (
               <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text3)' }}>
@@ -351,9 +395,13 @@ export default function Metas() {
             <div className="field">
               <label>Ano</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setForm(f => ({ ...f, year: f.year - 1 }))}>‹</button>
+                <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setForm(f => ({ ...f, year: f.year - 1 }))} aria-label="Ano anterior">
+                  <RiArrowLeftSLine size={16} />
+                </button>
                 <span style={{ fontSize: 14, minWidth: 40, textAlign: 'center' }}>{form.year}</span>
-                <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setForm(f => ({ ...f, year: f.year + 1 }))}>›</button>
+                <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setForm(f => ({ ...f, year: f.year + 1 }))} aria-label="Próximo ano">
+                  <RiArrowRightSLine size={16} />
+                </button>
               </div>
             </div>
           )}
@@ -362,9 +410,13 @@ export default function Metas() {
             <div className="field">
               <label>Semana</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setForm(f => ({ ...f, week: f.week > 1 ? f.week - 1 : getISOWeeksInYear(f.year) }))}>‹</button>
+                <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setForm(f => ({ ...f, week: f.week > 1 ? f.week - 1 : getISOWeeksInYear(f.year) }))} aria-label="Semana anterior">
+                  <RiArrowLeftSLine size={16} />
+                </button>
                 <span style={{ fontSize: 14, minWidth: 56, textAlign: 'center' }}>Sem {form.week}</span>
-                <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setForm(f => ({ ...f, week: f.week < getISOWeeksInYear(f.year) ? f.week + 1 : 1 }))}>›</button>
+                <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={() => setForm(f => ({ ...f, week: f.week < getISOWeeksInYear(f.year) ? f.week + 1 : 1 }))} aria-label="Próxima semana">
+                  <RiArrowRightSLine size={16} />
+                </button>
               </div>
             </div>
           )}
@@ -418,4 +470,3 @@ export default function Metas() {
     </div>
   )
 }
-
