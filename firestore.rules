@@ -6,7 +6,8 @@ service cloud.firestore {
     }
 
     function userEmail() {
-      return request.auth.token.email;
+      // Always lower-case so stored e-mails added via Console with mixed case still match.
+      return request.auth.token.email.lower();
     }
 
     function hasAccessConfig() {
