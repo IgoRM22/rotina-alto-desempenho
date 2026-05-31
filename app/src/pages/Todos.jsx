@@ -134,10 +134,17 @@ export default function Todos() {
                       {todo.priority}
                     </span>
                   )}
-                  {badge && !todo.done && (
-                    <span className={`deadline-badge deadline-badge--${badge.variant}`}>
-                      {badge.text}
-                    </span>
+                  {todo.dueDate && !todo.done && (
+                    <>
+                      <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                        {new Date(todo.dueDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      </span>
+                      {badge && (
+                        <span className={`deadline-badge deadline-badge--${badge.variant}`}>
+                          {badge.text}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
