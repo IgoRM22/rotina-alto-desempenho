@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { RiAddLine, RiDeleteBinLine, RiPencilLine, RiUserHeartLine } from '@remixicon/react'
 import {
   listenInspirations,
   addInspiration,
@@ -8,33 +9,15 @@ import {
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 
-const INITIAL_INSPIRATIONS = [
-  { name: 'Guilherme Benchimol', role: 'Fundador da XP Investimentos', quote: 'Todas as coisas que você começa a repetir depois de algumas semanas se transformam em hábito.', order: 1 },
-  { name: 'Naval Ravikant', role: 'Fundador do AngelList', quote: 'You get rich by owning things, not by selling your time.', order: 2 },
-  { name: 'Reid Hoffman', role: 'Co-fundador do LinkedIn', quote: 'The fastest way to change yourself is to hang out with people who are already the way you want to be.', order: 3 },
-  { name: 'Sara Blakely', role: 'Fundadora da Spanx', quote: 'Failure is not the outcome — failure is not trying.', order: 4 },
-  { name: 'James Clear', role: 'Autor de Atomic Habits', quote: 'You do not rise to the level of your goals. You fall to the level of your systems.', order: 5 },
-  { name: 'Paul Graham', role: 'Co-fundador da YCombinator', quote: 'The only way to do great work is to love what you do.', order: 6 },
-]
-
 export default function Home() {
   const [inspirations, setInspirations] = useState([])
-  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState({ name: '', role: '', quote: '', imageUrl: '' })
 
   useEffect(() => {
-    const unsub = listenInspirations((data) => {
-      if (data.length === 0 && loading) {
-        // Seed with default inspirations
-        Promise.all(INITIAL_INSPIRATIONS.map(i => addInspiration(i)))
-      } else {
-        setInspirations(data)
-        setLoading(false)
-      }
-    })
+    const unsub = listenInspirations(setInspirations)
     return unsub
   }, [])
 
@@ -87,8 +70,8 @@ export default function Home() {
         {inspirations.map(item => (
           <div key={item.id} className="inspiration-card">
             <div className="card-actions">
-              <button className="btn btn-ghost btn-sm" onClick={() => openEdit(item)}>editar</button>
-              <button className="btn btn-danger btn-sm" onClick={() => handleDelete(item.id)}>×</button>
+              <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(item)} aria-label="Editar"><RiPencilLine size={14} /></button>
+              <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(item.id)} aria-label="Apagar"><RiDeleteBinLine size={14} /></button>
             </div>
             <div className="inspiration-header">
               {item.imageUrl && (
@@ -108,8 +91,14 @@ export default function Home() {
             <blockquote className="inspiration-quote">"{item.quote}"</blockquote>
           </div>
         ))}
+        {inspirations.length === 0 && (
+          <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+            <div className="empty-state-icon"><RiUserHeartLine size={32} /></div>
+            Nenhuma pessoa adicionada ainda.
+          </div>
+        )}
         <button className="add-inspiration-btn" onClick={openAdd}>
-          <span style={{ fontSize: 20 }}>+</span> Adicionar pessoa
+          <RiAddLine size={18} /> Adicionar pessoa
         </button>
       </div>
 
