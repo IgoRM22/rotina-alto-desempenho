@@ -2,12 +2,16 @@ import {
   collection, doc, getDoc, setDoc, updateDoc, deleteDoc,
   addDoc, query, orderBy, onSnapshot, serverTimestamp
 } from 'firebase/firestore'
-import { db } from '../firebase'
-import { OWNER_UID } from '../config'
+import { db, auth } from '../firebase'
 
-// Base path: /users/{uid}/{collection}
-const base = (col) => collection(db, 'users', OWNER_UID, col)
-const userDoc = (col, id) => doc(db, 'users', OWNER_UID, col, id)
+// Each user's data lives under /users/{their own uid}/
+const currentUid = () => {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('Not authenticated')
+  return uid
+}
+const base = (col) => collection(db, 'users', currentUid(), col)
+const userDoc = (col, id) => doc(db, 'users', currentUid(), col, id)
 const accessControlDoc = () => doc(db, 'system', 'accessControl')
 
 export const ACCESS_CONTROL_DOC_PATH = 'system/accessControl'
@@ -322,3 +326,16 @@ export const listenGoalCategories = (cb) => {
 
 export const saveGoalCategories = (cats) =>
   setDoc(userDoc('settings', 'prefs'), { goalCategories: cats }, { merge: true })
+
+// ── First-login initialization ────────────────────────────────────────────────
+export const ensureUserDefaults = async (uid) => {
+  const prefsRef = doc(db, 'users', uid, 'settings', 'prefs')
+  const snap = await getDoc(prefsRef)
+  if (!snap.exists()) {
+    await setDoc(prefsRef, {
+      todoCategories: DEFAULT_CATS,
+      scheduleCategories: DEFAULT_SCHEDULE_CATS,
+      goalCategories: DEFAULT_GOAL_CATS,
+    })
+  }
+}

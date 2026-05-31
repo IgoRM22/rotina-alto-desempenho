@@ -13,14 +13,12 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/system/accessControl);
     }
 
-    // The hardcoded owner UID — always has full access.
+    // The app owner's UID — always authorized.
     function isOwner() {
       return request.auth.uid == 'xTs3D5SePzed6eWo72e56oqFoBd2';
     }
 
-    // Checks if logged-in e-mail is in the allowedEmails list (case-insensitive via lower()).
-    // NOTE: emails stored in allowedEmails MUST be lowercase for this to match correctly.
-    // Use the app's Settings > Controle de Acesso to add emails — they are auto-normalized.
+    // Any email listed in allowedEmails (must be stored lowercase).
     function isAuthorizedEmail() {
       return isSignedIn()
         && userEmail() != null
@@ -29,19 +27,16 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/system/accessControl).data.allowedEmails.hasAny([userEmail()]);
     }
 
-    // Owner by UID OR authorized e-mail.
     function isAuthorized() {
       return isOwner() || isAuthorizedEmail();
     }
 
-    // All shared app data — readable/writable only by owner or authorized e-mails.
+    // Each authorized user can read/write only their OWN data path.
     match /users/{userId}/{document=**} {
-      allow read, write: if isAuthorized();
+      allow read, write: if isAuthorized() && request.auth.uid == userId;
     }
 
-    // Access-control document.
-    // - read: any authenticated user (needed to validate login before access)
-    // - write: owner UID only
+    // Access-control document — read by any authenticated user, write by owner only.
     match /system/accessControl {
       allow read: if isSignedIn();
       allow write: if isOwner();

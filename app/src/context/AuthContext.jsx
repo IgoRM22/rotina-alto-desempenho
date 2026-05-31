@@ -11,6 +11,7 @@ import {
   ACCESS_CONTROL_DOC_PATH,
   getAccessControlConfig,
   isEmailAuthorized,
+  ensureUserDefaults,
 } from '../services/firestore'
 
 const AuthContext = createContext(null)
@@ -60,6 +61,7 @@ export function AuthProvider({ children }) {
             return
           }
 
+          await ensureUserDefaults(u.uid).catch(() => {})
           setError(null)
           setUser(u)
         } catch {
