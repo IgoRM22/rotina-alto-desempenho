@@ -8,6 +8,7 @@ import {
   RiLogoutBoxRLine,
   RiSettings3Line,
   RiStickyNoteLine,
+  RiMoneyDollarCircleLine,
 } from '@remixicon/react'
 import { useAuth } from '../context/AuthContext'
 
@@ -25,6 +26,7 @@ export default function Layout({ children }) {
           <li><NavLink to="/todos" className={({ isActive }) => isActive ? 'active' : ''}>Tarefas</NavLink></li>
           <li><NavLink to="/metas" className={({ isActive }) => isActive ? 'active' : ''}>Metas</NavLink></li>
           <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>Notes</NavLink></li>
+          <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>Finanças</NavLink></li>
           <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>Config</NavLink></li>
         </ul>
 
@@ -62,6 +64,10 @@ export default function Layout({ children }) {
           <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon"><RiStickyNoteLine size={18} aria-hidden="true" /></span>
             <span className="mobile-nav-label">Notas</span>
+          </NavLink></li>
+          <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>
+            <span className="mobile-nav-icon"><RiMoneyDollarCircleLine size={18} aria-hidden="true" /></span>
+            <span className="mobile-nav-label">Finanças</span>
           </NavLink></li>
           <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon"><RiSettings3Line size={18} aria-hidden="true" /></span>
