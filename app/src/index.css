@@ -619,6 +619,9 @@ body::after {
 }
 
 .schedule-day-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   color: var(--text3);
   letter-spacing: 0.1em;
@@ -626,6 +629,25 @@ body::after {
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
+}
+
+.schedule-today-badge {
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  color: var(--coral);
+  border: 1px solid rgba(224,100,69,.4);
+  background: rgba(224,100,69,.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.schedule-group.is-past { opacity: 0.55; }
+
+.schedule-history-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 24px;
 }
 
 .schedule-item {
@@ -1148,6 +1170,7 @@ body::after {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 10px 9px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
@@ -1160,9 +1183,15 @@ body::after {
   text-transform: uppercase;
 }
 
-.calendar-bars-name {
+.calendar-bars-date {
   font-size: 11px;
   color: var(--text3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.calendar-bars-day.is-today .calendar-bars-date {
+  color: var(--coral);
 }
 
 .calendar-bars-track {
@@ -2453,6 +2482,28 @@ body::after {
   font-size: 10px;
   color: var(--text3);
   margin: 2px 0 4px;
+}
+
+/* ── TOUCH DEVICES: hover-only actions must stay reachable without a mouse ── */
+@media (hover: none) {
+  .todo-actions {
+    opacity: 1;
+  }
+
+  .schedule-actions {
+    position: static;
+    opacity: 1;
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
+
+  .card-actions {
+    opacity: 1;
+  }
+
+  .inspiration-header {
+    padding-right: 64px;
+  }
 }
 
 /* ── RESPONSIVE ── */

@@ -6,6 +6,7 @@ import {
   RiCalendarScheduleLine,
   RiDeleteBinLine,
   RiFileCopyLine,
+  RiHistoryLine,
   RiRepeat2Line,
   RiStackLine,
   RiSubtractLine,
@@ -354,6 +355,7 @@ export default function Cronograma() {
   const [view, setView] = useState('lista')
   const [now, setNow] = useState(new Date())
   const [planDate, setPlanDate] = useState(new Date())
+  const [showHistory, setShowHistory] = useState(false)
   const [calendarCursor, setCalendarCursor] = useState(() => {
     const current = new Date()
     return new Date(current.getFullYear(), current.getMonth(), 1)
@@ -393,6 +395,21 @@ export default function Cronograma() {
 
   const planMeta = useMemo(() => getWeekMeta(planDate), [planDate])
   const isCurrentWeek = useMemo(() => planMeta.key === currentWeekMeta.key, [planMeta.key, currentWeekMeta.key])
+
+  const planWeekDates = useMemo(() => {
+    const weekStart = new Date(planDate.getFullYear(), planDate.getMonth(), planDate.getDate())
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+    return DAYS.map((_, idx) => {
+      const day = new Date(weekStart)
+      day.setDate(weekStart.getDate() + idx)
+      return day
+    })
+  }, [planDate])
+
+  const todayIndex = now.getDay()
+  const isPastDay = (day) => isCurrentWeek && DAYS.indexOf(day) < todayIndex
+  const orderedDays = isCurrentWeek ? [...DAYS.slice(todayIndex), ...DAYS.slice(0, todayIndex)] : DAYS
+
   const calendarYear = calendarCursor.getFullYear()
   const calendarMonth = calendarCursor.getMonth()
   const calendarLabel = calendarCursor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -470,8 +487,11 @@ export default function Cronograma() {
     return categoryColorMap[key] || '#E06445'
   }
 
+  const todosDaysWithContent = orderedDays.filter((day) => grouped[day]?.length > 0 || day === todayDay)
+  const hiddenPastDays = todosDaysWithContent.filter((day) => isPastDay(day))
+
   const visibleDays = activeDay === 'Todos'
-    ? DAYS.filter((day) => grouped[day]?.length > 0 || day === todayDay)
+    ? (showHistory ? todosDaysWithContent : todosDaysWithContent.filter((day) => !isPastDay(day)))
     : (grouped[activeDay]?.length > 0 || activeDay === todayDay ? [activeDay] : [])
 
   const monthCells = useMemo(() => buildMonthCells(calendarYear, calendarMonth), [calendarYear, calendarMonth])
@@ -531,8 +551,14 @@ export default function Cronograma() {
     setShowModal(true)
   }
 
-  const movePlan = (dir) => setPlanDate((prev) => shiftPlanDate(prev, dir))
-  const resetPlanToCurrent = () => setPlanDate(new Date())
+  const movePlan = (dir) => {
+    setPlanDate((prev) => shiftPlanDate(prev, dir))
+    setShowHistory(false)
+  }
+  const resetPlanToCurrent = () => {
+    setPlanDate(new Date())
+    setShowHistory(false)
+  }
 
   const handleCloneWeek = async () => {
     if (scopedItems.length === 0) {
@@ -810,11 +836,26 @@ export default function Cronograma() {
             ))}
           </div>
 
+          {activeDay === 'Todos' && isCurrentWeek && hiddenPastDays.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm schedule-history-toggle"
+              onClick={() => setShowHistory((prev) => !prev)}
+            >
+              <RiHistoryLine size={14} aria-hidden="true" />
+              {showHistory ? 'Ocultar dias anteriores' : `Ver dias anteriores (${hiddenPastDays.length})`}
+            </button>
+          )}
+
           {visibleDays.map((day) => {
             const segments = dayFlows[day] || []
+            const isToday = isCurrentWeek && day === todayDay
             return (
-              <div key={day} className="schedule-group">
-                <div className="schedule-day-label">{day}</div>
+              <div key={day} className={`schedule-group ${isPastDay(day) ? 'is-past' : ''}`}>
+                <div className="schedule-day-label">
+                  {day}
+                  {isToday && <span className="schedule-today-badge">Hoje</span>}
+                </div>
                 {segments.map((entry, idx) => {
                   if (entry.type === 'now') {
                     return (
@@ -853,13 +894,14 @@ export default function Cronograma() {
         <div className="calendar-week-bars" role="grid" aria-label="Cronograma semanal em barras">
           {DAYS.map((day, dayIndex) => {
             const segments = dayFlows[day] || []
-            const isToday = day === todayDay
+            const dateLabel = planWeekDates[dayIndex].toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            const isToday = isCurrentWeek && day === todayDay
 
             return (
               <section key={day} className={`calendar-bars-day ${isToday ? 'is-today' : ''}`} role="row">
-                <div className="calendar-bars-header" role="columnheader" aria-label={day}>
+                <div className="calendar-bars-header" role="columnheader" aria-label={`${day} ${dateLabel}`}>
                   <span className="calendar-bars-short">{DAYS_SHORT[dayIndex]}</span>
-                  <span className="calendar-bars-name">{day}</span>
+                  <span className="calendar-bars-date">{dateLabel}</span>
                 </div>
 
                 <div className="calendar-bars-track">
