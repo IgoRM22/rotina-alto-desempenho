@@ -7,6 +7,7 @@ import {
   RiDeleteBinLine,
   RiFileCopyLine,
   RiHistoryLine,
+  RiMoreLine,
   RiRepeat2Line,
   RiStackLine,
   RiSubtractLine,
@@ -22,9 +23,10 @@ import {
   updateImportantDate,
   deleteImportantDate,
   listenScheduleCategories,
-} from '../services/firestore'
-import Modal from '../components/Modal'
-import Toast from '../components/Toast'
+} from '../../services/firestore'
+import Modal from '../../components/Modal'
+import Toast from '../../components/Toast'
+import Tabs from '../../components/Tabs'
 
 const DAYS = ['Domingo', 'Segunda', 'Ter\u00E7a', 'Quarta', 'Quinta', 'Sexta', 'S\u00E1bado']
 const DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S\u00E1b']
@@ -84,6 +86,7 @@ const BAR_EVENT_PX_PER_MINUTE = 0.42
 const BAR_GAP_PX_PER_MINUTE = 0.28
 const BAR_MIN_EVENT_HEIGHT = 36
 const BAR_MIN_CLUSTER_HEIGHT = 42
+const MAX_VISIBLE_LANES = 3
 
 const pad2 = (v) => String(v).padStart(2, '0')
 
@@ -781,60 +784,53 @@ export default function Cronograma() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header schedule-page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <span className="page-kicker">Planejamento de Rotina</span>
-          <h1 className="page-title">Cronograma</h1>
+    <>
+      <div className="subpage-controls schedule-page-header">
+        <div className="schedule-plan-nav">
+          <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(-1)} aria-label="Semana anterior">
+            <RiArrowLeftSLine size={16} aria-hidden="true" />
+          </button>
+          <div className="schedule-plan-label">
+            <RiCalendar2Line size={13} aria-hidden="true" />
+            {planMeta.label}
+          </div>
+          <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(1)} aria-label="Proxima semana">
+            <RiArrowRightSLine size={16} aria-hidden="true" />
+          </button>
+          <button className="btn btn-ghost btn-sm plan-nav-today" onClick={resetPlanToCurrent}>Hoje</button>
+          <details className="plan-more-menu">
+            <summary className="btn btn-ghost btn-sm btn-icon" aria-label="Mais ações">
+              <RiMoreLine size={16} aria-hidden="true" />
+            </summary>
+            <div className="plan-more-menu-panel">
+              <button type="button" className="plan-more-menu-item" onClick={handleCloneWeek}>
+                <RiFileCopyLine size={14} aria-hidden="true" /> Clonar semana
+              </button>
+            </div>
+          </details>
         </div>
 
-        <div className="schedule-header-tools">
-          <div className="schedule-plan-toolbar">
-            <div className="schedule-plan-nav">
-              <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(-1)} aria-label="Semana anterior">
-                <RiArrowLeftSLine size={16} aria-hidden="true" />
-              </button>
-              <div className="schedule-plan-label">
-                <RiCalendar2Line size={13} aria-hidden="true" />
-                {planMeta.label}
-              </div>
-              <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(1)} aria-label="Proxima semana">
-                <RiArrowRightSLine size={16} aria-hidden="true" />
-              </button>
-              <button className="btn btn-ghost btn-sm plan-nav-today" onClick={resetPlanToCurrent}>Hoje</button>
-              <button className="btn btn-ghost btn-sm plan-nav-clone" onClick={handleCloneWeek}>
-                <RiFileCopyLine size={14} aria-hidden="true" />
-                <span className="plan-clone-text">Clonar +1 semana</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="schedule-view-actions">
-            <div className="view-toggle">
-              <button className={`view-btn ${view === 'lista' ? 'active' : ''}`} onClick={() => setView('lista')}>Lista</button>
-              <button className={`view-btn ${view === 'semanal' ? 'active' : ''}`} onClick={() => setView('semanal')}>Semanal</button>
-              <button className={`view-btn ${view === 'calendario' ? 'active' : ''}`} onClick={() => setView('calendario')}>Calendario</button>
-            </div>
-            <button className="btn btn-primary" onClick={view === 'calendario' ? openAddImportantForVisibleMonth : openAdd}>
-              {view === 'calendario' ? '+ Data importante' : '+ Adicionar'}
-            </button>
-          </div>
+        <div className="schedule-view-actions">
+          <Tabs
+            variant="segmented"
+            items={[{ key: 'lista', label: 'Lista' }, { key: 'semanal', label: 'Semanal' }, { key: 'calendario', label: 'Calendário' }]}
+            active={view}
+            onChange={setView}
+          />
+          <button className="btn btn-primary" onClick={view === 'calendario' ? openAddImportantForVisibleMonth : openAdd}>
+            {view === 'calendario' ? '+ Data importante' : '+ Adicionar'}
+          </button>
         </div>
       </div>
 
       {view === 'lista' && (
         <>
-          <div className="tabs-scroll">
-            {['Todos', ...DAYS].map((day) => (
-              <button
-                key={day}
-                className={`tab-btn ${activeDay === day ? 'active' : ''}`}
-                onClick={() => setActiveDay(day)}
-              >
-                {day}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            scroll
+            items={['Todos', ...DAYS].map((day) => ({ key: day, label: day }))}
+            active={activeDay}
+            onChange={setActiveDay}
+          />
 
           {activeDay === 'Todos' && isCurrentWeek && hiddenPastDays.length > 0 && (
             <button
@@ -943,14 +939,24 @@ export default function Cronograma() {
                       ...eventVisuals.map((event) => event.top + event.height),
                     )
 
+                    const isOverflowing = segment.laneCount > MAX_VISIBLE_LANES
+                    const overflowLane = MAX_VISIBLE_LANES - 1
+                    const effectiveLaneCount = isOverflowing ? MAX_VISIBLE_LANES : segment.laneCount
+                    const laneWidth = 100 / effectiveLaneCount
+                    const visibleEvents = isOverflowing
+                      ? eventVisuals.filter((event) => event.lane < overflowLane)
+                      : eventVisuals
+                    const overflowEvents = isOverflowing
+                      ? eventVisuals.filter((event) => event.lane >= overflowLane)
+                      : []
+
                     return (
                       <div
                         key={`bar-cluster-${day}-${idx}`}
                         className={`calendar-bars-cluster ${segment.laneCount > 1 ? 'is-overlap' : ''}`}
                         style={{ height: `${clusterHeight}px` }}
                       >
-                        {eventVisuals.map((event) => {
-                          const laneWidth = 100 / segment.laneCount
+                        {visibleEvents.map((event) => {
                           const left = event.lane * laneWidth
                           const eventColor = getCategoryColor(event.item.category)
                           return (
@@ -975,6 +981,31 @@ export default function Cronograma() {
                             </button>
                           )
                         })}
+                        {overflowEvents.length > 0 && (
+                          <details
+                            className="calendar-bar-overflow"
+                            style={{
+                              top: `${Math.min(...overflowEvents.map((event) => event.top))}px`,
+                              height: `${Math.max(...overflowEvents.map((event) => event.top + event.height)) - Math.min(...overflowEvents.map((event) => event.top))}px`,
+                              left: `calc(${overflowLane * laneWidth}% + 2px)`,
+                              width: `calc(${laneWidth}% - 4px)`,
+                            }}
+                          >
+                            <summary className="calendar-bar-overflow-summary">+{overflowEvents.length} mais</summary>
+                            <div className="calendar-bar-overflow-panel">
+                              {overflowEvents.map((event) => (
+                                <button
+                                  key={`overflow-${event.item.id}-${event.lane}`}
+                                  type="button"
+                                  className="calendar-bar-overflow-item"
+                                  onClick={() => openEdit(event.item)}
+                                >
+                                  {fmtTime(event.item)} · {event.item.name}
+                                </button>
+                              ))}
+                            </div>
+                          </details>
+                        )}
                       </div>
                     )
                   })}
@@ -997,7 +1028,32 @@ export default function Cronograma() {
               >
                 <RiArrowLeftSLine size={16} aria-hidden="true" />
               </button>
-              <div className="month-calendar-period" aria-live="polite">{calendarLabel}</div>
+              <details className="month-calendar-picker">
+                <summary className="month-calendar-period" aria-live="polite">{calendarLabel}</summary>
+                <div className="month-calendar-picker-panel">
+                  <select
+                    className="calendar-select"
+                    value={calendarMonth}
+                    onChange={(e) => setCalendarCursor(new Date(calendarYear, Number(e.target.value), 1))}
+                    aria-label="Mes"
+                  >
+                    {MONTH_LABELS.map((month, index) => (
+                      <option key={month} value={index}>{month}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="calendar-select"
+                    value={calendarYear}
+                    onChange={(e) => setCalendarCursor(new Date(Number(e.target.value), calendarMonth, 1))}
+                    aria-label="Ano"
+                  >
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </details>
               <button
                 type="button"
                 className="month-calendar-arrow"
@@ -1009,28 +1065,6 @@ export default function Cronograma() {
             </div>
 
             <div className="month-calendar-actions">
-              <select
-                className="calendar-select"
-                value={calendarMonth}
-                onChange={(e) => setCalendarCursor(new Date(calendarYear, Number(e.target.value), 1))}
-                aria-label="Mes"
-              >
-                {MONTH_LABELS.map((month, index) => (
-                  <option key={month} value={index}>{month}</option>
-                ))}
-              </select>
-
-              <select
-                className="calendar-select"
-                value={calendarYear}
-                onChange={(e) => setCalendarCursor(new Date(Number(e.target.value), calendarMonth, 1))}
-                aria-label="Ano"
-              >
-                {yearOptions.map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-
               <button className="btn btn-ghost btn-sm" onClick={resetCalendarToCurrent}>Hoje</button>
             </div>
           </div>
@@ -1234,6 +1268,6 @@ export default function Cronograma() {
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
-    </div>
+    </>
   )
 }

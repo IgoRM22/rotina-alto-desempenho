@@ -1,6 +1,6 @@
 import {
   collection, doc, getDoc, setDoc, updateDoc, deleteDoc,
-  addDoc, query, orderBy, onSnapshot, serverTimestamp
+  addDoc, query, orderBy, limit, where, documentId, onSnapshot, serverTimestamp
 } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 
@@ -104,6 +104,74 @@ export const addTodo = (data) =>
 export const updateTodo = (id, data) => updateDoc(userDoc('todos', id), data)
 export const deleteTodo = (id) => deleteDoc(userDoc('todos', id))
 
+// ── Folders (GTD organization for todos; unfiled = "Parking Lot") ───────────
+export const listenFolders = (cb) =>
+  onSnapshot(query(base('folders'), orderBy('order', 'asc')), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+
+export const addFolder = (data) =>
+  addDoc(base('folders'), { ...data, createdAt: serverTimestamp(), order: Date.now() })
+
+export const updateFolder = (id, data) => updateDoc(userDoc('folders', id), data)
+
+export const unfileTodosInFolder = async (folderId) => {
+  const snap = await getDocs(base('todos'))
+  const targets = snap.docs.filter((entry) => entry.data()?.folderId === folderId)
+  await Promise.all(targets.map((entry) => updateDoc(userDoc('todos', entry.id), { folderId: null })))
+  return targets.length
+}
+
+export const deleteFolder = async (id) => {
+  await unfileTodosInFolder(id)
+  await deleteDoc(userDoc('folders', id))
+}
+
+// ── Habits (definitions) ─────────────────────────────────────────────────────
+export const listenHabits = (cb) =>
+  onSnapshot(query(base('habits'), orderBy('order', 'asc')), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+
+export const addHabit = (data) =>
+  addDoc(base('habits'), { active: true, ...data, createdAt: serverTimestamp(), order: Date.now() })
+
+export const updateHabit = (id, data) => updateDoc(userDoc('habits', id), data)
+export const deleteHabit = (id) => deleteDoc(userDoc('habits', id))
+
+// ── Habit logs (1 doc per day, map of habitId -> checked) ───────────────────
+export const listenHabitLogs = (cb, days = 60) =>
+  onSnapshot(query(base('habitLogs'), orderBy('date', 'desc'), limit(days)), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+
+export const setHabitChecked = (dateKey, habitId, checked) =>
+  setDoc(
+    userDoc('habitLogs', dateKey),
+    { date: dateKey, checked: { [habitId]: checked }, updatedAt: serverTimestamp() },
+    { merge: true },
+  )
+
+// ── Daily log (sleep/energy/note, 1 doc per day) ─────────────────────────────
+export const listenDailyLog = (dateKey, cb) =>
+  onSnapshot(userDoc('dailyLogs', dateKey), snap => cb(snap.exists() ? snap.data() : null))
+
+export const saveDailyLog = (dateKey, data) =>
+  setDoc(userDoc('dailyLogs', dateKey), { date: dateKey, ...data, updatedAt: serverTimestamp() }, { merge: true })
+
+export const saveDailyAnnotations = (dateKey, annotations) =>
+  setDoc(userDoc('dailyLogs', dateKey), { date: dateKey, annotations, updatedAt: serverTimestamp() }, { merge: true })
+
+export const listenDailyLogsForDates = (dateKeys, cb) => {
+  if (!dateKeys.length) { cb([]); return () => {} }
+  return onSnapshot(query(base('dailyLogs'), where(documentId(), 'in', dateKeys)), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+}
+
+// ── Week focus (editable in Revisão, shown in Hoje during that week) ────────
+export const listenWeekFocus = (weekKey, cb) =>
+  onSnapshot(userDoc('weekFocus', weekKey), snap => cb(snap.exists() ? snap.data() : null))
+
+export const saveWeekFocus = (weekKey, items) =>
+  setDoc(userDoc('weekFocus', weekKey), { items, updatedAt: serverTimestamp() }, { merge: true })
+
 // ── Goals / Metas ────────────────────────────────────────────────────────────
 export const listenGoals = (cb) =>
   onSnapshot(query(base('goals'), orderBy('createdAt', 'asc')), snap =>
@@ -163,10 +231,11 @@ export const deleteImportantDate = (id) => deleteDoc(userDoc('importantDates', i
 // ── Full backup / restore ─────────────────────────────────────────────────────
 import { getDocs } from 'firebase/firestore'
 
+const BACKUP_COLLECTIONS = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes', 'habits', 'habitLogs', 'dailyLogs', 'weekFocus', 'folders']
+
 export const exportAll = async () => {
-  const cols = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes']
   const result = {}
-  for (const col of cols) {
+  for (const col of BACKUP_COLLECTIONS) {
     const snap = await getDocs(base(col))
     result[col] = snap.docs.map(d => ({ id: d.id, ...d.data() }))
   }
@@ -174,8 +243,7 @@ export const exportAll = async () => {
 }
 
 export const importAll = async (json) => {
-  const cols = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes']
-  for (const col of cols) {
+  for (const col of BACKUP_COLLECTIONS) {
     if (!json[col]) continue
     for (const item of json[col]) {
       const { id, ...data } = item
@@ -183,6 +251,33 @@ export const importAll = async (json) => {
     }
   }
 }
+
+// ── One-shot reads for the weekly-archive background hook (no listener needed) ──
+export const getHabitsOnce = async () => {
+  const snap = await getDocs(query(base('habits'), orderBy('order', 'asc')))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export const getHabitLogsOnce = async (dateKeys) => {
+  if (!dateKeys.length) return []
+  const snap = await getDocs(query(base('habitLogs'), where(documentId(), 'in', dateKeys)))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export const getDailyLogsForDates = async (dateKeys) => {
+  if (!dateKeys.length) return []
+  const snap = await getDocs(query(base('dailyLogs'), where(documentId(), 'in', dateKeys)))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+// ── Weekly archive state (last week already saved to Notes) ─────────────────
+export const getLastArchivedWeek = async () => {
+  const snap = await getDoc(userDoc('settings', 'prefs'))
+  return snap.data()?.lastArchivedWeekKey || null
+}
+
+export const setLastArchivedWeek = (weekKey) =>
+  setDoc(userDoc('settings', 'prefs'), { lastArchivedWeekKey: weekKey }, { merge: true })
 
 // ── Notes / Notebooks ─────────────────────────────────────────────────────────
 export const listenNotebooks = (cb) =>

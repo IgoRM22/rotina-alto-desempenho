@@ -9,11 +9,12 @@ import {
   RiPencilLine,
   RiRefreshLine,
 } from '@remixicon/react'
-import { listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories } from '../services/firestore'
-import { deadlineBadge } from '../utils/deadline'
-import { useDeadlineNotifications } from '../hooks/useDeadlineNotifications'
-import Modal from '../components/Modal'
-import Toast from '../components/Toast'
+import { listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories } from '../../services/firestore'
+import { deadlineBadge } from '../../utils/deadline'
+import { useDeadlineNotifications } from '../../hooks/useDeadlineNotifications'
+import Modal from '../../components/Modal'
+import Toast from '../../components/Toast'
+import Tabs from '../../components/Tabs'
 
 const TIMEFRAME_OPTIONS = [
   { value: 'semana', label: 'Semana' },
@@ -214,37 +215,29 @@ export default function Metas() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header metas-page-header">
-        <div>
-          <span className="page-kicker">Metas & Objetivos</span>
-          <h1 className="page-title">Metas</h1>
-        </div>
-        <div className="metas-header-right">
-          <div className="year-switch">
-            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y - 1)} aria-label="Ano anterior">
-              <RiArrowLeftSLine size={16} />
-            </button>
-            <span className="year-label">{selectedYear}</span>
-            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y + 1)} aria-label="Próximo ano">
-              <RiArrowRightSLine size={16} />
-            </button>
-          </div>
-          <button className="btn btn-ghost btn-sm" onClick={resetToToday}>Hoje</button>
-          <button className="btn btn-primary" onClick={openAdd}>
-            <RiAddLine size={15} /> Nova meta
+    <>
+      <div className="subpage-controls">
+        <div className="year-switch">
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y - 1)} aria-label="Ano anterior">
+            <RiArrowLeftSLine size={16} />
+          </button>
+          <span className="year-label">{selectedYear}</span>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedYear(y => y + 1)} aria-label="Próximo ano">
+            <RiArrowRightSLine size={16} />
           </button>
         </div>
+        <button className="btn btn-ghost btn-sm" onClick={resetToToday}>Hoje</button>
+        <button className="btn btn-primary" onClick={openAdd}>
+          <RiAddLine size={15} /> Nova meta
+        </button>
       </div>
 
       {/* Filter tabs */}
-      <div className="tabs goals-tabs">
-        {[['Todos', 'Todos'], ['semana', 'Semana'], ['mes', 'Mês'], ['trimestre', 'Trimestre'], ['ano', 'Ano'], ['longo_prazo', 'Longo Prazo']].map(([val, label]) => (
-          <button key={val} className={`tab-btn ${activeFilter === val ? 'active' : ''}`} onClick={() => setActiveFilter(val)}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        items={[['Todos', 'Todos'], ['semana', 'Semana'], ['mes', 'Mês'], ['trimestre', 'Trimestre'], ['ano', 'Ano'], ['longo_prazo', 'Longo Prazo']].map(([key, label]) => ({ key, label }))}
+        active={activeFilter}
+        onChange={setActiveFilter}
+      />
 
       {/* Sub-period selectors */}
       {activeFilter === 'semana' && (
@@ -467,6 +460,6 @@ export default function Metas() {
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
-    </div>
+    </>
   )
 }

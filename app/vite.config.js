@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'Rotina',
-        short_name: 'Rotina',
+        name: 'Raio',
+        short_name: 'Raio',
         description: 'Organizador pessoal de alto desempenho',
         theme_color: '#0D0C0B',
         background_color: '#0D0C0B',

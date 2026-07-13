@@ -11,6 +11,8 @@ import {
 } from '../services/firestore'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
+import Tabs from '../components/Tabs'
+import InspirationsPanel from '../components/InspirationsPanel'
 
 const IMPORTANCE = [
   { value: 'alta', label: 'Alta' },
@@ -23,6 +25,7 @@ const EMPTY_NB = { name: '', emoji: '📓', color: NB_COLORS[0] }
 const EMPTY_NOTE = { title: '', content: '', importance: 'media', notebookId: null }
 
 export default function Notes() {
+  const [section, setSection] = useState('notas')
   const [notebooks, setNotebooks] = useState([])
   const [notes, setNotes] = useState([])
   const [activeNb, setActiveNb] = useState(null)
@@ -107,13 +110,25 @@ export default function Notes() {
       <div className="page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <span className="page-kicker">Anotações Pessoais</span>
-          <h1 className="page-title">Notes</h1>
+          <h1 className="page-title">Notas</h1>
         </div>
-        <button className="btn btn-primary" onClick={openAddNote}>
-          <RiAddLine size={15} /> Nova nota
-        </button>
+        {section === 'notas' && (
+          <button className="btn btn-primary" onClick={openAddNote}>
+            <RiAddLine size={15} /> Nova nota
+          </button>
+        )}
       </div>
 
+      <Tabs
+        items={[{ key: 'notas', label: 'Notas' }, { key: 'inspiracoes', label: 'Inspirações' }]}
+        active={section}
+        onChange={setSection}
+      />
+
+      {section === 'inspiracoes' ? (
+        <InspirationsPanel />
+      ) : (
+      <>
       {/* Notebooks bar */}
       <div className="notebooks-bar">
         <button
@@ -265,6 +280,8 @@ export default function Notes() {
             />
           </div>
         </Modal>
+      )}
+      </>
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}

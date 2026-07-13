@@ -158,42 +158,28 @@ export default function Finances() {
         <h1 className="page-title">Finanças</h1>
       </div>
 
-      {/* KPI Grid */}
-      <div className="finance-overview">
-        <div className="finance-kpi-card">
-          <div className="finance-kpi-icon"><RiWallet3Line size={20} /></div>
-          <div className="finance-kpi-content">
-            <p className="finance-kpi-label">Patrimônio em Bancos</p>
-            <p className="finance-kpi-value">{fmtCurrency(totalBanks)}</p>
-            <p className="finance-kpi-sub">Somatória dos bancos</p>
-          </div>
+      {/* Summary row — condensed from 3 large KPI cards into one slim stats row */}
+      <div className="finance-stats-grid" style={{ marginBottom: 48 }}>
+        <div className="finance-stat-card">
+          <span className="finance-stat-label"><RiWallet3Line size={12} /> Patrimônio em bancos</span>
+          <span className="finance-stat-value">{fmtCurrency(totalBanks)}</span>
         </div>
 
-        <div className={`finance-kpi-card ${data.emergencyFund >= totalExpenses ? 'finance-kpi-positive' : 'finance-kpi-negative'}`}>
-          <div className="finance-kpi-icon"><RiShieldLine size={20} /></div>
-          <div className="finance-kpi-content">
-            <p className="finance-kpi-label">Fundo de Emergência</p>
-            <p className="finance-kpi-value" style={{ color: data.emergencyFund >= totalExpenses ? 'var(--sage)' : 'var(--coral)' }}>
-              {fmtCurrency(data.emergencyFund)}
-            </p>
-            {data.emergencyFundUpdatedAt && (
-              <p className="finance-kpi-meta">atualizado {fmtDate(data.emergencyFundUpdatedAt)}</p>
-            )}
-            <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ emergencyFund: data.emergencyFund || 0 }); setShowModal('emergency') }}>
-              <RiPencilLine size={12} /> atualizar
-            </button>
-          </div>
+        <div className="finance-stat-card">
+          <span className="finance-stat-label"><RiShieldLine size={12} /> Fundo de emergência</span>
+          <span className="finance-stat-value" style={{ color: data.emergencyFund >= totalExpenses ? 'var(--sage)' : 'var(--coral)' }}>
+            {fmtCurrency(data.emergencyFund)}
+          </span>
+          <button className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => { setForm({ emergencyFund: data.emergencyFund || 0 }); setShowModal('emergency') }}>
+            <RiPencilLine size={12} /> atualizar
+          </button>
         </div>
 
-        <div className={`finance-kpi-card ${monthlyBalance >= 0 ? 'finance-kpi-positive' : 'finance-kpi-negative'}`}>
-          <div className="finance-kpi-icon"><RiArrowUpDownLine size={20} /></div>
-          <div className="finance-kpi-content">
-            <p className="finance-kpi-label">Saldo Mensal</p>
-            <p className="finance-kpi-value" style={{ color: monthlyBalance >= 0 ? 'var(--sage)' : 'var(--coral)' }}>
-              {fmtCurrency(monthlyBalance)}
-            </p>
-            <p className="finance-kpi-sub">Renda líquida − despesas fixas</p>
-          </div>
+        <div className="finance-stat-card">
+          <span className="finance-stat-label"><RiArrowUpDownLine size={12} /> Saldo mensal</span>
+          <span className="finance-stat-value" style={{ color: monthlyBalance >= 0 ? 'var(--sage)' : 'var(--coral)' }}>
+            {fmtCurrency(monthlyBalance)}
+          </span>
         </div>
       </div>
 

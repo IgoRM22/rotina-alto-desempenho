@@ -19,7 +19,7 @@ export default function AuthScreen() {
     <div className="auth-screen">
       <div className="auth-card">
         <p className="auth-kicker">Acesso Controlado</p>
-        <h1>Rotina de<br />Alto Desempenho</h1>
+        <h1>Raio</h1>
         <p className="auth-copy">Uso liberado somente para e-mails autorizados pelo administrador.</p>
 
         <div className="auth-blocked-notice">

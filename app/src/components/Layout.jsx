@@ -2,8 +2,7 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   RiCalendarScheduleLine,
-  RiCheckboxCircleLine,
-  RiFlag2Line,
+  RiFlashlightFill,
   RiHome5Line,
   RiLogoutBoxRLine,
   RiSettings3Line,
@@ -18,16 +17,16 @@ export default function Layout({ children }) {
   return (
     <div className="app-layout">
       <nav className="nav">
-        <NavLink to="/" className="nav-brand">Rotina ↗</NavLink>
+        <NavLink to="/" className="nav-brand">
+          <RiFlashlightFill size={16} style={{ color: 'var(--coral)' }} aria-hidden="true" /> Raio
+        </NavLink>
 
         <ul className="nav-links">
-          <li><NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>Home</NavLink></li>
-          <li><NavLink to="/cronograma" className={({ isActive }) => isActive ? 'active' : ''}>Cronograma</NavLink></li>
-          <li><NavLink to="/todos" className={({ isActive }) => isActive ? 'active' : ''}>Tarefas</NavLink></li>
-          <li><NavLink to="/metas" className={({ isActive }) => isActive ? 'active' : ''}>Metas</NavLink></li>
-          <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>Notes</NavLink></li>
+          <li><NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>Hoje</NavLink></li>
+          <li><NavLink to="/planejar" className={({ isActive }) => isActive ? 'active' : ''}>Planejar</NavLink></li>
+          <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>Notas</NavLink></li>
           <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>Finanças</NavLink></li>
-          <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>Config</NavLink></li>
+          <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>Ajustes</NavLink></li>
         </ul>
 
         <div className="nav-right">
@@ -47,19 +46,11 @@ export default function Layout({ children }) {
         <ul className="mobile-nav-list">
           <li><NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon"><RiHome5Line size={18} aria-hidden="true" /></span>
-            <span className="mobile-nav-label">Home</span>
+            <span className="mobile-nav-label">Hoje</span>
           </NavLink></li>
-          <li><NavLink to="/cronograma" className={({ isActive }) => isActive ? 'active' : ''}>
+          <li><NavLink to="/planejar" className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon"><RiCalendarScheduleLine size={18} aria-hidden="true" /></span>
-            <span className="mobile-nav-label">Agenda</span>
-          </NavLink></li>
-          <li><NavLink to="/todos" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon"><RiCheckboxCircleLine size={18} aria-hidden="true" /></span>
-            <span className="mobile-nav-label">Tarefas</span>
-          </NavLink></li>
-          <li><NavLink to="/metas" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon"><RiFlag2Line size={18} aria-hidden="true" /></span>
-            <span className="mobile-nav-label">Metas</span>
+            <span className="mobile-nav-label">Planejar</span>
           </NavLink></li>
           <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon"><RiStickyNoteLine size={18} aria-hidden="true" /></span>
