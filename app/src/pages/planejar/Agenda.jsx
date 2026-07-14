@@ -148,8 +148,11 @@ const fmtTime = (item) => {
 }
 
 // Only a start with no end has nothing to size a proportional block by, so it
-// renders as a flat line alongside items with no time at all.
+// renders as a flat point marker instead - positioned in the flow by its start
+// time rather than lumped together with items that have no time at all.
 const hasTimeRange = (item) => Boolean((item.timeStart || item.time) && item.timeEnd)
+const hasStartOnly = (item) => Boolean((item.timeStart || item.time) && !item.timeEnd)
+const hasNoTime = (item) => !(item.timeStart || item.time)
 
 const sortKey = (item) => toMin(item.timeStart || item.time)
 
@@ -321,14 +324,32 @@ const buildDayFlow = (dayItems) => {
   return flow
 }
 
+const entryBoundaryEnd = (entry) => {
+  if (entry.type === 'gap') return entry.end
+  if (entry.type === 'point') return entry.startMin
+  if (entry.type === 'now') return entry.minute
+  return entry.endMin
+}
+
+// Items with only a start time (no end) have no duration to size a block by,
+// but they still happened at a specific moment - so they're spliced into the
+// flow as flat point markers instead of being lumped together out of order.
+const insertPointMarkers = (flow, pointItems) => {
+  const sorted = [...pointItems].sort((a, b) => toMin(a.timeStart || a.time) - toMin(b.timeStart || b.time))
+
+  return sorted.reduce((acc, item) => {
+    const startMin = toMin(item.timeStart || item.time)
+    const marker = { type: 'point', item, startMin }
+    const index = acc.findIndex((entry) => startMin <= entryBoundaryEnd(entry))
+    return index === -1 ? [...acc, marker] : [...acc.slice(0, index), marker, ...acc.slice(index)]
+  }, flow)
+}
+
 const insertNowMarker = (day, flow, todayDay, nowMin, nowLabel) => {
   if (day !== todayDay) return flow
 
   const marker = { type: 'now', minute: nowMin, label: nowLabel }
-  const index = flow.findIndex((entry) => {
-    if (entry.type === 'gap') return nowMin <= entry.end
-    return nowMin <= entry.endMin
-  })
+  const index = flow.findIndex((entry) => nowMin <= entryBoundaryEnd(entry))
 
   if (index === -1) return [...flow, marker]
   return [...flow.slice(0, index), marker, ...flow.slice(index)]
@@ -437,22 +458,29 @@ export default function Cronograma() {
     }, {})
   }, [scopedItems])
 
+  const pointGrouped = useMemo(() => {
+    return DAYS.reduce((acc, day) => {
+      acc[day] = scopedItems.filter((item) => getItemDays(item).includes(day) && hasStartOnly(item))
+      return acc
+    }, {})
+  }, [scopedItems])
+
   const untimedGrouped = useMemo(() => {
     return DAYS.reduce((acc, day) => {
-      acc[day] = scopedItems.filter((item) => getItemDays(item).includes(day) && !hasTimeRange(item))
+      acc[day] = scopedItems.filter((item) => getItemDays(item).includes(day) && hasNoTime(item))
       return acc
     }, {})
   }, [scopedItems])
 
   const dayFlows = useMemo(() => {
     return DAYS.reduce((acc, day) => {
-      const flow = buildDayFlow(grouped[day] || [])
+      const flow = insertPointMarkers(buildDayFlow(grouped[day] || []), pointGrouped[day] || [])
       acc[day] = isCurrentWeek
         ? insertNowMarker(day, flow, todayDay, nowMin, nowLabel)
         : flow
       return acc
     }, {})
-  }, [grouped, todayDay, nowMin, nowLabel, isCurrentWeek])
+  }, [grouped, pointGrouped, todayDay, nowMin, nowLabel, isCurrentWeek])
 
   const categoryOptions = useMemo(() => {
     const input = Array.isArray(categories) ? categories : []
@@ -491,7 +519,7 @@ export default function Cronograma() {
     return categoryColorMap[key] || '#E06445'
   }
 
-  const dayHasContent = (day) => grouped[day]?.length > 0 || untimedGrouped[day]?.length > 0
+  const dayHasContent = (day) => grouped[day]?.length > 0 || pointGrouped[day]?.length > 0 || untimedGrouped[day]?.length > 0
 
   const todosDaysWithContent = orderedDays.filter((day) => dayHasContent(day) || day === todayDay)
   const hiddenPastDays = todosDaysWithContent.filter((day) => isPastDay(day))
@@ -930,6 +958,22 @@ export default function Cronograma() {
                     )
                   }
 
+                  if (entry.type === 'point') {
+                    const categoryColor = getCategoryColor(entry.item.category)
+                    return (
+                      <button
+                        key={`point-${day}-${idx}`}
+                        type="button"
+                        className="schedule-untimed-row"
+                        style={{ borderLeftColor: categoryColor, color: categoryColor }}
+                        onClick={() => openEdit(entry.item)}
+                      >
+                        <span className="schedule-time-inline">{fmtTime(entry.item)}</span>
+                        <MarqueeText text={entry.item.name} />
+                      </button>
+                    )
+                  }
+
                   return renderListCluster(entry, day, idx)
                 })}
               </div>
@@ -1022,6 +1066,22 @@ export default function Cronograma() {
                         <div key={`bar-gap-${day}-${idx}`} className="calendar-bars-gap" style={{ height: `${gapHeight}px`, marginBottom: spacing }}>
                           {segment.duration >= 45 && <span>{fmtDuration(segment.duration)}</span>}
                         </div>
+                      )
+                    }
+
+                    if (segment.type === 'point') {
+                      const categoryColor = getCategoryColor(segment.item.category)
+                      return (
+                        <button
+                          key={`bar-point-${day}-${idx}`}
+                          type="button"
+                          className="calendar-bars-untimed"
+                          style={{ borderLeftColor: categoryColor, color: categoryColor, marginBottom: spacing }}
+                          onClick={() => openEdit(segment.item)}
+                        >
+                          <span className="schedule-time-inline">{fmtTime(segment.item)}</span>
+                          <MarqueeText text={segment.item.name} />
+                        </button>
                       )
                     }
 

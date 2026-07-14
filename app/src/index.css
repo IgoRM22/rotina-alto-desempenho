@@ -3450,6 +3450,11 @@ details > summary::marker {
   background: var(--s2);
 }
 
+.schedule-time-inline {
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
 /* ── WEEK TABLE (Revisão) ── */
 .week-table-wrap {
   overflow-x: auto;
