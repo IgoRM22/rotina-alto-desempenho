@@ -29,6 +29,7 @@ import { addDays } from '../../utils/date'
 import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
+import MarqueeText from '../../components/MarqueeText'
 
 const DAYS = ['Domingo', 'Segunda', 'Ter\u00E7a', 'Quarta', 'Quinta', 'Sexta', 'S\u00E1bado']
 const DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S\u00E1b']
@@ -145,6 +146,8 @@ const fmtTime = (item) => {
   if (item.timeStart) return item.timeEnd ? `${item.timeStart}-${item.timeEnd}` : item.timeStart
   return item.time || ''
 }
+
+const hasTime = (item) => Boolean(item.timeStart || item.time)
 
 const sortKey = (item) => toMin(item.timeStart || item.time)
 
@@ -426,8 +429,15 @@ export default function Cronograma() {
   const grouped = useMemo(() => {
     return DAYS.reduce((acc, day) => {
       acc[day] = scopedItems
-        .filter((item) => getItemDays(item).includes(day))
+        .filter((item) => getItemDays(item).includes(day) && hasTime(item))
         .sort((a, b) => sortKey(a) - sortKey(b))
+      return acc
+    }, {})
+  }, [scopedItems])
+
+  const untimedGrouped = useMemo(() => {
+    return DAYS.reduce((acc, day) => {
+      acc[day] = scopedItems.filter((item) => getItemDays(item).includes(day) && !hasTime(item))
       return acc
     }, {})
   }, [scopedItems])
@@ -479,12 +489,14 @@ export default function Cronograma() {
     return categoryColorMap[key] || '#E06445'
   }
 
-  const todosDaysWithContent = orderedDays.filter((day) => grouped[day]?.length > 0 || day === todayDay)
+  const dayHasContent = (day) => grouped[day]?.length > 0 || untimedGrouped[day]?.length > 0
+
+  const todosDaysWithContent = orderedDays.filter((day) => dayHasContent(day) || day === todayDay)
   const hiddenPastDays = todosDaysWithContent.filter((day) => isPastDay(day))
 
   const visibleDays = activeDay === 'Todos'
     ? (showHistory ? todosDaysWithContent : todosDaysWithContent.filter((day) => !isPastDay(day)))
-    : (grouped[activeDay]?.length > 0 || activeDay === todayDay ? [activeDay] : [])
+    : (dayHasContent(activeDay) || activeDay === todayDay ? [activeDay] : [])
 
   const monthCells = useMemo(() => buildMonthCells(calendarYear, calendarMonth), [calendarYear, calendarMonth])
 
@@ -576,6 +588,8 @@ export default function Cronograma() {
   const resetPlanToCurrent = () => {
     setPlanDate(new Date())
     setShowHistory(false)
+    const current = new Date()
+    setCalendarCursor(new Date(current.getFullYear(), current.getMonth(), 1))
   }
 
   const handleCloneWeek = async () => {
@@ -648,13 +662,14 @@ export default function Cronograma() {
     showToast('Removido.')
   }
 
-  const moveCalendarMonth = (step) => {
-    setCalendarCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + step, 1))
+  const handleDeleteFromModal = async () => {
+    if (!editing) return
+    await handleDelete(editing.id)
+    setShowModal(false)
   }
 
-  const resetCalendarToCurrent = () => {
-    const current = new Date()
-    setCalendarCursor(new Date(current.getFullYear(), current.getMonth(), 1))
+  const moveCalendarMonth = (step) => {
+    setCalendarCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + step, 1))
   }
 
   const openAddImportantDate = (dateKey) => {
@@ -873,13 +888,27 @@ export default function Cronograma() {
                   <button
                     key={`imp-${occ.id}-${idx}`}
                     type="button"
-                    className="schedule-important-banner"
+                    className={`schedule-important-banner imp-${occ.type || 'importante'}`}
                     onClick={() => openEditImportantDate(occ)}
                   >
                     {occ.recurrence && <RiRepeat2Line size={11} aria-hidden="true" />}
-                    <span>{occ.title}</span>
+                    <MarqueeText text={occ.title} />
                   </button>
                 ))}
+                {(untimedGrouped[day] || []).map((item) => {
+                  const categoryColor = getCategoryColor(item.category)
+                  return (
+                    <button
+                      key={`untimed-${item.id}`}
+                      type="button"
+                      className="schedule-untimed-row"
+                      style={{ borderLeftColor: categoryColor, color: categoryColor }}
+                      onClick={() => openEdit(item)}
+                    >
+                      <MarqueeText text={item.name} />
+                    </button>
+                  )
+                })}
                 {segments.map((entry, idx) => {
                   if (entry.type === 'now') {
                     return (
@@ -932,16 +961,31 @@ export default function Cronograma() {
                   <button
                     key={`imp-${occ.id}-${idx}`}
                     type="button"
-                    className="calendar-bars-important"
+                    className={`calendar-bars-important imp-${occ.type || 'importante'}`}
                     onClick={() => openEditImportantDate(occ)}
                   >
                     {occ.recurrence && <RiRepeat2Line size={9} aria-hidden="true" />}
-                    {occ.title}
+                    <MarqueeText text={occ.title} />
                   </button>
                 ))}
 
+                {(untimedGrouped[day] || []).map((item) => {
+                  const categoryColor = getCategoryColor(item.category)
+                  return (
+                    <button
+                      key={`untimed-${item.id}`}
+                      type="button"
+                      className="calendar-bars-untimed"
+                      style={{ borderLeftColor: categoryColor, color: categoryColor }}
+                      onClick={() => openEdit(item)}
+                    >
+                      <MarqueeText text={item.name} />
+                    </button>
+                  )
+                })}
+
                 <div className="calendar-bars-track">
-                  {segments.length === 0 && (
+                  {segments.length === 0 && (untimedGrouped[day] || []).length === 0 && (
                     <div className="calendar-empty-day">
                       <RiSubtractLine size={16} aria-hidden="true" />
                       <span>Sem tarefas</span>
@@ -959,7 +1003,7 @@ export default function Cronograma() {
                     }
 
                     if (segment.type === 'gap') {
-                      const gapHeight = Math.max(8, segment.duration * BAR_GAP_PX_PER_MINUTE)
+                      const gapHeight = Math.max(10, segment.duration * BAR_GAP_PX_PER_MINUTE)
                       return (
                         <div key={`bar-gap-${day}-${idx}`} className="calendar-bars-gap" style={{ height: `${gapHeight}px` }}>
                           {segment.duration >= 45 && <span>{fmtDuration(segment.duration)}</span>}
@@ -1017,7 +1061,7 @@ export default function Cronograma() {
                               onClick={() => openEdit(event.item)}
                             >
                               <div className="calendar-bar-time">{fmtTime(event.item)}</div>
-                              <div className="calendar-bar-name">{event.item.name}</div>
+                              <MarqueeText text={event.item.name} className="calendar-bar-name" />
                             </button>
                           )
                         })}
@@ -1103,10 +1147,6 @@ export default function Cronograma() {
                 <RiArrowRightSLine size={16} aria-hidden="true" />
               </button>
             </div>
-
-            <div className="month-calendar-actions">
-              <button className="btn btn-ghost btn-sm" onClick={resetCalendarToCurrent}>Hoje</button>
-            </div>
           </div>
 
           <div className="month-calendar-grid" role="grid" aria-label="Calendario mensal">
@@ -1137,7 +1177,7 @@ export default function Cronograma() {
                         title={`${entry.title}${entry.endDate ? ` (${entry.startDate} ate ${entry.endDate})` : ''}`}
                       >
                         {entry.recurrence && <RiRepeat2Line size={9} aria-hidden="true" />}
-                        {entry.title}
+                        <MarqueeText text={entry.title} />
                       </button>
                     ))}
 
@@ -1239,6 +1279,14 @@ export default function Cronograma() {
             <label>Descricao (opcional)</label>
             <textarea rows={2} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
           </div>
+
+          {editing && (
+            <div className="important-modal-actions">
+              <button className="btn btn-danger btn-sm" onClick={handleDeleteFromModal}>
+                <RiDeleteBinLine size={14} aria-hidden="true" /> Excluir item
+              </button>
+            </div>
+          )}
         </Modal>
       )}
 

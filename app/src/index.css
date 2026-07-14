@@ -793,24 +793,7 @@ body::after {
 
 .schedule-page-header {
   align-items: flex-start !important;
-}
-
-.schedule-header-tools {
-  flex: 1;
-  min-width: 320px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-}
-
-.schedule-plan-toolbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: 100%;
+  justify-content: space-between;
 }
 
 .schedule-plan-nav {
@@ -818,7 +801,7 @@ body::after {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .schedule-plan-nav .btn {
@@ -841,6 +824,8 @@ body::after {
 .schedule-view-actions {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -1210,7 +1195,7 @@ body::after {
 .calendar-bars-track {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding: 10px;
   background: linear-gradient(180deg, rgba(13,12,11,0.9), rgba(13,12,11,0.72));
   min-height: 120px;
@@ -1259,10 +1244,6 @@ body::after {
 .calendar-bar-name {
   font-size: 12px;
   line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .calendar-bars-gap {
@@ -1323,6 +1304,42 @@ body::after {
 .calendar-bar-item.cal-cat-trem    { border-left-color: var(--muted); background: rgba(122,117,112,.2); }
 .calendar-bar-item.cal-cat-pessoal { border-left-color: var(--violet); background: rgba(139,126,196,.16); }
 .calendar-bar-item.cal-cat-default { border-left-color: var(--border2); }
+
+/* ── MARQUEE TEXT (overflowing titles in Semanal/Calendario) ── */
+.marquee-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.marquee-text-track {
+  display: inline-flex;
+  width: max-content;
+}
+
+.marquee-text-item {
+  padding-right: 32px;
+}
+
+.marquee-text.is-overflowing .marquee-text-track {
+  animation-name: marquee-scroll;
+  animation-duration: var(--marquee-duration, 8s);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-text.is-overflowing .marquee-text-track {
+    animation: none;
+  }
+}
 
 /* ── MONTH CALENDAR VIEW ── */
 .month-calendar-wrap {
@@ -1387,13 +1404,6 @@ body::after {
   text-overflow: ellipsis;
 }
 
-.month-calendar-actions {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .calendar-select {
   background: transparent;
   border: 1px solid var(--border2);
@@ -1404,13 +1414,6 @@ body::after {
   height: 24px;
   min-height: 24px;
   padding: 0 8px;
-}
-
-.month-calendar-actions .btn {
-  height: 24px;
-  min-height: 24px;
-  padding-top: 0;
-  padding-bottom: 0;
 }
 
 .month-calendar-grid {
@@ -1468,6 +1471,9 @@ body::after {
 }
 
 .month-item-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid var(--border2);
   background: rgba(30,29,27,.92);
   color: var(--text2);
@@ -1476,9 +1482,11 @@ body::after {
   line-height: 1.3;
   padding: 3px 6px;
   cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+}
+
+.month-item-pill svg {
+  flex-shrink: 0;
 }
 
 .month-item-pill:hover {
@@ -1516,7 +1524,9 @@ body::after {
 
 .month-item-pill.imp-feriado,
 .month-legend-item.imp-feriado,
-.commitment-badge.imp-feriado {
+.commitment-badge.imp-feriado,
+.schedule-important-banner.imp-feriado,
+.calendar-bars-important.imp-feriado {
   border-color: rgba(196,154,58,.5);
   color: var(--gold);
   background: rgba(196,154,58,.12);
@@ -1524,7 +1534,9 @@ body::after {
 
 .month-item-pill.imp-aniversario,
 .month-legend-item.imp-aniversario,
-.commitment-badge.imp-aniversario {
+.commitment-badge.imp-aniversario,
+.schedule-important-banner.imp-aniversario,
+.calendar-bars-important.imp-aniversario {
   border-color: rgba(196,96,122,.5);
   color: var(--pink);
   background: rgba(196,96,122,.12);
@@ -1532,7 +1544,9 @@ body::after {
 
 .month-item-pill.imp-ferias,
 .month-legend-item.imp-ferias,
-.commitment-badge.imp-ferias {
+.commitment-badge.imp-ferias,
+.schedule-important-banner.imp-ferias,
+.calendar-bars-important.imp-ferias {
   border-color: rgba(91,166,137,.5);
   color: var(--sage);
   background: rgba(91,166,137,.12);
@@ -1540,7 +1554,9 @@ body::after {
 
 .month-item-pill.imp-importante,
 .month-legend-item.imp-importante,
-.commitment-badge.imp-importante {
+.commitment-badge.imp-importante,
+.schedule-important-banner.imp-importante,
+.calendar-bars-important.imp-importante {
   border-color: rgba(75,143,212,.48);
   color: var(--blue);
   background: rgba(75,143,212,.12);
@@ -1548,7 +1564,9 @@ body::after {
 
 .month-item-pill.imp-outros,
 .month-legend-item.imp-outros,
-.commitment-badge.imp-outros {
+.commitment-badge.imp-outros,
+.schedule-important-banner.imp-outros,
+.calendar-bars-important.imp-outros {
   border-color: rgba(122,117,112,.5);
   color: var(--muted);
   background: rgba(122,117,112,.12);
@@ -2682,28 +2700,16 @@ body::after {
     width: 100%;
   }
 
-  .schedule-header-tools {
-    min-width: 0;
-    width: 100%;
-    align-items: stretch;
-    margin-top: 2px;
-  }
-
-  .schedule-plan-toolbar {
-    justify-content: flex-start;
-    width: 100%;
-  }
-
   .schedule-plan-nav {
     width: 100%;
-    display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) 32px;
-    justify-content: stretch;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
   }
 
   .schedule-plan-nav .plan-nav-btn {
+    flex: 0 0 32px;
     width: 32px;
     min-width: 32px;
     justify-content: center;
@@ -2712,25 +2718,21 @@ body::after {
   }
 
   .schedule-plan-label {
-    width: 100%;
+    flex: 1 1 auto;
     min-width: 0;
     justify-content: center;
-    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .schedule-plan-nav .plan-nav-today {
-    grid-column: 1 / 2;
-    width: 100%;
+    flex: 1 1 auto;
     justify-content: center;
   }
 
-  .schedule-plan-nav .plan-nav-clone {
-    grid-column: 2 / 4;
-    width: 100%;
-    justify-content: center;
+  .schedule-plan-nav .plan-more-menu {
+    flex: 0 0 auto;
   }
 
   .schedule-view-actions {
@@ -2765,17 +2767,6 @@ body::after {
     min-width: 0;
     width: 100%;
     flex-basis: 100%;
-  }
-
-  .month-calendar-actions {
-    width: 100%;
-  }
-
-  .month-calendar-actions .calendar-select,
-  .month-calendar-actions .btn {
-    flex: 1;
-    min-width: 0;
-    justify-content: center;
   }
 
   .month-cell {
@@ -3376,11 +3367,12 @@ details > summary::marker {
   align-items: center;
   gap: 6px;
   width: 100%;
+  min-width: 0;
   text-align: left;
-  background: rgba(196,154,58,.08);
+  background: var(--s1);
   border: none;
-  border-left: 3px solid var(--gold);
-  color: var(--gold);
+  border-left: 3px solid var(--border2);
+  color: var(--text2);
   font-size: 12px;
   font-family: var(--ff-b);
   padding: 6px 10px;
@@ -3393,19 +3385,70 @@ details > summary::marker {
   align-items: center;
   gap: 4px;
   width: 100%;
+  min-width: 0;
   text-align: left;
-  background: rgba(196,154,58,.1);
+  background: var(--s1);
   border: none;
-  border-left: 2px solid var(--gold);
-  color: var(--gold);
+  border-left: 2px solid var(--border2);
+  color: var(--text2);
   font-size: 10px;
   font-family: var(--ff-b);
   padding: 3px 6px;
   margin-bottom: 3px;
   cursor: pointer;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+}
+
+.calendar-bars-important svg {
+  flex-shrink: 0;
+}
+
+/* ── UNTIMED SCHEDULE ITEMS (Lista/Semanal) ── */
+.schedule-untimed-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  background: var(--s1);
+  border: none;
+  border-left: 3px solid var(--border2);
+  color: var(--text2);
+  font-size: 13px;
+  font-family: var(--ff-b);
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: color .15s, background .15s;
+}
+
+.schedule-untimed-row:hover {
+  color: var(--text);
+  background: var(--s2);
+}
+
+.calendar-bars-untimed {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  background: var(--s1);
+  border: none;
+  border-left: 2px solid var(--border2);
+  color: var(--text2);
+  font-size: 10px;
+  font-family: var(--ff-b);
+  padding: 3px 6px;
+  margin-bottom: 3px;
+  cursor: pointer;
+  transition: color .15s, background .15s;
+}
+
+.calendar-bars-untimed:hover {
+  color: var(--text);
+  background: var(--s2);
 }
 
 /* ── WEEK TABLE (Revisão) ── */
