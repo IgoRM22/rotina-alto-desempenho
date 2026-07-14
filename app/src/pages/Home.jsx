@@ -67,10 +67,9 @@ export default function Home() {
   return (
     <div className="page">
       <div className="page-header">
-        <span className="page-kicker">{WEEKDAY_LABELS[now.getDay()]}</span>
+        <span className="page-kicker">{view === 'hoje' ? WEEKDAY_LABELS[now.getDay()] : 'Esta semana'}</span>
         <h1 className="page-title">
-          Hoje<br />
-          <em style={{ fontStyle: 'italic', color: 'var(--text2)' }}>{now.getDate()} de {MONTH_LABELS[now.getMonth()]}</em>
+          {view === 'hoje' ? `${now.getDate()} de ${MONTH_LABELS[now.getMonth()]}` : 'Revisão semanal'}
         </h1>
         <div style={{ marginTop: 20 }}>
           <Tabs

@@ -1546,6 +1546,14 @@ body::after {
   background: rgba(75,143,212,.12);
 }
 
+.month-item-pill.imp-outros,
+.month-legend-item.imp-outros,
+.commitment-badge.imp-outros {
+  border-color: rgba(122,117,112,.5);
+  color: var(--muted);
+  background: rgba(122,117,112,.12);
+}
+
 @media (max-width: 1180px) {
   .calendar-week-bars {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3149,6 +3157,8 @@ details > summary::marker {
   font-size: 11px;
   color: var(--gold);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 24px;
 }
 
 .habit-streak.is-zero { color: var(--text3); }
@@ -3160,6 +3170,8 @@ details > summary::marker {
   font-size: 11px;
   color: var(--text3);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 24px;
 }
 
 .habit-row-actions {
@@ -3325,6 +3337,8 @@ details > summary::marker {
 
 .commitment-badge {
   flex-shrink: 0;
+  min-width: 92px;
+  text-align: center;
   font-size: 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;

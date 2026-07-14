@@ -5,6 +5,7 @@ export const IMPORTANT_TYPES = [
   { value: 'aniversario', label: 'Aniversario' },
   { value: 'ferias', label: 'Ferias' },
   { value: 'importante', label: 'Data importante' },
+  { value: 'outros', label: 'Outros' },
 ]
 
 export const RECURRENCE_OPTIONS = [
