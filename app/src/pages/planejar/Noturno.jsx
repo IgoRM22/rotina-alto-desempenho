@@ -13,6 +13,7 @@ import DailyLogCard from '../../components/DailyLogCard'
 import CommitmentList from '../../components/CommitmentList'
 import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
+import TaskDetailModal from '../../components/TaskDetailModal'
 
 const TAGS = [
   { value: 'funcionou', label: '✅ Funcionou' },
@@ -27,6 +28,7 @@ export default function Noturno() {
   const [newTomorrowTask, setNewTomorrowTask] = useState('')
   const [annotationText, setAnnotationText] = useState('')
   const [showParkingModal, setShowParkingModal] = useState(false)
+  const [viewingTodo, setViewingTodo] = useState(null)
   const [toast, setToast] = useState(null)
 
   const now = new Date()
@@ -139,7 +141,7 @@ export default function Noturno() {
             {todayTasks.map(todo => (
               <div key={todo.id} className="todo-item">
                 <input type="checkbox" className="todo-check" checked={todo.done} onChange={() => toggleDone(todo)} />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="todo-content-clickable" onClick={() => setViewingTodo(todo)}>
                   <div className={`todo-text ${todo.done ? 'done' : ''}`}>{todo.title}</div>
                 </div>
                 <div className="todo-actions" style={{ opacity: 1 }}>
@@ -166,7 +168,7 @@ export default function Noturno() {
 
         {tomorrowTasks.map(todo => (
           <div key={todo.id} className="todo-item todo-item--no-check">
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="todo-content-clickable" onClick={() => setViewingTodo(todo)}>
               <div className="todo-text">{todo.title}</div>
             </div>
             <div className="todo-actions" style={{ opacity: 1 }}>
@@ -182,7 +184,7 @@ export default function Noturno() {
             <span className="subpage-controls-note" style={{ marginRight: 0 }}>sugestões (vencidas ou vencendo amanhã)</span>
             {tomorrowSuggestions.map(todo => (
               <div key={todo.id} className="todo-item todo-item--no-check">
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="todo-content-clickable" onClick={() => setViewingTodo(todo)}>
                   <div className="todo-text">{todo.title}</div>
                 </div>
                 <div className="todo-actions" style={{ opacity: 1 }}>
@@ -280,7 +282,7 @@ export default function Noturno() {
             <div>
               {parkingLotTasks.map(todo => (
                 <div key={todo.id} className="todo-item todo-item--no-check">
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="todo-content-clickable" onClick={() => setViewingTodo(todo)}>
                     <div className="todo-text">{todo.title}</div>
                     {todo.category && (
                       <div className="todo-meta">
@@ -299,6 +301,8 @@ export default function Noturno() {
           )}
         </Modal>
       )}
+
+      <TaskDetailModal todo={viewingTodo} onClose={() => setViewingTodo(null)} />
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </>

@@ -524,9 +524,19 @@ body::after {
   transform: translate(-50%, -50%);
 }
 
+.todo-content-clickable {
+  min-width: 0;
+  cursor: pointer;
+}
+
+.todo-content-clickable:hover .todo-text {
+  color: var(--coral);
+}
+
 .todo-text {
   font-size: 14px;
   line-height: 1.5;
+  transition: color .15s;
 }
 
 .todo-text.done {
@@ -553,6 +563,34 @@ body::after {
 }
 
 .todo-item:hover .todo-actions { opacity: 1; }
+
+/* ── TASK DETAIL MODAL ── */
+.task-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.task-detail-priority,
+.task-detail-due {
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: capitalize;
+}
+
+.task-detail-note {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text2);
+  white-space: pre-wrap;
+}
+
+.task-detail-empty {
+  color: var(--text3);
+  font-style: italic;
+}
 
 /* ── DEADLINE BADGE ── */
 .deadline-badge {

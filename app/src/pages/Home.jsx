@@ -7,6 +7,7 @@ import DailyLogCard from '../components/DailyLogCard'
 import RevisaoSemanal from '../components/RevisaoSemanal'
 import CommitmentList from '../components/CommitmentList'
 import Tabs from '../components/Tabs'
+import TaskDetailModal from '../components/TaskDetailModal'
 import { todayKey, getWeekKey } from '../utils/date'
 import { expandImportantDatesForRange } from '../utils/importantDates'
 
@@ -20,6 +21,7 @@ export default function Home() {
   const [habits, setHabits] = useState([])
   const [habitLogs, setHabitLogs] = useState([])
   const [importantDates, setImportantDates] = useState([])
+  const [viewingTodo, setViewingTodo] = useState(null)
 
   useEffect(() => {
     const unsub = listenTodos(setTodos)
@@ -133,7 +135,7 @@ export default function Home() {
                           checked={todo.done}
                           onChange={() => toggle(todo)}
                         />
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="todo-content-clickable" onClick={() => setViewingTodo(todo)}>
                           <div className={`todo-text ${todo.done ? 'done' : ''}`}>{todo.title}</div>
                           {todo.category && (
                             <div className="todo-meta">
@@ -152,7 +154,7 @@ export default function Home() {
                     <div>
                       {suggestions.map(todo => (
                         <div key={todo.id} className="todo-item todo-item--no-check">
-                          <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="todo-content-clickable" onClick={() => setViewingTodo(todo)}>
                             <div className="todo-text">{todo.title}</div>
                             <div className="todo-meta">
                               {todo.category && <span className={`pill pill-${todo.category}`}>{todo.category}</span>}
@@ -204,6 +206,8 @@ export default function Home() {
           )}
         </>
       )}
+
+      <TaskDetailModal todo={viewingTodo} onClose={() => setViewingTodo(null)} />
     </div>
   )
 }
