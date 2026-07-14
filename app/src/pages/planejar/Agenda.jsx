@@ -1139,7 +1139,6 @@ export default function Cronograma() {
                                 left: `calc(${left}% + 2px)`,
                                 width: `calc(${laneWidth}% - 4px)`,
                                 borderLeftColor: eventColor,
-                                borderColor: colorWithAlpha(eventColor, 0.34),
                                 background: colorWithAlpha(eventColor, 0.18),
                               }}
                               title={`${fmtTime(event.item)} - ${event.item.name}`}

@@ -1214,7 +1214,7 @@ body::after {
 .calendar-bar-item {
   position: absolute;
   z-index: 2;
-  border: 1px solid var(--border2);
+  border: none;
   border-left: 3px solid var(--border2);
   background: rgba(30,29,27,.94);
   color: var(--text);
@@ -1222,7 +1222,6 @@ body::after {
   padding: 6px 7px;
   cursor: pointer;
   overflow: hidden;
-  border-radius: 2px;
   transition: transform .12s ease, background .2s ease, border-color .2s ease;
 }
 
