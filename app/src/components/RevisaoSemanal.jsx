@@ -47,8 +47,12 @@ export default function RevisaoSemanal() {
   }, [])
 
   const commitments = useMemo(
-    () => expandImportantDatesForRange(importantDates, weekDates[0], weekDates[6]),
-    [importantDates, weekDates],
+    () => expandImportantDatesForRange(importantDates, weekDates[0], weekDates[6]).map(occ => {
+      const idx = dateKeys.indexOf(dateKeyFromDate(occ.occurrenceStart))
+      const dateLabel = occ.occurrenceStart.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      return { ...occ, tag: idx >= 0 ? `${weekDayShortLabel(idx)} ${dateLabel}` : dateLabel }
+    }),
+    [importantDates, weekDates, dateKeys],
   )
 
   const table = useMemo(() => buildHabitWeekTable(habits, habitLogs, weekDates), [habits, habitLogs, weekDates])
