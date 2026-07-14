@@ -856,29 +856,31 @@ export default function Cronograma() {
   return (
     <>
       <div className="subpage-controls schedule-page-header">
-        <div className="schedule-plan-nav">
-          <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(-1)} aria-label="Semana anterior">
-            <RiArrowLeftSLine size={16} aria-hidden="true" />
-          </button>
-          <div className="schedule-plan-label">
-            <RiCalendar2Line size={13} aria-hidden="true" />
-            {planMeta.label}
-          </div>
-          <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(1)} aria-label="Proxima semana">
-            <RiArrowRightSLine size={16} aria-hidden="true" />
-          </button>
-          <button className="btn btn-ghost btn-sm plan-nav-today" onClick={resetPlanToCurrent}>Hoje</button>
-          <details className="plan-more-menu">
-            <summary className="btn btn-ghost btn-sm btn-icon" aria-label="Mais ações">
-              <RiMoreLine size={16} aria-hidden="true" />
-            </summary>
-            <div className="plan-more-menu-panel">
-              <button type="button" className="plan-more-menu-item" onClick={handleCloneWeek}>
-                <RiFileCopyLine size={14} aria-hidden="true" /> Clonar semana
-              </button>
+        {view !== 'calendario' && (
+          <div className="schedule-plan-nav">
+            <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(-1)} aria-label="Semana anterior">
+              <RiArrowLeftSLine size={16} aria-hidden="true" />
+            </button>
+            <div className="schedule-plan-label">
+              <RiCalendar2Line size={13} aria-hidden="true" />
+              {planMeta.label}
             </div>
-          </details>
-        </div>
+            <button className="btn btn-ghost btn-sm btn-icon plan-nav-btn" onClick={() => movePlan(1)} aria-label="Proxima semana">
+              <RiArrowRightSLine size={16} aria-hidden="true" />
+            </button>
+            <button className="btn btn-ghost btn-sm plan-nav-today" onClick={resetPlanToCurrent}>Hoje</button>
+            <details className="plan-more-menu">
+              <summary className="btn btn-ghost btn-sm btn-icon" aria-label="Mais ações">
+                <RiMoreLine size={16} aria-hidden="true" />
+              </summary>
+              <div className="plan-more-menu-panel">
+                <button type="button" className="plan-more-menu-item" onClick={handleCloneWeek}>
+                  <RiFileCopyLine size={14} aria-hidden="true" /> Clonar semana
+                </button>
+              </div>
+            </details>
+          </div>
+        )}
 
         <div className="schedule-view-actions">
           <Tabs
