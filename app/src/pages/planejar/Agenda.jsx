@@ -995,10 +995,16 @@ export default function Cronograma() {
                   )}
 
                   {segments.map((segment, idx) => {
-                    const next = segments[idx + 1]
+                    // The "now" marker is just an overlay, not a real schedule gap, so
+                    // adjacency is checked against the next/previous non-"now" segment.
+                    const nextReal = segments.slice(idx + 1).find((entry) => entry.type !== 'now') || null
+                    const prevReal = [...segments.slice(0, idx)].reverse().find((entry) => entry.type !== 'now') || null
+
                     // Back-to-back clusters (one ends exactly when the next starts) stay
                     // glued with no gap; everything else keeps the normal breathing room.
-                    const glued = segment.type === 'cluster' && next?.type === 'cluster' && segment.endMin === next.startMin
+                    const glued = segment.type === 'now'
+                      ? prevReal?.type === 'cluster' && nextReal?.type === 'cluster' && prevReal.endMin === nextReal.startMin
+                      : segment.type === 'cluster' && nextReal?.type === 'cluster' && segment.endMin === nextReal.startMin
                     const spacing = idx < segments.length - 1 ? (glued ? 0 : 10) : 0
 
                     if (segment.type === 'now') {
