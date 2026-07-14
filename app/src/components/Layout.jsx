@@ -1,5 +1,5 @@
 import React from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
   RiCalendarScheduleLine,
   RiFlashlightFill,
@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
+  const location = useLocation()
 
   return (
     <div className="app-layout">
@@ -37,7 +38,7 @@ export default function Layout({ children }) {
         </div>
       </nav>
 
-      <main>
+      <main key={location.pathname} className="page-fade">
         {children}
       </main>
 
