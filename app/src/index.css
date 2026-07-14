@@ -1195,7 +1195,6 @@ body::after {
 .calendar-bars-track {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   padding: 10px;
   background: linear-gradient(180deg, rgba(13,12,11,0.9), rgba(13,12,11,0.72));
   min-height: 120px;
@@ -1319,7 +1318,7 @@ body::after {
   width: max-content;
 }
 
-.marquee-text-item {
+.marquee-text.is-overflowing .marquee-text-item {
   padding-right: 32px;
 }
 

@@ -147,7 +147,9 @@ const fmtTime = (item) => {
   return item.time || ''
 }
 
-const hasTime = (item) => Boolean(item.timeStart || item.time)
+// Only a start with no end has nothing to size a proportional block by, so it
+// renders as a flat line alongside items with no time at all.
+const hasTimeRange = (item) => Boolean((item.timeStart || item.time) && item.timeEnd)
 
 const sortKey = (item) => toMin(item.timeStart || item.time)
 
@@ -429,7 +431,7 @@ export default function Cronograma() {
   const grouped = useMemo(() => {
     return DAYS.reduce((acc, day) => {
       acc[day] = scopedItems
-        .filter((item) => getItemDays(item).includes(day) && hasTime(item))
+        .filter((item) => getItemDays(item).includes(day) && hasTimeRange(item))
         .sort((a, b) => sortKey(a) - sortKey(b))
       return acc
     }, {})
@@ -437,7 +439,7 @@ export default function Cronograma() {
 
   const untimedGrouped = useMemo(() => {
     return DAYS.reduce((acc, day) => {
-      acc[day] = scopedItems.filter((item) => getItemDays(item).includes(day) && !hasTime(item))
+      acc[day] = scopedItems.filter((item) => getItemDays(item).includes(day) && !hasTimeRange(item))
       return acc
     }, {})
   }, [scopedItems])
@@ -993,9 +995,15 @@ export default function Cronograma() {
                   )}
 
                   {segments.map((segment, idx) => {
+                    const next = segments[idx + 1]
+                    // Back-to-back clusters (one ends exactly when the next starts) stay
+                    // glued with no gap; everything else keeps the normal breathing room.
+                    const glued = segment.type === 'cluster' && next?.type === 'cluster' && segment.endMin === next.startMin
+                    const spacing = idx < segments.length - 1 ? (glued ? 0 : 10) : 0
+
                     if (segment.type === 'now') {
                       return (
-                        <div key={`bar-now-${day}-${idx}`} className="calendar-bars-now" aria-label={`Agora ${segment.label}`}>
+                        <div key={`bar-now-${day}-${idx}`} className="calendar-bars-now" style={{ marginBottom: spacing }} aria-label={`Agora ${segment.label}`}>
                           <span className="calendar-bars-now-pill">Agora {segment.label}</span>
                           <span className="calendar-bars-now-line" />
                         </div>
@@ -1005,7 +1013,7 @@ export default function Cronograma() {
                     if (segment.type === 'gap') {
                       const gapHeight = Math.max(10, segment.duration * BAR_GAP_PX_PER_MINUTE)
                       return (
-                        <div key={`bar-gap-${day}-${idx}`} className="calendar-bars-gap" style={{ height: `${gapHeight}px` }}>
+                        <div key={`bar-gap-${day}-${idx}`} className="calendar-bars-gap" style={{ height: `${gapHeight}px`, marginBottom: spacing }}>
                           {segment.duration >= 45 && <span>{fmtDuration(segment.duration)}</span>}
                         </div>
                       )
@@ -1038,7 +1046,7 @@ export default function Cronograma() {
                       <div
                         key={`bar-cluster-${day}-${idx}`}
                         className={`calendar-bars-cluster ${segment.laneCount > 1 ? 'is-overlap' : ''}`}
-                        style={{ height: `${clusterHeight}px` }}
+                        style={{ height: `${clusterHeight}px`, marginBottom: spacing }}
                       >
                         {visibleEvents.map((event) => {
                           const left = event.lane * laneWidth
