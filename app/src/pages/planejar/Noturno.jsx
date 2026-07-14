@@ -3,6 +3,7 @@ import {
   RiAddLine,
   RiArrowRightLine,
   RiDeleteBinLine,
+  RiInboxLine,
 } from '@remixicon/react'
 import { listenTodos, addTodo, updateTodo, deleteTodo, listenDailyLog, saveDailyAnnotations, listenImportantDates } from '../../services/firestore'
 import { todayKey, addDays, dateKeyFromDate, MAX_TODAY_TASKS } from '../../utils/date'
@@ -10,6 +11,7 @@ import { expandImportantDatesForRange } from '../../utils/importantDates'
 import HabitChecklist from '../../components/HabitChecklist'
 import DailyLogCard from '../../components/DailyLogCard'
 import CommitmentList from '../../components/CommitmentList'
+import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 
 const TAGS = [
@@ -24,6 +26,7 @@ export default function Noturno() {
   const [importantDates, setImportantDates] = useState([])
   const [newTomorrowTask, setNewTomorrowTask] = useState('')
   const [annotationText, setAnnotationText] = useState('')
+  const [showParkingModal, setShowParkingModal] = useState(false)
   const [toast, setToast] = useState(null)
 
   const now = new Date()
@@ -55,6 +58,7 @@ export default function Noturno() {
   const todayPending = todayTasks.filter(t => !t.done)
   const tomorrowTasks = todos.filter(t => t.todayDate === tomorrow)
   const tomorrowSuggestions = todos.filter(t => !t.done && t.todayDate !== tomorrow && t.dueDate && t.dueDate <= tomorrow)
+  const parkingLotTasks = todos.filter(t => !t.done && !t.folderId && t.todayDate !== today && t.todayDate !== tomorrow)
   const annotations = dailyLog?.annotations || []
 
   const commitments = expandImportantDatesForRange(importantDates, now, tomorrowDate)
@@ -161,7 +165,7 @@ export default function Noturno() {
         </div>
 
         {tomorrowTasks.map(todo => (
-          <div key={todo.id} className="todo-item">
+          <div key={todo.id} className="todo-item todo-item--no-check">
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="todo-text">{todo.title}</div>
             </div>
@@ -177,7 +181,7 @@ export default function Noturno() {
           <div style={{ marginTop: 4, marginBottom: 4 }}>
             <span className="subpage-controls-note" style={{ marginRight: 0 }}>sugestões (vencidas ou vencendo amanhã)</span>
             {tomorrowSuggestions.map(todo => (
-              <div key={todo.id} className="todo-item">
+              <div key={todo.id} className="todo-item todo-item--no-check">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="todo-text">{todo.title}</div>
                 </div>
@@ -190,6 +194,10 @@ export default function Noturno() {
             ))}
           </div>
         )}
+
+        <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 4, marginBottom: 4 }} onClick={() => setShowParkingModal(true)}>
+          <RiInboxLine size={13} /> Puxar do Parking Lot{parkingLotTasks.length > 0 ? ` (${parkingLotTasks.length})` : ''}
+        </button>
 
         {tomorrowTasks.length < MAX_TODAY_TASKS && (
           <div className="habit-add-row">
@@ -255,6 +263,42 @@ export default function Noturno() {
           )}
         </div>
       </section>
+
+      {showParkingModal && (
+        <Modal
+          title="Puxar do Parking Lot"
+          onClose={() => setShowParkingModal(false)}
+          onSave={() => setShowParkingModal(false)}
+          saveLabel="Concluído"
+          hideCancel
+        >
+          {parkingLotTasks.length === 0 ? (
+            <div className="empty-state" style={{ padding: '20px 0' }}>
+              Parking Lot vazio — nada pra priorizar por aqui.
+            </div>
+          ) : (
+            <div>
+              {parkingLotTasks.map(todo => (
+                <div key={todo.id} className="todo-item todo-item--no-check">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="todo-text">{todo.title}</div>
+                    {todo.category && (
+                      <div className="todo-meta">
+                        <span className={`pill pill-${todo.category}`}>{todo.category}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="todo-actions" style={{ opacity: 1 }}>
+                    <button className="btn btn-primary btn-sm btn-icon" onClick={() => moveToTomorrow(todo)} aria-label="Priorizar para amanhã" title="Priorizar para amanhã">
+                      <RiAddLine size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </>

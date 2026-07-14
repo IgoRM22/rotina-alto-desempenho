@@ -152,7 +152,7 @@ export default function Home() {
                     <div className="hoje-suggest-divider">Sugestões · vencidas ou vencendo hoje</div>
                     <div>
                       {suggestions.map(todo => (
-                        <div key={todo.id} className="todo-item">
+                        <div key={todo.id} className="todo-item todo-item--no-check">
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div className="todo-text">{todo.title}</div>
                             <div className="todo-meta">

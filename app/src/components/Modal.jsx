@@ -3,7 +3,7 @@ import { RiCloseLine } from '@remixicon/react'
 
 let openModalCount = 0
 
-export default function Modal({ title, onClose, onSave, children, wide }) {
+export default function Modal({ title, onClose, onSave, children, wide, saveLabel = 'Salvar', hideCancel }) {
   useEffect(() => {
     if (typeof document === 'undefined') return undefined
 
@@ -29,8 +29,8 @@ export default function Modal({ title, onClose, onSave, children, wide }) {
         </div>
         {children}
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" onClick={onSave}>Salvar</button>
+          {!hideCancel && <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>}
+          <button className="btn btn-primary" onClick={onSave}>{saveLabel}</button>
         </div>
       </div>
     </div>
