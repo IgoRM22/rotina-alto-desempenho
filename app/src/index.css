@@ -3786,6 +3786,18 @@ details > summary::marker {
 
 .meal-add-item-row input:focus { border-color: var(--coral); }
 
+.meal-add-item-row select {
+  background: #11100f;
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--ff-b);
+  outline: none;
+}
+
+.meal-add-item-row select:focus { border-color: var(--coral); }
+
 /* ── DAILY LOG CARD ── */
 .daily-log-card {
   background: var(--s1);

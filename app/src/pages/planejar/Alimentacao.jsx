@@ -4,81 +4,94 @@ import { listenMealTables, addMealTable, updateMealTable, deleteMealTable } from
 import Toast from '../../components/Toast'
 
 const EMPTY_TABLE_FORM = { time: '', title: '' }
-const EMPTY_ITEM_FORM = { quantity: '', name: '', grams: '' }
+const EMPTY_ITEM_FORM = { quantity: '', name: '', grams: '', type: '' }
+
+const TYPE_OPTIONS = [
+  { value: 'proteina', label: 'Proteína', color: '#E06445' },
+  { value: 'carboidrato', label: 'Carboidrato', color: '#C49A3A' },
+  { value: 'gordura', label: 'Gordura', color: '#8B7EC4' },
+  { value: 'fruta', label: 'Fruta', color: '#C4607A' },
+  { value: 'vegetal', label: 'Vegetal', color: '#5BA689' },
+  { value: 'laticinio', label: 'Laticínio', color: '#4B8FD4' },
+  { value: 'bebida', label: 'Bebida', color: '#7A7570' },
+  { value: 'outros', label: 'Outros', color: '#7A7570' },
+]
+
+const getTypeInfo = (value) => TYPE_OPTIONS.find((entry) => entry.value === value)
 
 const SEED_TABLES = [
   {
     time: '00:00',
     title: 'DISTRIBUIR DURANTE O DIA',
     items: [
-      { quantity: '11 Xícaras de chá de 200,00', name: 'ÁGUA', grams: '2.200,00ml' },
+      { quantity: '11 Xícaras de chá de 200,00', name: 'ÁGUA', grams: '2.200,00ml', type: 'bebida' },
     ],
   },
   {
     time: '06:00',
     title: 'PRÉ TREINO',
     items: [
-      { quantity: '1 Unidade média de 70,00', name: 'BANANA (OU OUTRA FRUTA DA SUA PREFERÊNCIA)', grams: '70,00g' },
-      { quantity: '1 Xícara de cafézinho de 75,00', name: 'CAFÉ COADO/SOLÚVEL (SEM AÇÚCAR)', grams: '75,00ml' },
+      { quantity: '1 Unidade média de 70,00', name: 'BANANA (OU OUTRA FRUTA DA SUA PREFERÊNCIA)', grams: '70,00g', type: 'fruta' },
+      { quantity: '1 Xícara de cafézinho de 75,00', name: 'CAFÉ COADO/SOLÚVEL (SEM AÇÚCAR)', grams: '75,00ml', type: 'bebida' },
     ],
   },
   {
     time: '07:00',
     title: 'CAFÉ DA MANHÃ',
     items: [
-      { quantity: '1 Unidade de 50,00', name: 'PÃO FRANCÊS | 2FT PÃO DE FORMA INTEGRAL | 1 CS (30G) TAPIOCA | 5CS (100G) CUSCUZ', grams: '50,00g' },
-      { quantity: '1 Unidade média de 50,00', name: 'OVO MEXIDO | 1FT (30G) QUEIJO | 1 CS (30G) CREME DE RICOTA LIGHT', grams: '50,00g' },
-      { quantity: '1 Caneca de 100,00', name: 'LEITE DESN/SEMI', grams: '100,00ml' },
-      { quantity: '1 Xícara de cafézinho de 75,00', name: 'CAFÉ COADO/SOLÚVEL (SEM AÇÚCAR)', grams: '75,00ml' },
+      { quantity: '1 Unidade de 50,00', name: 'PÃO FRANCÊS | 2FT PÃO DE FORMA INTEGRAL | 1 CS (30G) TAPIOCA | 5CS (100G) CUSCUZ', grams: '50,00g', type: 'carboidrato' },
+      { quantity: '1 Unidade média de 50,00', name: 'OVO MEXIDO | 1FT (30G) QUEIJO | 1 CS (30G) CREME DE RICOTA LIGHT', grams: '50,00g', type: 'proteina' },
+      { quantity: '1 Caneca de 100,00', name: 'LEITE DESN/SEMI', grams: '100,00ml', type: 'laticinio' },
+      { quantity: '1 Xícara de cafézinho de 75,00', name: 'CAFÉ COADO/SOLÚVEL (SEM AÇÚCAR)', grams: '75,00ml', type: 'bebida' },
     ],
   },
   {
     time: '10:00',
     title: 'LANCHE DA MANHÃ',
     items: [
-      { quantity: '1 Unidade de 120,00', name: 'MAÇÃ (OU OUTRA FRUTA DA SUA PREFERÊNCIA)', grams: '120,00g' },
+      { quantity: '1 Unidade de 120,00', name: 'MAÇÃ (OU OUTRA FRUTA DA SUA PREFERÊNCIA)', grams: '120,00g', type: 'fruta' },
     ],
   },
   {
     time: '12:00',
     title: 'ALMOÇO',
     items: [
-      { quantity: '1 Colher de chá de 5,00', name: 'PARA SALADA: AZEITE + TEMPEROS A GOSTO + POUCO SAL', grams: '5,00ml' },
-      { quantity: '3 Folhas de 15,00', name: 'SALADA: ALFACE; RÚCULA; AGRIÃO; COUVE; ESPINAFRE (PREFIRA VERDES ESCUROS)', grams: '45,00g' },
-      { quantity: '½ Unidade pequena de 70,00', name: 'TOMATE OU PEPINO OU CENOURA', grams: '35,00g' },
-      { quantity: '1 Colher de mesa de 50,00', name: 'ABORBINHA; BETERRABA; CHUCHU; BRÓCOLIS; COUVE-FLOR', grams: '50,00g' },
-      { quantity: '9 Colheres de sopa de 20,00', name: 'ARROZ | 400G BATATA | 400G MANDIOQUINHA | 100G MACARRÃO', grams: '180,00g' },
-      { quantity: '10 Colheres de sopa de 20,00', name: 'FEIJÃO CARIOCA/PRETO', grams: '200,00g' },
-      { quantity: '1 Porção de 100,00', name: 'FRANGO; CARNE VERM MAGRA (1X/SEM); PEIXE (1X/SEM); OVO (2 UNIDADES)', grams: '100,00g' },
-      { quantity: '1 Unidade de 120,00', name: 'FRUTA CÍTRICA: LARANJA PERA/LIMA; TANGERINA;KIWI', grams: '120,00g' },
+      { quantity: '1 Colher de chá de 5,00', name: 'PARA SALADA: AZEITE + TEMPEROS A GOSTO + POUCO SAL', grams: '5,00ml', type: 'gordura' },
+      { quantity: '3 Folhas de 15,00', name: 'SALADA: ALFACE; RÚCULA; AGRIÃO; COUVE; ESPINAFRE (PREFIRA VERDES ESCUROS)', grams: '45,00g', type: 'vegetal' },
+      { quantity: '½ Unidade pequena de 70,00', name: 'TOMATE OU PEPINO OU CENOURA', grams: '35,00g', type: 'vegetal' },
+      { quantity: '1 Colher de mesa de 50,00', name: 'ABORBINHA; BETERRABA; CHUCHU; BRÓCOLIS; COUVE-FLOR', grams: '50,00g', type: 'vegetal' },
+      { quantity: '9 Colheres de sopa de 20,00', name: 'ARROZ | 400G BATATA | 400G MANDIOQUINHA | 100G MACARRÃO', grams: '180,00g', type: 'carboidrato' },
+      { quantity: '10 Colheres de sopa de 20,00', name: 'FEIJÃO CARIOCA/PRETO', grams: '200,00g', type: 'carboidrato' },
+      { quantity: '1 Porção de 100,00', name: 'FRANGO; CARNE VERM MAGRA (1X/SEM); PEIXE (1X/SEM); OVO (2 UNIDADES)', grams: '100,00g', type: 'proteina' },
+      { quantity: '1 Unidade de 120,00', name: 'FRUTA CÍTRICA: LARANJA PERA/LIMA; TANGERINA;KIWI', grams: '120,00g', type: 'fruta' },
     ],
   },
   {
     time: '16:00',
     title: 'LANCHE DA TARDE 1',
     items: [
-      { quantity: '1 Unidade de 100,00', name: 'IOGURTE NATURAL | LEITE SEMI/DESN', grams: '100,00ml' },
-      { quantity: '1 Unidade média de 70,00', name: 'BANANA (OU OUTRA FRUTA DA SUA PREFERÊNCIA)', grams: '70,00g' },
-      { quantity: '1 Medidor do produto de 30,00', name: 'WHEY PROTEIN + 3G CREATINA', grams: '30,00g' },
+      { quantity: '1 Unidade de 100,00', name: 'IOGURTE NATURAL | LEITE SEMI/DESN', grams: '100,00ml', type: 'laticinio' },
+      { quantity: '1 Unidade média de 70,00', name: 'BANANA (OU OUTRA FRUTA DA SUA PREFERÊNCIA)', grams: '70,00g', type: 'fruta' },
+      { quantity: '1 Medidor do produto de 30,00', name: 'WHEY PROTEIN + 3G CREATINA', grams: '30,00g', type: 'proteina' },
     ],
   },
   {
     time: '19:00',
     title: 'JANTAR',
     items: [
-      { quantity: '1 Colher de chá de 5,00', name: 'PARA SALADA: AZEITE + TEMPEROS A GOSTO + POUCO SAL', grams: '5,00ml' },
-      { quantity: '3 Folhas de 15,00', name: 'SALADA: ALFACE; RÚCULA; AGRIÃO; COUVE; ESPINAFRE (PREFIRA VERDES ESCUROS)', grams: '45,00g' },
-      { quantity: '½ Unidade pequena de 70,00', name: 'CRU: TOMATE OU PEPINO OU CENOURA', grams: '35,00g' },
-      { quantity: '1 Colher de mesa de 50,00', name: 'ABORBINHA; BETERRABA; CHUCHU; BRÓCOLIS; COUVE-FLOR (CRU OU À VAPOR OU REFOGADO)', grams: '50,00g' },
-      { quantity: '10 Colheres de sopa de 20,00', name: 'ARROZ | 400G BATATA | 400G MANDIOQUINHA | 100G MACARRÃO', grams: '200,00g' },
-      { quantity: '1 Porção de 100,00', name: 'FRANGO; CARNE VERM MAGRA (1X/SEM); PEIXE (1X/SEM); OVO (2 UNIDADES)', grams: '100,00g' },
+      { quantity: '1 Colher de chá de 5,00', name: 'PARA SALADA: AZEITE + TEMPEROS A GOSTO + POUCO SAL', grams: '5,00ml', type: 'gordura' },
+      { quantity: '3 Folhas de 15,00', name: 'SALADA: ALFACE; RÚCULA; AGRIÃO; COUVE; ESPINAFRE (PREFIRA VERDES ESCUROS)', grams: '45,00g', type: 'vegetal' },
+      { quantity: '½ Unidade pequena de 70,00', name: 'CRU: TOMATE OU PEPINO OU CENOURA', grams: '35,00g', type: 'vegetal' },
+      { quantity: '1 Colher de mesa de 50,00', name: 'ABORBINHA; BETERRABA; CHUCHU; BRÓCOLIS; COUVE-FLOR (CRU OU À VAPOR OU REFOGADO)', grams: '50,00g', type: 'vegetal' },
+      { quantity: '10 Colheres de sopa de 20,00', name: 'ARROZ | 400G BATATA | 400G MANDIOQUINHA | 100G MACARRÃO', grams: '200,00g', type: 'carboidrato' },
+      { quantity: '1 Porção de 100,00', name: 'FRANGO; CARNE VERM MAGRA (1X/SEM); PEIXE (1X/SEM); OVO (2 UNIDADES)', grams: '100,00g', type: 'proteina' },
     ],
   },
   {
     time: '21:00',
     title: 'CEIA 1',
     items: [
-      { quantity: '1 Xícara de chá de 200,00', name: 'CHÁ CAMOMILA, CAPIM CIDREIRA, HORTELÃ E ERVA DOCE (DR OETKER)', grams: '200,00ml' },
+      { quantity: '1 Xícara de chá de 200,00', name: 'CHÁ CAMOMILA, CAPIM CIDREIRA, HORTELÃ E ERVA DOCE (DR OETKER)', grams: '200,00ml', type: 'bebida' },
     ],
   },
 ]
@@ -182,7 +195,7 @@ export default function Alimentacao() {
   const handleAddItem = async (table) => {
     const name = itemForm.name.trim()
     if (!name) { setAddingItemTableId(null); return }
-    const newItem = { id: makeItemId(), quantity: itemForm.quantity.trim(), name, grams: itemForm.grams.trim() }
+    const newItem = { id: makeItemId(), quantity: itemForm.quantity.trim(), name, grams: itemForm.grams.trim(), type: itemForm.type }
     await updateMealTable(table.id, { items: [...(table.items || []), newItem] })
     setAddingItemTableId(null)
     setItemForm(EMPTY_ITEM_FORM)
@@ -275,27 +288,38 @@ export default function Alimentacao() {
               <tr>
                 <th>Quantidade</th>
                 <th>Nome / Descrição</th>
+                <th>Tipo</th>
                 <th className="meal-col-grams">Gramas</th>
                 <th className="meal-col-actions" />
               </tr>
             </thead>
             <tbody>
-              {(table.items || []).map((item) => (
-                <tr key={item.id} className="meal-item-row">
-                  <td>{item.quantity}</td>
-                  <td className="meal-col-name"><NameCell name={item.name} /></td>
-                  <td className="meal-col-grams">{item.grams}</td>
-                  <td className="meal-col-actions">
-                    <button className="btn btn-danger btn-sm btn-icon meal-item-delete" onClick={() => handleDeleteItem(table, item.id)} aria-label="Excluir item">
-                      <RiDeleteBinLine size={13} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {(table.items || []).map((item) => {
+                const typeInfo = getTypeInfo(item.type)
+                return (
+                  <tr key={item.id} className="meal-item-row">
+                    <td>{item.quantity}</td>
+                    <td className="meal-col-name"><NameCell name={item.name} /></td>
+                    <td>
+                      {typeInfo && (
+                        <span className="pill" style={{ color: typeInfo.color, background: `${typeInfo.color}22`, border: `1px solid ${typeInfo.color}55` }}>
+                          {typeInfo.label}
+                        </span>
+                      )}
+                    </td>
+                    <td className="meal-col-grams">{item.grams}</td>
+                    <td className="meal-col-actions">
+                      <button className="btn btn-danger btn-sm btn-icon meal-item-delete" onClick={() => handleDeleteItem(table, item.id)} aria-label="Excluir item">
+                        <RiDeleteBinLine size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
 
               {(table.items || []).length === 0 && addingItemTableId !== table.id && (
                 <tr>
-                  <td colSpan={4} className="empty-state" style={{ padding: '14px 0' }}>Nenhum item nesta tabela.</td>
+                  <td colSpan={5} className="empty-state" style={{ padding: '14px 0' }}>Nenhum item nesta tabela.</td>
                 </tr>
               )}
             </tbody>
@@ -316,6 +340,16 @@ export default function Alimentacao() {
                   onKeyDown={(e) => e.key === 'Enter' && handleAddItem(table)}
                   placeholder="Nome / descrição"
                 />
+                <select
+                  value={itemForm.type}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, type: e.target.value }))}
+                  style={{ maxWidth: 150 }}
+                >
+                  <option value="">Tipo...</option>
+                  {TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
                 <input
                   value={itemForm.grams}
                   onChange={(e) => setItemForm((prev) => ({ ...prev, grams: e.target.value }))}
