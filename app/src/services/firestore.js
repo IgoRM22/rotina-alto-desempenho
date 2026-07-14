@@ -228,10 +228,21 @@ export const addImportantDate = (data) =>
 export const updateImportantDate = (id, data) => updateDoc(userDoc('importantDates', id), data)
 export const deleteImportantDate = (id) => deleteDoc(userDoc('importantDates', id))
 
+// ── Meal Plan / Alimentação (1 doc per meal-time table, items embedded) ─────
+export const listenMealTables = (cb) =>
+  onSnapshot(query(base('mealTables'), orderBy('order', 'asc')), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+
+export const addMealTable = (data) =>
+  addDoc(base('mealTables'), { time: '', title: '', items: [], ...data, createdAt: serverTimestamp(), order: Date.now() })
+
+export const updateMealTable = (id, data) => updateDoc(userDoc('mealTables', id), data)
+export const deleteMealTable = (id) => deleteDoc(userDoc('mealTables', id))
+
 // ── Full backup / restore ─────────────────────────────────────────────────────
 import { getDocs } from 'firebase/firestore'
 
-const BACKUP_COLLECTIONS = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes', 'habits', 'habitLogs', 'dailyLogs', 'weekFocus', 'folders']
+const BACKUP_COLLECTIONS = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes', 'habits', 'habitLogs', 'dailyLogs', 'weekFocus', 'folders', 'mealTables']
 
 export const exportAll = async () => {
   const result = {}
