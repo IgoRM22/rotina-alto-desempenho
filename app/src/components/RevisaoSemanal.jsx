@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { RiAddLine, RiCheckLine, RiCloseLine } from '@remixicon/react'
 import { listenHabits, listenHabitLogs, listenDailyLogsForDates, listenWeekFocus, saveWeekFocus, listenImportantDates } from '../services/firestore'
 import { getWeekDates, getWeekLabel, getWeekKey, dateKeyFromDate, addDays, todayKey, weekDayShortLabel } from '../utils/date'
-import { buildHabitWeekTable, collectAnnotations, computeWeekCompletionPct } from '../utils/weekSummary'
+import { buildHabitWeekTable, buildDailyLogSeries, collectAnnotations, computeWeekCompletionPct } from '../utils/weekSummary'
 import { expandImportantDatesForRange } from '../utils/importantDates'
 import Tabs from './Tabs'
 import CommitmentList from './CommitmentList'
+import WeekLineChart from './WeekLineChart'
 
 export default function RevisaoSemanal() {
   const [habits, setHabits] = useState([])
@@ -62,6 +63,14 @@ export default function RevisaoSemanal() {
   const todayIdx = dateKeys.indexOf(todayKey())
   const daysElapsed = todayIdx === -1 ? 7 : todayIdx + 1
   const pct = computeWeekCompletionPct(table, daysElapsed)
+
+  const logSeries = useMemo(() => buildDailyLogSeries(dailyLogs, weekDates), [dailyLogs, weekDates])
+  const chartXLabels = useMemo(() => weekDates.map((_, i) => weekDayShortLabel(i)), [weekDates])
+  const chartSeries = useMemo(() => [
+    { key: 'sleepQuality', label: 'Sono', color: 'var(--blue)', values: logSeries.sleepQuality },
+    { key: 'energy', label: 'Energia', color: 'var(--pink)', values: logSeries.energy },
+  ], [logSeries])
+  const hasLogData = chartSeries.some(s => s.values.some(v => v != null))
 
   const focusItems = focus?.items || []
 
@@ -122,6 +131,17 @@ export default function RevisaoSemanal() {
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      <section className="hoje-section">
+        <div className="hoje-section-head">
+          <h2 className="hoje-section-title">Sono &amp; energia</h2>
+        </div>
+        {hasLogData ? (
+          <WeekLineChart series={chartSeries} xLabels={chartXLabels} todayIndex={todayIdx} />
+        ) : (
+          <div className="empty-state">Nenhum registro diário essa semana.</div>
         )}
       </section>
 

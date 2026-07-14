@@ -19,6 +19,16 @@ export function collectAnnotations(dailyLogsOfWeek, tag) {
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
 }
 
+export function buildDailyLogSeries(dailyLogs, weekDates) {
+  const logsByDate = new Map(dailyLogs.map(l => [l.date, l]))
+  const dateKeys = weekDates.map(dateKeyFromDate)
+
+  return {
+    sleepQuality: dateKeys.map(key => logsByDate.get(key)?.sleepQuality ?? null),
+    energy: dateKeys.map(key => logsByDate.get(key)?.energy ?? null),
+  }
+}
+
 export function computeWeekCompletionPct(habitWeekTable, daysElapsed) {
   if (!habitWeekTable.length || !daysElapsed) return 0
   const total = habitWeekTable.length * daysElapsed

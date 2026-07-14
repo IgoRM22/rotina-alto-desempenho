@@ -3452,6 +3452,92 @@ details > summary::marker {
   color: var(--sage);
 }
 
+/* ── WEEK LINE CHART (Revisão) ── */
+.week-chart-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.week-chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.week-chart-legend-swatch {
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  display: inline-block;
+}
+
+.week-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.week-chart-today-band {
+  fill: rgba(224,100,69,.06);
+}
+
+.week-chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.week-chart-axis-label {
+  fill: var(--text3);
+  font-size: 9px;
+  font-family: var(--ff-b);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.week-chart-crosshair {
+  stroke: var(--border2);
+  stroke-width: 1;
+}
+
+.week-chart-dot {
+  stroke: var(--s1);
+  stroke-width: 2;
+}
+
+.week-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text2);
+  width: fit-content;
+}
+
+.week-chart-tooltip-day {
+  color: var(--text3);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.week-chart-tooltip-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.week-chart-tooltip-item strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* ── WEEK FOCUS LIST ── */
 .nb-focus-list {
   list-style: none;
