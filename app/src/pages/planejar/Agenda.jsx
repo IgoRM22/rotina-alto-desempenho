@@ -81,7 +81,6 @@ const DEFAULT_EVENT_MINUTES = 45
 const BAR_EVENT_PX_PER_MINUTE = 0.42
 const BAR_GAP_PX_PER_MINUTE = 0.28
 const BAR_MIN_EVENT_HEIGHT = 36
-const BAR_MIN_CLUSTER_HEIGHT = 42
 const MAX_VISIBLE_LANES = 3
 
 const pad2 = (v) => String(v).padStart(2, '0')
@@ -1100,8 +1099,11 @@ export default function Cronograma() {
                       return { ...event, top, height }
                     })
 
+                    // No BAR_MIN_CLUSTER_HEIGHT floor here: each event already enforces
+                    // BAR_MIN_EVENT_HEIGHT on its own, so the cluster box hugs it exactly -
+                    // otherwise a short event leaves a sliver of empty space below its bar,
+                    // which reads as an unwanted gap before the next glued item.
                     const clusterHeight = Math.max(
-                      BAR_MIN_CLUSTER_HEIGHT,
                       segment.duration * BAR_EVENT_PX_PER_MINUTE,
                       ...eventVisuals.map((event) => event.top + event.height),
                     )
