@@ -78,7 +78,6 @@ const EMPTY_IMPORTANT_FORM = {
 }
 
 const DEFAULT_EVENT_MINUTES = 45
-const MIN_EVENT_MINUTES = 20
 const BAR_EVENT_PX_PER_MINUTE = 0.42
 const BAR_GAP_PX_PER_MINUTE = 0.28
 const BAR_MIN_EVENT_HEIGHT = 36
@@ -161,7 +160,7 @@ const normalizeEventRange = (item) => {
   let endMin = toMin(item.timeEnd)
 
   if (!item.timeEnd || endMin <= startMin) endMin = startMin + DEFAULT_EVENT_MINUTES
-  endMin = Math.min(24 * 60, Math.max(startMin + MIN_EVENT_MINUTES, endMin))
+  endMin = Math.min(24 * 60, endMin)
 
   return { startMin, endMin }
 }
