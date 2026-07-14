@@ -331,16 +331,26 @@ const entryBoundaryEnd = (entry) => {
   return entry.endMin
 }
 
+const entryBoundaryStart = (entry) => {
+  if (entry.type === 'gap') return entry.start
+  if (entry.type === 'point') return entry.startMin
+  if (entry.type === 'now') return entry.minute
+  return entry.startMin
+}
+
 // Items with only a start time (no end) have no duration to size a block by,
 // but they still happened at a specific moment - so they're spliced into the
 // flow as flat point markers instead of being lumped together out of order.
+// Positioned against each entry's own start (not end) so a point that lands
+// on another block's end - e.g. "Dormir" at 22:00 right after an item that
+// runs until 22:00 - lands after it instead of splitting it from what follows.
 const insertPointMarkers = (flow, pointItems) => {
   const sorted = [...pointItems].sort((a, b) => toMin(a.timeStart || a.time) - toMin(b.timeStart || b.time))
 
   return sorted.reduce((acc, item) => {
     const startMin = toMin(item.timeStart || item.time)
     const marker = { type: 'point', item, startMin }
-    const index = acc.findIndex((entry) => startMin <= entryBoundaryEnd(entry))
+    const index = acc.findIndex((entry) => startMin < entryBoundaryStart(entry))
     return index === -1 ? [...acc, marker] : [...acc.slice(0, index), marker, ...acc.slice(index)]
   }, flow)
 }
