@@ -24,6 +24,8 @@ import {
   deleteImportantDate,
   listenScheduleCategories,
 } from '../../services/firestore'
+import { IMPORTANT_TYPES, RECURRENCE_OPTIONS, expandImportantDatesForRange } from '../../utils/importantDates'
+import { addDays } from '../../utils/date'
 import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
@@ -54,13 +56,6 @@ const REPEAT_OPTIONS = [
   { value: 'custom', label: 'Personalizado...' },
 ]
 
-const IMPORTANT_TYPES = [
-  { value: 'feriado', label: 'Feriado' },
-  { value: 'aniversario', label: 'Aniversario' },
-  { value: 'ferias', label: 'Ferias' },
-  { value: 'importante', label: 'Data importante' },
-]
-
 const EMPTY_FORM = {
   timeStart: '',
   timeEnd: '',
@@ -78,6 +73,7 @@ const EMPTY_IMPORTANT_FORM = {
   startDate: '',
   endDate: '',
   description: '',
+  recurrence: '',
 }
 
 const DEFAULT_EVENT_MINUTES = 45
@@ -97,13 +93,6 @@ const fromDateKey = (dateKey) => {
   const [y, m, d] = dateKey.split('-').map(Number)
   if (!y || !m || !d) return null
   return new Date(y, m - 1, d)
-}
-
-const addDaysToDateKey = (dateKey, days) => {
-  const parsed = fromDateKey(dateKey)
-  if (!parsed) return dateKey
-  parsed.setDate(parsed.getDate() + days)
-  return toDateKey(parsed)
 }
 
 const toMin = (t) => {
@@ -505,15 +494,19 @@ export default function Cronograma() {
       byDay[cell.key] = []
     })
 
-    importantDates.forEach((item) => {
-      if (!item.startDate) return
-      const safeEnd = item.endDate && item.endDate >= item.startDate ? item.endDate : item.startDate
-      let current = item.startDate
-      let guard = 0
+    if (monthCells.length === 0) return byDay
 
-      while (current <= safeEnd && guard < 800) {
-        if (byDay[current]) byDay[current].push(item)
-        current = addDaysToDateKey(current, 1)
+    const rangeStart = fromDateKey(monthCells[0].key)
+    const rangeEnd = fromDateKey(monthCells[monthCells.length - 1].key)
+    const occurrences = expandImportantDatesForRange(importantDates, rangeStart, rangeEnd)
+
+    occurrences.forEach((occ) => {
+      let current = occ.occurrenceStart
+      let guard = 0
+      while (current <= occ.occurrenceEnd && guard < 800) {
+        const key = toDateKey(current)
+        if (byDay[key]) byDay[key].push(occ)
+        current = addDays(current, 1)
         guard += 1
       }
     })
@@ -527,6 +520,28 @@ export default function Cronograma() {
 
     return byDay
   }, [importantDates, monthCells])
+
+  const weekImportantByDay = useMemo(() => {
+    const byDay = {}
+    DAYS.forEach((day) => { byDay[day] = [] })
+
+    const rangeStart = planWeekDates[0]
+    const rangeEnd = planWeekDates[6]
+    const occurrences = expandImportantDatesForRange(importantDates, rangeStart, rangeEnd)
+
+    occurrences.forEach((occ) => {
+      let current = occ.occurrenceStart < rangeStart ? rangeStart : occ.occurrenceStart
+      const last = occ.occurrenceEnd > rangeEnd ? rangeEnd : occ.occurrenceEnd
+      let guard = 0
+      while (current <= last && guard < 14) {
+        byDay[DAYS[current.getDay()]].push(occ)
+        current = addDays(current, 1)
+        guard += 1
+      }
+    })
+
+    return byDay
+  }, [importantDates, planWeekDates])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -666,6 +681,7 @@ export default function Cronograma() {
       startDate: item.startDate || '',
       endDate: item.endDate || '',
       description: item.description || '',
+      recurrence: item.recurrence || '',
     })
     setShowImportantModal(true)
   }
@@ -688,6 +704,7 @@ export default function Cronograma() {
       startDate: importantForm.startDate,
       endDate: importantForm.endDate || '',
       description: importantForm.description.trim(),
+      recurrence: importantForm.recurrence || '',
     }
 
     try {
@@ -852,6 +869,17 @@ export default function Cronograma() {
                   {day}
                   {isToday && <span className="schedule-today-badge">Hoje</span>}
                 </div>
+                {(weekImportantByDay[day] || []).map((occ, idx) => (
+                  <button
+                    key={`imp-${occ.id}-${idx}`}
+                    type="button"
+                    className="schedule-important-banner"
+                    onClick={() => openEditImportantDate(occ)}
+                  >
+                    {occ.recurrence && <RiRepeat2Line size={11} aria-hidden="true" />}
+                    <span>{occ.title}</span>
+                  </button>
+                ))}
                 {segments.map((entry, idx) => {
                   if (entry.type === 'now') {
                     return (
@@ -899,6 +927,18 @@ export default function Cronograma() {
                   <span className="calendar-bars-short">{DAYS_SHORT[dayIndex]}</span>
                   <span className="calendar-bars-date">{dateLabel}</span>
                 </div>
+
+                {(weekImportantByDay[day] || []).map((occ, idx) => (
+                  <button
+                    key={`imp-${occ.id}-${idx}`}
+                    type="button"
+                    className="calendar-bars-important"
+                    onClick={() => openEditImportantDate(occ)}
+                  >
+                    {occ.recurrence && <RiRepeat2Line size={9} aria-hidden="true" />}
+                    {occ.title}
+                  </button>
+                ))}
 
                 <div className="calendar-bars-track">
                   {segments.length === 0 && (
@@ -1096,6 +1136,7 @@ export default function Cronograma() {
                         onClick={() => openEditImportantDate(entry)}
                         title={`${entry.title}${entry.endDate ? ` (${entry.startDate} ate ${entry.endDate})` : ''}`}
                       >
+                        {entry.recurrence && <RiRepeat2Line size={9} aria-hidden="true" />}
                         {entry.title}
                       </button>
                     ))}
@@ -1245,6 +1286,16 @@ export default function Cronograma() {
                 onChange={(e) => setImportantForm((prev) => ({ ...prev, endDate: e.target.value }))}
               />
             </div>
+          </div>
+
+          <div className="field">
+            <label>Repete</label>
+            <select
+              value={importantForm.recurrence}
+              onChange={(e) => setImportantForm((prev) => ({ ...prev, recurrence: e.target.value }))}
+            >
+              {RECURRENCE_OPTIONS.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}
+            </select>
           </div>
 
           <div className="field">

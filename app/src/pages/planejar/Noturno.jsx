@@ -4,10 +4,12 @@ import {
   RiArrowRightLine,
   RiDeleteBinLine,
 } from '@remixicon/react'
-import { listenTodos, addTodo, updateTodo, deleteTodo, listenDailyLog, saveDailyAnnotations } from '../../services/firestore'
+import { listenTodos, addTodo, updateTodo, deleteTodo, listenDailyLog, saveDailyAnnotations, listenImportantDates } from '../../services/firestore'
 import { todayKey, addDays, dateKeyFromDate, MAX_TODAY_TASKS } from '../../utils/date'
+import { expandImportantDatesForRange } from '../../utils/importantDates'
 import HabitChecklist from '../../components/HabitChecklist'
 import DailyLogCard from '../../components/DailyLogCard'
+import CommitmentList from '../../components/CommitmentList'
 import Toast from '../../components/Toast'
 
 const TAGS = [
@@ -19,12 +21,15 @@ const TAGS = [
 export default function Noturno() {
   const [todos, setTodos] = useState([])
   const [dailyLog, setDailyLog] = useState(null)
+  const [importantDates, setImportantDates] = useState([])
   const [newTomorrowTask, setNewTomorrowTask] = useState('')
   const [annotationText, setAnnotationText] = useState('')
   const [toast, setToast] = useState(null)
 
+  const now = new Date()
+  const tomorrowDate = addDays(now, 1)
   const today = todayKey()
-  const tomorrow = dateKeyFromDate(addDays(new Date(), 1))
+  const tomorrow = dateKeyFromDate(tomorrowDate)
 
   useEffect(() => {
     const unsub = listenTodos(setTodos)
@@ -36,6 +41,11 @@ export default function Noturno() {
     return unsub
   }, [today])
 
+  useEffect(() => {
+    const unsub = listenImportantDates(setImportantDates)
+    return unsub
+  }, [])
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3000)
@@ -46,6 +56,9 @@ export default function Noturno() {
   const tomorrowTasks = todos.filter(t => t.todayDate === tomorrow)
   const tomorrowSuggestions = todos.filter(t => !t.done && t.todayDate !== tomorrow && t.dueDate && t.dueDate <= tomorrow)
   const annotations = dailyLog?.annotations || []
+
+  const commitments = expandImportantDatesForRange(importantDates, now, tomorrowDate)
+    .map(occ => ({ ...occ, tag: dateKeyFromDate(occ.occurrenceStart) === today ? 'hoje' : 'amanhã' }))
 
   const toggleDone = (todo) => updateTodo(todo.id, { done: !todo.done })
   const removeTask = (todo) => deleteTodo(todo.id)
@@ -96,6 +109,15 @@ export default function Noturno() {
 
   return (
     <>
+      {commitments.length > 0 && (
+        <section className="hoje-section">
+          <div className="hoje-section-head">
+            <h2 className="hoje-section-title">Compromissos</h2>
+          </div>
+          <CommitmentList items={commitments} />
+        </section>
+      )}
+
       <section className="hoje-section">
         <div className="hoje-section-head">
           <h2 className="hoje-section-title">Fechar o dia de hoje</h2>

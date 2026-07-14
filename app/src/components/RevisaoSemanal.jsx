@@ -1,14 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { RiAddLine, RiCheckLine, RiCloseLine } from '@remixicon/react'
-import { listenHabits, listenHabitLogs, listenDailyLogsForDates, listenWeekFocus, saveWeekFocus } from '../../services/firestore'
-import { getWeekDates, getWeekLabel, getWeekKey, dateKeyFromDate, addDays, todayKey, weekDayShortLabel } from '../../utils/date'
-import { buildHabitWeekTable, collectAnnotations, computeWeekCompletionPct } from '../../utils/weekSummary'
-import Tabs from '../../components/Tabs'
+import { listenHabits, listenHabitLogs, listenDailyLogsForDates, listenWeekFocus, saveWeekFocus, listenImportantDates } from '../services/firestore'
+import { getWeekDates, getWeekLabel, getWeekKey, dateKeyFromDate, addDays, todayKey, weekDayShortLabel } from '../utils/date'
+import { buildHabitWeekTable, collectAnnotations, computeWeekCompletionPct } from '../utils/weekSummary'
+import { expandImportantDatesForRange } from '../utils/importantDates'
+import Tabs from './Tabs'
+import CommitmentList from './CommitmentList'
 
-export default function Revisao() {
+export default function RevisaoSemanal() {
   const [habits, setHabits] = useState([])
   const [habitLogs, setHabitLogs] = useState([])
   const [dailyLogs, setDailyLogs] = useState([])
+  const [importantDates, setImportantDates] = useState([])
   const [focus, setFocus] = useState(null)
   const [newFocusItem, setNewFocusItem] = useState('')
   const [activeTab, setActiveTab] = useState('funcionou')
@@ -38,6 +41,16 @@ export default function Revisao() {
     return unsub
   }, [nextWeekKey])
 
+  useEffect(() => {
+    const unsub = listenImportantDates(setImportantDates)
+    return unsub
+  }, [])
+
+  const commitments = useMemo(
+    () => expandImportantDatesForRange(importantDates, weekDates[0], weekDates[6]),
+    [importantDates, weekDates],
+  )
+
   const table = useMemo(() => buildHabitWeekTable(habits, habitLogs, weekDates), [habits, habitLogs, weekDates])
   const funcionou = useMemo(() => collectAnnotations(dailyLogs, 'funcionou'), [dailyLogs])
   const ajustar = useMemo(() => collectAnnotations(dailyLogs, 'ajustar'), [dailyLogs])
@@ -63,6 +76,15 @@ export default function Revisao() {
 
   return (
     <>
+      {commitments.length > 0 && (
+        <section className="hoje-section">
+          <div className="hoje-section-head">
+            <h2 className="hoje-section-title">Compromissos da semana</h2>
+          </div>
+          <CommitmentList items={commitments} />
+        </section>
+      )}
+
       <section className="hoje-section">
         <div className="hoje-section-head">
           <h2 className="hoje-section-title">{weekLabel}</h2>

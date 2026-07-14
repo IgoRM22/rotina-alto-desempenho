@@ -8,7 +8,6 @@ const TABS = [
   { key: 'tarefas', label: 'Tarefas', to: 'tarefas' },
   { key: 'metas', label: 'Metas', to: 'metas' },
   { key: 'habitos', label: 'Hábitos', to: 'habitos' },
-  { key: 'revisao', label: 'Revisão', to: 'revisao' },
 ]
 
 export default function Planejar() {

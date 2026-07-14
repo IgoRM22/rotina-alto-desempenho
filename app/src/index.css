@@ -481,6 +481,12 @@ body::after {
   border-radius: 2px;
 }
 
+.todo-check::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
+
 .todo-check:checked {
   background: var(--coral);
   border-color: var(--coral);
@@ -1505,28 +1511,32 @@ body::after {
 }
 
 .month-item-pill.imp-feriado,
-.month-legend-item.imp-feriado {
+.month-legend-item.imp-feriado,
+.commitment-badge.imp-feriado {
   border-color: rgba(196,154,58,.5);
   color: var(--gold);
   background: rgba(196,154,58,.12);
 }
 
 .month-item-pill.imp-aniversario,
-.month-legend-item.imp-aniversario {
+.month-legend-item.imp-aniversario,
+.commitment-badge.imp-aniversario {
   border-color: rgba(196,96,122,.5);
   color: var(--pink);
   background: rgba(196,96,122,.12);
 }
 
 .month-item-pill.imp-ferias,
-.month-legend-item.imp-ferias {
+.month-legend-item.imp-ferias,
+.commitment-badge.imp-ferias {
   border-color: rgba(91,166,137,.5);
   color: var(--sage);
   background: rgba(91,166,137,.12);
 }
 
 .month-item-pill.imp-importante,
-.month-legend-item.imp-importante {
+.month-legend-item.imp-importante,
+.commitment-badge.imp-importante {
   border-color: rgba(75,143,212,.48);
   color: var(--blue);
   background: rgba(75,143,212,.12);
@@ -3040,6 +3050,11 @@ details > summary::marker {
 }
 
 .hoje-section-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
   font-size: 11px;
   color: var(--text3);
   text-decoration: none;
@@ -3048,6 +3063,45 @@ details > summary::marker {
 }
 
 .hoje-section-link:hover { color: var(--coral); }
+
+.hoje-status-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 40px;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.hoje-status-item strong { color: var(--text); font-weight: 500; }
+.hoje-status-sep { color: var(--border2); }
+
+.hoje-celebrate {
+  font-size: 13px;
+  color: var(--sage);
+  margin-bottom: 14px;
+}
+
+.hoje-suggest-divider {
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 18px 0 4px;
+}
+
+.hoje-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 56px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .hoje-grid {
+    grid-template-columns: 1.3fr 1fr;
+  }
+}
 
 /* ── HABIT CHECKLIST ── */
 .habit-list {
@@ -3095,6 +3149,15 @@ details > summary::marker {
 
 .habit-streak.is-zero { color: var(--text3); }
 
+.habit-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
 .habit-row-actions {
   opacity: 0;
   transition: opacity .2s;
@@ -3108,17 +3171,6 @@ details > summary::marker {
   background: var(--s1);
   border: 1px solid var(--border);
 }
-
-.habit-details-stats {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--text2);
-  margin-bottom: 10px;
-}
-
-.habit-details-stats strong { color: var(--text); }
 
 .habit-dot-strip {
   display: flex;
@@ -3251,6 +3303,93 @@ details > summary::marker {
   color: var(--text2);
 }
 
+/* ── COMMITMENTS (datas importantes fora do Agenda) ── */
+.commitment-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.commitment-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.commitment-row:last-child { border-bottom: none; }
+
+.commitment-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 2px 9px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.commitment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.commitment-title {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.commitment-tag {
+  color: var(--text3);
+  font-size: 12px;
+}
+
+.commitment-desc {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+/* ── IMPORTANT-DATE BANNERS INSIDE AGENDA (Lista/Semanal) ── */
+.schedule-important-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  background: rgba(196,154,58,.08);
+  border: none;
+  border-left: 3px solid var(--gold);
+  color: var(--gold);
+  font-size: 12px;
+  font-family: var(--ff-b);
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.calendar-bars-important {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: rgba(196,154,58,.1);
+  border: none;
+  border-left: 2px solid var(--gold);
+  color: var(--gold);
+  font-size: 10px;
+  font-family: var(--ff-b);
+  padding: 3px 6px;
+  margin-bottom: 3px;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* ── WEEK TABLE (Revisão) ── */
 .week-table-wrap {
   overflow-x: auto;
@@ -3369,9 +3508,26 @@ details > summary::marker {
   font-size: 12px;
   cursor: pointer;
   transition: all .15s;
+  position: relative;
+}
+
+.daily-log-dot::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .daily-log-dot:hover { border-color: var(--text2); color: var(--text2); }
+
+.daily-log-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
 
 .daily-log-dot.active {
   background: var(--coral);

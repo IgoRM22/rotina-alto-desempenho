@@ -125,14 +125,17 @@ export default function HabitChecklist() {
               <button type="button" className="habit-name habit-name-btn" onClick={() => toggleExpand(habit.id)}>
                 {habit.name}
               </button>
-              <span className={`habit-streak ${streak === 0 ? 'is-zero' : ''}`}>
+              <span className={`habit-streak ${streak === 0 ? 'is-zero' : ''}`} title="Sequência atual">
                 <RiFireLine size={13} /> {streak}
+              </span>
+              <span className="habit-record" title="Recorde">
+                <RiTrophyLine size={13} /> {record}
               </span>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm btn-icon"
                 onClick={() => toggleExpand(habit.id)}
-                aria-label={isOpen ? 'Recolher progresso' : 'Ver progresso'}
+                aria-label={isOpen ? 'Recolher dias' : 'Ver dias'}
               >
                 {isOpen ? <RiArrowUpSLine size={14} /> : <RiArrowDownSLine size={14} />}
               </button>
@@ -140,10 +143,6 @@ export default function HabitChecklist() {
 
             {isOpen && (
               <div className="habit-details">
-                <div className="habit-details-stats">
-                  <span><RiFireLine size={13} /> sequência atual: <strong>{streak}</strong></span>
-                  <span><RiTrophyLine size={13} /> recorde: <strong>{record}</strong></span>
-                </div>
                 <div className="habit-dot-strip">
                   {dotDays.map(key => (
                     <span

@@ -29,30 +29,36 @@ export default function DailyLogCard() {
     <div className="daily-log-card">
       <div className="daily-log-row">
         <span className="daily-log-label">Sono</span>
-        <div className="daily-log-scale">
-          {SCALE.map(v => (
-            <button
-              key={v}
-              type="button"
-              className={`daily-log-dot ${log?.sleepQuality === v ? 'active' : ''}`}
-              onClick={() => setField('sleepQuality', v)}
-              aria-label={`Sono ${v}/5`}
-            >{v}</button>
-          ))}
+        <div>
+          <div className="daily-log-scale">
+            {SCALE.map(v => (
+              <button
+                key={v}
+                type="button"
+                className={`daily-log-dot ${log?.sleepQuality === v ? 'active' : ''}`}
+                onClick={() => setField('sleepQuality', v)}
+                aria-label={`Sono ${v}/5`}
+              >{v}</button>
+            ))}
+          </div>
+          <div className="daily-log-scale-labels"><span>pouco</span><span>ótimo</span></div>
         </div>
       </div>
       <div className="daily-log-row" style={{ marginBottom: 16 }}>
         <span className="daily-log-label">Energia</span>
-        <div className="daily-log-scale">
-          {SCALE.map(v => (
-            <button
-              key={v}
-              type="button"
-              className={`daily-log-dot ${log?.energy === v ? 'active' : ''}`}
-              onClick={() => setField('energy', v)}
-              aria-label={`Energia ${v}/5`}
-            >{v}</button>
-          ))}
+        <div>
+          <div className="daily-log-scale">
+            {SCALE.map(v => (
+              <button
+                key={v}
+                type="button"
+                className={`daily-log-dot ${log?.energy === v ? 'active' : ''}`}
+                onClick={() => setField('energy', v)}
+                aria-label={`Energia ${v}/5`}
+              >{v}</button>
+            ))}
+          </div>
+          <div className="daily-log-scale-labels"><span>baixa</span><span>alta</span></div>
         </div>
       </div>
       <div className="field" style={{ marginBottom: 0 }}>
