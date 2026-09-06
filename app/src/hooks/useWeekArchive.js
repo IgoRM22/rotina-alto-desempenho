@@ -19,7 +19,7 @@ const ensureArchiveNotebook = () => new Promise((resolve) => {
     unsub()
     const existing = notebooks.find(nb => nb.name === ARCHIVE_NOTEBOOK_NAME)
     if (existing) { resolve(existing.id); return }
-    const ref = await addNotebook({ name: ARCHIVE_NOTEBOOK_NAME, emoji: '🗓️', color: '#4B8FD4' })
+    const ref = await addNotebook({ name: ARCHIVE_NOTEBOOK_NAME, emoji: '🗓️', color: '#6C93B8' })
     resolve(ref.id)
   })
 })

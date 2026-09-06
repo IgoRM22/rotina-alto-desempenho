@@ -69,12 +69,18 @@ export default function Noturno() {
   const toggleDone = (todo) => updateTodo(todo.id, { done: !todo.done })
   const removeTask = (todo) => deleteTodo(todo.id)
 
+  // Cada empurrão para amanhã conta — a partir do 3º, o app sinaliza gentilmente
+  // que talvez a tarefa mereça outra decisão (excluir, redefinir, voltar ao Parking Lot).
   const moveToTomorrow = async (todo) => {
     if (tomorrowTasks.length >= MAX_TODAY_TASKS) {
       showToast(`Amanhã já tem ${MAX_TODAY_TASKS} tarefas.`, 'error')
       return
     }
-    await updateTodo(todo.id, { todayDate: tomorrow, done: false })
+    const postponeCount = (todo.postponeCount || 0) + 1
+    await updateTodo(todo.id, { todayDate: tomorrow, done: false, postponeCount })
+    if (postponeCount === 3) {
+      showToast(`"${todo.title}" já foi adiada 3 vezes — ela ainda importa?`, 'error')
+    }
   }
 
   const moveAllPendingToTomorrow = async () => {
@@ -84,7 +90,11 @@ export default function Noturno() {
       return
     }
     const toMove = todayPending.slice(0, room)
-    await Promise.all(toMove.map(t => updateTodo(t.id, { todayDate: tomorrow, done: false })))
+    await Promise.all(toMove.map(t => updateTodo(t.id, {
+      todayDate: tomorrow,
+      done: false,
+      postponeCount: (t.postponeCount || 0) + 1,
+    })))
     showToast(`${toMove.length} tarefa(s) movida(s) para amanhã.`)
   }
 
@@ -170,6 +180,11 @@ export default function Noturno() {
           <div key={todo.id} className="todo-item todo-item--no-check">
             <div className="todo-content-clickable" onClick={() => setViewingTodo(todo)}>
               <div className="todo-text">{todo.title}</div>
+              {(todo.postponeCount || 0) >= 3 && (
+                <div className="todo-meta">
+                  <span className="todo-postponed">adiada {todo.postponeCount}× — ainda importa, ou é hora de soltar?</span>
+                </div>
+              )}
             </div>
             <div className="todo-actions" style={{ opacity: 1 }}>
               <button className="btn btn-ghost btn-sm btn-icon" onClick={() => unmarkTomorrow(todo)} aria-label="Remover de amanhã" title="Remover de amanhã">

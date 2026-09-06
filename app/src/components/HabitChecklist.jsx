@@ -17,25 +17,10 @@ import {
   setHabitChecked,
 } from '../services/firestore'
 import { todayKey, dateKeyFromDate } from '../utils/date'
+import { computeStreak } from '../utils/streak'
 import Toast from './Toast'
 
 const MILESTONES = [7, 30, 100, 365]
-
-const computeStreak = (habitId, logsByDate, today) => {
-  const cursor = new Date(`${today}T00:00:00`)
-  if (!logsByDate.get(today)?.[habitId]) {
-    cursor.setDate(cursor.getDate() - 1)
-  }
-
-  let streak = 0
-  while (true) {
-    const key = dateKeyFromDate(cursor)
-    if (!logsByDate.get(key)?.[habitId]) break
-    streak += 1
-    cursor.setDate(cursor.getDate() - 1)
-  }
-  return streak
-}
 
 const last14Days = () => Array.from({ length: 14 }, (_, i) => {
   const d = new Date()
@@ -116,7 +101,7 @@ export default function HabitChecklist() {
               <button
                 type="button"
                 className="todo-check"
-                style={checked ? { background: 'var(--coral)', borderColor: 'var(--coral)' } : undefined}
+                style={checked ? { background: 'var(--sage)', borderColor: 'var(--sage)' } : undefined}
                 onClick={() => toggle(habit)}
                 aria-label={checked ? `Desmarcar ${habit.name}` : `Marcar ${habit.name}`}
               >

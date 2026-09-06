@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: '/rotina-alto-desempenho/',
+  server: {
+    // Sem isso o Vite só escuta em IPv6 (::1) no Windows — se o navegador
+    // resolver "localhost" para 127.0.0.1 (IPv4) primeiro, a conexão falha.
+    host: '127.0.0.1',
+  },
   plugins: [
     react(),
     VitePWA({
@@ -26,6 +31,12 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
+          {
+            // Comandos do assistente nunca são cacheados — diferente dos assets
+            // estáticos (cache-first/stale-while-revalidate) logo abaixo.
+            urlPattern: /^https:\/\/southamerica-east1-vidapessoal-ebf84\.cloudfunctions\.net\/.*/i,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',

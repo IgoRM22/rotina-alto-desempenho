@@ -2,7 +2,6 @@ import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   RiCalendarScheduleLine,
-  RiFlashlightFill,
   RiHome5Line,
   RiLogoutBoxRLine,
   RiSettings3Line,
@@ -10,6 +9,8 @@ import {
   RiMoneyDollarCircleLine,
 } from '@remixicon/react'
 import { useAuth } from '../context/AuthContext'
+import BoltIcon from './BoltIcon'
+import AssistantFab from './AssistantFab'
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
@@ -19,7 +20,7 @@ export default function Layout({ children }) {
     <div className="app-layout">
       <nav className="nav">
         <NavLink to="/" className="nav-brand">
-          <RiFlashlightFill size={16} style={{ color: 'var(--coral)' }} aria-hidden="true" /> Raio
+          <BoltIcon size={17} /> <span>Raio</span>
         </NavLink>
 
         <ul className="nav-links">
@@ -67,6 +68,8 @@ export default function Layout({ children }) {
           </NavLink></li>
         </ul>
       </nav>
+
+      <AssistantFab />
     </div>
   )
 }

@@ -9,7 +9,8 @@ import {
   RiPencilLine,
   RiRefreshLine,
 } from '@remixicon/react'
-import { listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories } from '../../services/firestore'
+import { listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories, listenHabits, listenHabitLogs } from '../../services/firestore'
+import { getWeekDates, dateKeyFromDate, todayKey } from '../../utils/date'
 import { deadlineBadge } from '../../utils/deadline'
 import { useDeadlineNotifications } from '../../hooks/useDeadlineNotifications'
 import Modal from '../../components/Modal'
@@ -57,6 +58,8 @@ const INIT = {
 const EMPTY_FORM = {
   title: '',
   description: '',
+  commitment: '',
+  linkedHabitIds: [],
   timeframe: 'mes',
   category: 'projeto',
   progress: 0,
@@ -82,6 +85,8 @@ const fmtTimeframe = (goal) => {
 
 export default function Metas() {
   const [goals, setGoals] = useState([])
+  const [habits, setHabits] = useState([])
+  const [habitLogs, setHabitLogs] = useState([])
   const [categories, setCategories] = useState(['projeto', 'saude', 'corp', 'estudo', 'familia', 'pessoal'])
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -97,8 +102,23 @@ export default function Metas() {
   useEffect(() => {
     const u1 = listenGoals(setGoals)
     const u2 = listenGoalCategories(setCategories)
-    return () => { u1(); u2() }
+    const u3 = listenHabits(setHabits)
+    const u4 = listenHabitLogs(setHabitLogs, 10)
+    return () => { u1(); u2(); u3(); u4() }
   }, [])
+
+  // Conta quantas vezes cada hábito vinculado foi cumprido na semana atual —
+  // o elo automático entre o que se faz hoje e o que se prometeu na meta.
+  const habitWeekCounts = useMemo(() => {
+    const logsByDate = new Map(habitLogs.map(l => [l.date, l.checked || {}]))
+    const today = todayKey()
+    const weekKeys = getWeekDates().map(dateKeyFromDate).filter(k => k <= today)
+    const counts = new Map()
+    habits.forEach(h => {
+      counts.set(h.id, weekKeys.filter(k => logsByDate.get(k)?.[h.id]).length)
+    })
+    return counts
+  }, [habits, habitLogs])
 
   useDeadlineNotifications(goals)
 
@@ -127,6 +147,8 @@ export default function Metas() {
     setForm({
       title: item.title || '',
       description: item.description || '',
+      commitment: item.commitment || '',
+      linkedHabitIds: item.linkedHabitIds || [],
       timeframe: item.timeframe || 'mes',
       category: item.category || 'projeto',
       progress: item.progress || 0,
@@ -146,6 +168,8 @@ export default function Metas() {
       const data = {
         title: form.title.trim(),
         description: form.description,
+        commitment: (form.commitment || '').trim(),
+        linkedHabitIds: form.linkedHabitIds || [],
         timeframe: form.timeframe,
         category: form.category,
         progress: safeProgress,
@@ -314,7 +338,24 @@ export default function Metas() {
                 </div>
               </div>
 
+              {goal.commitment && <p className="goal-commitment">"{goal.commitment}"</p>}
+
               {goal.description && <p className="goal-desc">{goal.description}</p>}
+
+              {(goal.linkedHabitIds || []).length > 0 && (
+                <div className="goal-linked-habits">
+                  <span>hábitos vinculados:</span>
+                  {goal.linkedHabitIds.map(hid => {
+                    const habit = habits.find(h => h.id === hid)
+                    if (!habit) return null
+                    return (
+                      <span key={hid} className="goal-linked-habit">
+                        {habit.name} · {habitWeekCounts.get(hid) || 0}× esta semana
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
 
               <div className="goal-progress-row">
                 <span className="goal-progress-pct">Progresso: {clampProgress(goal.progress)}%</span>
@@ -369,6 +410,37 @@ export default function Metas() {
             <label>Descrição</label>
             <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
+          <div className="field">
+            <label>Compromisso — por que isso importa (na sua voz)</label>
+            <textarea
+              rows={2}
+              value={form.commitment}
+              onChange={e => setForm(f => ({ ...f, commitment: e.target.value }))}
+              placeholder='Ex: "Prometi estudar inglês 4x por semana até dezembro."'
+            />
+          </div>
+          {habits.length > 0 && (
+            <div className="field">
+              <label>Hábitos vinculados (empurram esta meta)</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {habits.map(h => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    className={`day-toggle ${(form.linkedHabitIds || []).includes(h.id) ? 'active' : ''}`}
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      linkedHabitIds: (f.linkedHabitIds || []).includes(h.id)
+                        ? f.linkedHabitIds.filter(id => id !== h.id)
+                        : [...(f.linkedHabitIds || []), h.id],
+                    }))}
+                  >
+                    {h.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="field">
               <label>Prazo</label>

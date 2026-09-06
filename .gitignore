@@ -10,6 +10,10 @@ app/dist/
 .functions/
 .firebase/
 
+# Local secrets (production key lives in Secret Manager, not here)
+functions/.env
+functions/.env.*
+
 # OS
 .DS_Store
 Thumbs.db

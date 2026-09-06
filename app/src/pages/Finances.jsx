@@ -19,6 +19,7 @@ import {
 } from '../services/finances'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
+import CountUp from '../components/CountUp'
 
 const fmtCurrency = (n) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 }).format(n || 0)
@@ -162,13 +163,13 @@ export default function Finances() {
       <div className="finance-stats-grid" style={{ marginBottom: 48 }}>
         <div className="finance-stat-card">
           <span className="finance-stat-label"><RiWallet3Line size={12} /> Patrimônio em bancos</span>
-          <span className="finance-stat-value">{fmtCurrency(totalBanks)}</span>
+          <span className="finance-stat-value"><CountUp value={totalBanks} format={fmtCurrency} /></span>
         </div>
 
         <div className="finance-stat-card">
           <span className="finance-stat-label"><RiShieldLine size={12} /> Fundo de emergência</span>
           <span className="finance-stat-value" style={{ color: data.emergencyFund >= totalExpenses ? 'var(--sage)' : 'var(--coral)' }}>
-            {fmtCurrency(data.emergencyFund)}
+            <CountUp value={data.emergencyFund} format={fmtCurrency} />
           </span>
           <button className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => { setForm({ emergencyFund: data.emergencyFund || 0 }); setShowModal('emergency') }}>
             <RiPencilLine size={12} /> atualizar
@@ -178,7 +179,7 @@ export default function Finances() {
         <div className="finance-stat-card">
           <span className="finance-stat-label"><RiArrowUpDownLine size={12} /> Saldo mensal</span>
           <span className="finance-stat-value" style={{ color: monthlyBalance >= 0 ? 'var(--sage)' : 'var(--coral)' }}>
-            {fmtCurrency(monthlyBalance)}
+            <CountUp value={monthlyBalance} format={fmtCurrency} />
           </span>
         </div>
       </div>

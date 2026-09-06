@@ -8,11 +8,11 @@ const EMPTY_ITEM_FORM = { quantity: '', name: '', grams: '', type: '' }
 
 const TYPE_OPTIONS = [
   { value: 'proteina', label: 'Proteína', color: '#E06445' },
-  { value: 'carboidrato', label: 'Carboidrato', color: '#C49A3A' },
-  { value: 'gordura', label: 'Gordura', color: '#8B7EC4' },
-  { value: 'fruta', label: 'Fruta', color: '#C4607A' },
-  { value: 'vegetal', label: 'Vegetal', color: '#5BA689' },
-  { value: 'laticinio', label: 'Laticínio', color: '#4B8FD4' },
+  { value: 'carboidrato', label: 'Carboidrato', color: '#D6A54C' },
+  { value: 'gordura', label: 'Gordura', color: '#9084C9' },
+  { value: 'fruta', label: 'Fruta', color: '#C97B93' },
+  { value: 'vegetal', label: 'Vegetal', color: '#8FAE83' },
+  { value: 'laticinio', label: 'Laticínio', color: '#6C93B8' },
   { value: 'bebida', label: 'Bebida', color: '#7A7570' },
   { value: 'outros', label: 'Outros', color: '#7A7570' },
 ]

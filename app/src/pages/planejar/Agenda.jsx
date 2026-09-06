@@ -39,14 +39,14 @@ const MONTH_LABELS = Array.from(
 )
 
 const CATEGORIES = [
-  { value: 'saude', color: '#5BA689' },
-  { value: 'corp', color: '#4B8FD4' },
+  { value: 'saude', color: '#8FAE83' },
+  { value: 'corp', color: '#6C93B8' },
   { value: 'projeto', color: '#E06445' },
-  { value: 'mente', color: '#8B7EC4' },
-  { value: 'estudo', color: '#C4607A' },
-  { value: 'familia', color: '#C49A3A' },
+  { value: 'mente', color: '#9084C9' },
+  { value: 'estudo', color: '#C97B93' },
+  { value: 'familia', color: '#D6A54C' },
   { value: 'trem', color: '#7A7570' },
-  { value: 'pessoal', color: '#8B7EC4' },
+  { value: 'pessoal', color: '#9084C9' },
 ]
 
 const REPEAT_OPTIONS = [

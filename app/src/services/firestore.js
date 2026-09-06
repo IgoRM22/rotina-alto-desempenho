@@ -180,8 +180,26 @@ export const listenGoals = (cb) =>
 export const addGoal = (data) =>
   addDoc(base('goals'), { done: false, progress: 0, ...data, createdAt: serverTimestamp() })
 
-export const updateGoal = (id, data) => updateDoc(userDoc('goals', id), data)
+// updatedAt alimenta a detecção de "meta parada" no banner de desvio da Home.
+export const updateGoal = (id, data) => updateDoc(userDoc('goals', id), { ...data, updatedAt: serverTimestamp() })
 export const deleteGoal = (id) => deleteDoc(userDoc('goals', id))
+
+// ── Focus sessions (módulo Foco) ────────────────────────────────────────────
+export const listenFocusSessions = (cb, max = 300) =>
+  onSnapshot(query(base('focusSessions'), orderBy('createdAt', 'desc'), limit(max)), snap =>
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+
+export const addFocusSession = (data) =>
+  addDoc(base('focusSessions'), { ...data, createdAt: serverTimestamp() })
+
+export const deleteFocusSession = (id) => deleteDoc(userDoc('focusSessions', id))
+
+// ── Generic prefs (settings/prefs): compromissos pessoais, alvo diário de foco ──
+export const listenPrefs = (cb) =>
+  onSnapshot(userDoc('settings', 'prefs'), snap => cb(snap.exists() ? snap.data() : {}))
+
+export const savePrefs = (data) =>
+  setDoc(userDoc('settings', 'prefs'), data, { merge: true })
 
 // ── Schedule / Cronograma ────────────────────────────────────────────────────
 export const listenSchedule = (cb) =>
@@ -242,7 +260,7 @@ export const deleteMealTable = (id) => deleteDoc(userDoc('mealTables', id))
 // ── Full backup / restore ─────────────────────────────────────────────────────
 import { getDocs } from 'firebase/firestore'
 
-const BACKUP_COLLECTIONS = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes', 'habits', 'habitLogs', 'dailyLogs', 'weekFocus', 'folders', 'mealTables']
+const BACKUP_COLLECTIONS = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes', 'habits', 'habitLogs', 'dailyLogs', 'weekFocus', 'folders', 'mealTables', 'focusSessions']
 
 export const exportAll = async () => {
   const result = {}
@@ -350,14 +368,14 @@ export const saveTodoCategories = (cats) =>
 
 // ── Schedule Categories ───────────────────────────────────────────────────────
 const DEFAULT_SCHEDULE_CATS = [
-  { value: 'saude', color: '#5BA689' },
-  { value: 'corp', color: '#4B8FD4' },
+  { value: 'saude', color: '#8FAE83' },
+  { value: 'corp', color: '#6C93B8' },
   { value: 'projeto', color: '#E06445' },
-  { value: 'mente', color: '#8B7EC4' },
-  { value: 'estudo', color: '#C4607A' },
-  { value: 'familia', color: '#C49A3A' },
+  { value: 'mente', color: '#9084C9' },
+  { value: 'estudo', color: '#C97B93' },
+  { value: 'familia', color: '#D6A54C' },
   { value: 'trem', color: '#7A7570' },
-  { value: 'pessoal', color: '#8B7EC4' },
+  { value: 'pessoal', color: '#9084C9' },
 ]
 
 const normalizeHexColor = (value, fallback = '#E06445') => {

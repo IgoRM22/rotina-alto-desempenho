@@ -16,6 +16,8 @@ import {
   replaceScheduleCategoryInItems,
   listenAccessControl,
   updateAllowedEmails,
+  listenPrefs,
+  savePrefs,
 } from '../services/firestore'
 import { useAuth } from '../context/AuthContext'
 import { OWNER_UID } from '../config'
@@ -37,14 +39,32 @@ export default function Settings() {
   const [newGoalCat, setNewGoalCat] = useState('')
   const [accessControl, setAccessControl] = useState(null)
   const [newAllowedEmail, setNewAllowedEmail] = useState('')
+  const [prefs, setPrefs] = useState({})
+  const [newCommitment, setNewCommitment] = useState('')
 
   useEffect(() => {
     const u1 = listenTodoCategories(setCategories)
     const u2 = listenScheduleCategories(setScheduleCategories)
     const u3 = listenGoalCategories(setGoalCategories)
     const u4 = listenAccessControl(setAccessControl)
-    return () => { u1(); u2(); u3(); u4() }
+    const u5 = listenPrefs(setPrefs)
+    return () => { u1(); u2(); u3(); u4(); u5() }
   }, [])
+
+  const personalCommitments = Array.isArray(prefs.commitments) ? prefs.commitments.filter(c => c?.text) : []
+
+  const addPersonalCommitment = async () => {
+    const text = newCommitment.trim()
+    if (!text) return
+    await savePrefs({ commitments: [...personalCommitments, { id: `${Date.now()}`, text }] })
+    setNewCommitment('')
+    showToast('Compromisso salvo — ele vai aparecer na Home.')
+  }
+
+  const removePersonalCommitment = async (id) => {
+    await savePrefs({ commitments: personalCommitments.filter(c => c.id !== id) })
+    showToast('Compromisso removido.')
+  }
 
   const addCategory = async () => {
     const v = newCat.trim().toLowerCase()
@@ -231,6 +251,38 @@ export default function Settings() {
             <p>Você precisará fazer login novamente.</p>
           </div>
           <button className="btn btn-ghost" onClick={handleLogout}>Sair</button>
+        </div>
+      </div>
+
+      {/* Seus compromissos */}
+      <div className="settings-section">
+        <h2 className="settings-section-title">Seus compromissos</h2>
+        <p className="commitment-hint">
+          Escreva em texto livre as 2–3 coisas que mais importam agora — na sua própria voz
+          ("20 minutos de inglês todo dia, até dezembro"). O Raio devolve essas frases para você
+          todos os dias no topo da Home.
+        </p>
+        {personalCommitments.length > 0 && (
+          <ul className="nb-focus-list">
+            {personalCommitments.map(c => (
+              <li key={c.id}>
+                <span className="commitment-item-text">"{c.text}"</span>
+                <button className="cat-tag-remove" onClick={() => removePersonalCommitment(c.id)} aria-label="Remover">
+                  <RiCloseLine size={13} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="cat-input"
+            value={newCommitment}
+            onChange={e => setNewCommitment(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addPersonalCommitment()}
+            placeholder="Ex: Treinar 4x por semana até o fim do ano"
+          />
+          <button className="btn btn-primary" onClick={addPersonalCommitment}>Adicionar</button>
         </div>
       </div>
 

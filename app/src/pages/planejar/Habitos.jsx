@@ -11,6 +11,7 @@ import {
 import { listenHabits, addHabit, updateHabit, deleteHabit, listenHabitLogs } from '../../services/firestore'
 import { dateKeyFromDate, getWeekStart, addDays, todayKey } from '../../utils/date'
 import Toast from '../../components/Toast'
+import Modal from '../../components/Modal'
 
 const HEATMAP_WEEKS = 14
 const WEEKDAY_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
@@ -53,6 +54,7 @@ export default function Habitos() {
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editingName, setEditingName] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
@@ -100,11 +102,12 @@ export default function Habitos() {
     setEditingId(null)
   }
 
-  const handleDelete = async (habit) => {
-    const proceed = window.confirm(`Excluir o hábito "${habit.name}"? O histórico de marcações não é apagado, mas deixa de aparecer.`)
-    if (!proceed) return
+  const confirmDeleteHabit = async () => {
+    const habit = confirmDelete
+    if (!habit) return
     await deleteHabit(habit.id)
     if (selectedId === habit.id) setSelectedId(null)
+    setConfirmDelete(null)
     showToast('Hábito removido.')
   }
 
@@ -126,7 +129,7 @@ export default function Habitos() {
             {WEEKDAY_SHORT.map((d, i) => <span key={i}>{d}</span>)}
           </div>
           <div className="habit-heatmap-grid">
-            {heatmapDays.map(day => {
+            {heatmapDays.map((day, i) => {
               const key = dateKeyFromDate(day)
               const isFuture = key > today
               const checked = logsByDate.get(key) || {}
@@ -136,7 +139,8 @@ export default function Habitos() {
               return (
                 <div
                   key={key}
-                  className={`habit-heatmap-cell ${level >= 0 ? `level-${level}` : 'is-future'}`}
+                  className={`habit-heatmap-cell wave-in ${level >= 0 ? `level-${level}` : 'is-future'}`}
+                  style={{ animationDelay: `${Math.floor(i / 7) * 40 + (i % 7) * 8}ms` }}
                   title={isFuture ? '' : `${day.toLocaleDateString('pt-BR')} — ${doneCount}/${activeHabitCount}`}
                 />
               )
@@ -171,7 +175,7 @@ export default function Habitos() {
                   </button>
                   <span className="subpage-controls-note" style={{ marginRight: 0 }}>recorde: {habit.bestStreak || 0}</span>
                   <button className="btn btn-ghost btn-sm btn-icon" onClick={() => startRename(habit)} aria-label="Renomear"><RiPencilLine size={13} /></button>
-                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(habit)} aria-label="Excluir"><RiDeleteBinLine size={13} /></button>
+                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => setConfirmDelete(habit)} aria-label="Excluir"><RiDeleteBinLine size={13} /></button>
                 </>
               )}
             </div>
@@ -238,6 +242,20 @@ export default function Habitos() {
             </div>
           </div>
         </div>
+      )}
+
+      {confirmDelete && (
+        <Modal
+          title="Excluir hábito"
+          onClose={() => setConfirmDelete(null)}
+          onSave={confirmDeleteHabit}
+          saveLabel="Excluir"
+        >
+          <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
+            Excluir o hábito <strong>"{confirmDelete.name}"</strong>?
+            O histórico de marcações não é apagado, mas deixa de aparecer.
+          </p>
+        </Modal>
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}

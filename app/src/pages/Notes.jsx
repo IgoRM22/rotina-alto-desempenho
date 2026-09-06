@@ -20,7 +20,7 @@ const IMPORTANCE = [
   { value: 'baixa', label: 'Baixa' },
 ]
 
-const NB_COLORS = ['#E06445', '#4B8FD4', '#5BA689', '#8B7EC4', '#C49A3A', '#C4607A', '#7A7570']
+const NB_COLORS = ['#E06445', '#6C93B8', '#8FAE83', '#9084C9', '#D6A54C', '#C97B93', '#7A7570']
 const EMPTY_NB = { name: '', emoji: '📓', color: NB_COLORS[0] }
 const EMPTY_NOTE = { title: '', content: '', importance: 'media', notebookId: null }
 
@@ -35,6 +35,7 @@ export default function Notes() {
   const [editingNote, setEditingNote] = useState(null)
   const [nbForm, setNbForm] = useState(EMPTY_NB)
   const [noteForm, setNoteForm] = useState(EMPTY_NOTE)
+  const [search, setSearch] = useState('')
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
@@ -43,8 +44,13 @@ export default function Notes() {
     return () => { u1(); u2() }
   }, [])
 
+  const searchTerm = search.trim().toLowerCase()
+
   const visibleNotes = notes
     .filter(n => activeNb ? n.notebookId === activeNb : true)
+    .filter(n => !searchTerm
+      || (n.title || '').toLowerCase().includes(searchTerm)
+      || (n.content || '').toLowerCase().includes(searchTerm))
     .sort((a, b) => {
       const order = { alta: 0, media: 1, baixa: 2 }
       const diff = (order[a.importance] ?? 1) - (order[b.importance] ?? 1)
@@ -129,6 +135,17 @@ export default function Notes() {
         <InspirationsPanel />
       ) : (
       <>
+      {/* Busca global — filtra título e conteúdo em todos os cadernos */}
+      <div className="notes-search">
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar em todas as notas..."
+          aria-label="Buscar notas"
+        />
+      </div>
+
       {/* Notebooks bar */}
       <div className="notebooks-bar">
         <button
