@@ -15,6 +15,10 @@ const {isReadTool, formatWriteConfirmation} = require("./assistant/format");
 
 initializeApp();
 const db = getFirestore();
+// Rede de segurança: um campo `undefined` (ex: pendingArgs quando não há
+// confirmação pendente) faz o Admin SDK rejeitar a escrita inteira por
+// padrão — melhor ignorar esses campos do que descobrir isso em produção.
+db.settings({ignoreUndefinedProperties: true});
 const OWNER_EMAIL =
   (process.env.OWNER_EMAIL || "").trim().toLowerCase();
 

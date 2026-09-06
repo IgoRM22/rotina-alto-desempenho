@@ -4465,7 +4465,12 @@ body.has-modal-open .assistant-fab { display: none; }
   flex-shrink: 0;
 }
 
-.assistant-modal-clear { color: var(--text3); }
+.assistant-modal-clear {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text3);
+}
 .assistant-modal-clear:hover { color: var(--coral); }
 
 .assistant-modal-body {
@@ -4537,9 +4542,6 @@ body.has-modal-open .assistant-fab { display: none; }
   flex-shrink: 0;
   width: 26px;
   height: 26px;
-  border-radius: 50%;
-  background: var(--s2);
-  border: 1px solid var(--border2);
   display: flex;
   align-items: center;
   justify-content: center;

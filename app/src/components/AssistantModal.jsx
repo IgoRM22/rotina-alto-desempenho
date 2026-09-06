@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { RiCloseLine, RiSendPlaneFill } from '@remixicon/react'
+import { RiCloseLine, RiDeleteBin6Line, RiSendPlaneFill } from '@remixicon/react'
 import { runAssistantCommand, confirmAssistantAction } from '../services/assistant'
 import { todayKey } from '../utils/date'
 import SparkleIcon from './SparkleIcon'
-import TrashIcon from './TrashIcon'
 
 const SUGGESTIONS = [
   'Resumo do meu dia',
@@ -122,7 +121,7 @@ export default function AssistantModal({ onClose }) {
           <div className="assistant-modal-header-actions">
             {messages.length > 0 && (
               <button className="btn-icon assistant-modal-clear" onClick={() => setMessages([])} aria-label="Limpar conversa" title="Limpar conversa">
-                <TrashIcon size={17} />
+                <RiDeleteBin6Line size={17} />
               </button>
             )}
             <button className="modal-close btn-icon" onClick={onClose} aria-label="Fechar">
