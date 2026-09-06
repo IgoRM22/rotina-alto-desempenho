@@ -28,6 +28,14 @@ const dayOfYear = (date) => {
 
 export default function Home() {
   const [view, setView] = useState('hoje')
+
+  // Trocar Hoje <-> Revisão semanal não muda de rota (mesma página), então o
+  // navegador nunca rola pro topo sozinho — se a pessoa está com scroll
+  // descido, o toggle no topo da nova visão fica fora da tela e parece ter
+  // sumido/travado.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [view])
   const [todos, setTodos] = useState([])
   const [focus, setFocus] = useState(null)
   const [habits, setHabits] = useState([])

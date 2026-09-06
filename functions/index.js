@@ -261,9 +261,9 @@ exports.assistantCommand = onRequest(
         const config = {
           systemInstruction: `${SYSTEM_PROMPT}\n\nContexto atual (JSON):\n${JSON.stringify(context)}`,
           tools: [{functionDeclarations: TOOLS}],
-          // Tarefa é classificação/roteamento simples, não raciocínio complexo —
-          // "thinking" mínimo corta latência sem perder qualidade aqui.
-          thinkingConfig: {thinkingLevel: "MINIMAL"},
+          // thinkingConfig.thinkingLevel foi tentado para cortar latência, mas
+          // "gemini-flash-latest" rejeitou o campo com 400 Bad Request — removido
+          // até confirmar qual geração do modelo aceita esse parâmetro.
         };
 
         const contents = [...sanitizeHistory(body.history), {role: "user", parts: [{text: command}]}];
@@ -343,7 +343,15 @@ exports.assistantCommand = onRequest(
 
         return res.status(200).json(result);
       } catch (error) {
-        logger.error("assistantCommand failed", {error: error.message, uid});
+        // error.message do AbortError do p-retry (erros HTTP não-retentáveis,
+        // como 400) não inclui o corpo da resposta — name + status ajudam a
+        // não ficar às cegas na próxima vez.
+        logger.error("assistantCommand failed", {
+          error: error.message,
+          errorName: error.name,
+          status: error.status,
+          uid,
+        });
         const failure = {ok: false, error: "assistant_failed"};
         await completeIdempotentRequest(db, uid, requestId, failure);
         return res.status(500).json(failure);
