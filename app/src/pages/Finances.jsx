@@ -7,6 +7,7 @@ import {
   RiShieldLine,
   RiFlagLine,
   RiArrowUpDownLine,
+  RiFlag2Line,
 } from '@remixicon/react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -16,6 +17,7 @@ import {
   addIncome, updateIncome, removeIncome,
   addFixedExpense, updateFixedExpense, removeFixedExpense,
   addGoal, updateGoal, removeGoal,
+  saveFinanceSnapshot, listenFinanceSnapshots,
 } from '../services/finances'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
@@ -46,10 +48,18 @@ export default function Finances() {
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState({})
   const [editIndex, setEditIndex] = useState(null)
+  const [snapshots, setSnapshots] = useState([])
 
   useEffect(() => {
     if (user?.uid) {
       const unsub = listenFinancesData(user.uid, setData)
+      return unsub
+    }
+  }, [user?.uid])
+
+  useEffect(() => {
+    if (user?.uid) {
+      const unsub = listenFinanceSnapshots(user.uid, setSnapshots)
       return unsub
     }
   }, [user?.uid])
@@ -152,6 +162,21 @@ export default function Finances() {
   const totalExpenses = (data.fixedExpenses || []).reduce((sum, e) => sum + (e.amount || 0), 0)
   const monthlyBalance = totalIncome - totalExpenses
 
+  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const currentMonthClosed = snapshots.some(s => s.month === currentMonthKey)
+  const lastClosedSnapshot = snapshots.find(s => s.month !== currentMonthKey) || snapshots[0]
+
+  const closeMonth = async () => {
+    await saveFinanceSnapshot(user.uid, { totalBanks, totalIncome, totalExpenses, monthlyBalance })
+    showToast('Mês fechado — agora dá pra comparar com o próximo.')
+  }
+
+  const diffVsLast = (key) => {
+    if (!lastClosedSnapshot) return null
+    const diff = { totalBanks, totalIncome, totalExpenses, monthlyBalance }[key] - lastClosedSnapshot[key]
+    return diff
+  }
+
   return (
     <div className="page">
       <div className="page-header">
@@ -181,7 +206,48 @@ export default function Finances() {
           <span className="finance-stat-value" style={{ color: monthlyBalance >= 0 ? 'var(--sage)' : 'var(--coral)' }}>
             <CountUp value={monthlyBalance} format={fmtCurrency} />
           </span>
+          {lastClosedSnapshot && (
+            <span className="finance-stat-diff" style={{ color: diffVsLast('monthlyBalance') >= 0 ? 'var(--sage)' : 'var(--coral)' }}>
+              {diffVsLast('monthlyBalance') >= 0 ? '+' : ''}{fmtCurrencyInt(diffVsLast('monthlyBalance'))} vs {lastClosedSnapshot.month}
+            </span>
+          )}
         </div>
+      </div>
+
+      {/* Fechamento mensal — sem isso não dá pra saber se este mês está melhor ou pior que o passado */}
+      <div className="finance-section">
+        <div className="finance-section-header">
+          <div>
+            <h2 className="finance-section-title">Comparação mensal</h2>
+            <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+              Fecha o mês pra guardar uma foto dos totais e comparar com o próximo.
+            </p>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={closeMonth} disabled={currentMonthClosed}>
+            <RiFlag2Line size={13} /> {currentMonthClosed ? `${currentMonthKey} já fechado` : 'Fechar o mês'}
+          </button>
+        </div>
+
+        {snapshots.length > 0 ? (
+          <div className="finance-table">
+            <div className="finance-table-header finance-table-header--banks">
+              <span>Mês</span>
+              <span>Saldo mensal</span>
+              <span></span>
+            </div>
+            {snapshots.map(s => (
+              <div key={s.id} className="finance-table-row finance-table-row--banks">
+                <span className="finance-table-cell-main">{s.month}</span>
+                <span className="finance-table-cell finance-table-cell-highlight" style={{ color: s.monthlyBalance >= 0 ? 'var(--sage)' : 'var(--coral)' }}>
+                  {fmtCurrency(s.monthlyBalance)}
+                </span>
+                <span></span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="finance-empty">Nenhum mês fechado ainda — feche o atual quando terminar para começar a comparar.</p>
+        )}
       </div>
 
       {/* Income Section */}

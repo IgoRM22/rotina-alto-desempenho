@@ -111,16 +111,20 @@ export default function Home() {
   const commitments = Array.isArray(prefs.commitments) ? prefs.commitments.filter(c => c?.text) : []
   const commitment = commitments.length ? commitments[dayOfYear(now) % commitments.length] : null
 
-  // ── Sinal de desvio: 1 por vez, na ordem de urgência ──
+  // ── Sinal de desvio: mostra o mais urgente, mas conta quantos outros
+  // também estão pedindo atenção — senão, resolver o primeiro escondia os
+  // demais até você voltar a esbarrar neles um por um. ──
   const signal = useMemo(() => {
+    const candidates = []
+
     const overdue = todos.filter(t => !t.done && t.dueDate && t.dueDate < dateKey)
     if (overdue.length > 0) {
-      return {
+      candidates.push({
         variant: 'is-coral',
         text: <>Você tem <strong>{overdue.length} tarefa{overdue.length > 1 ? 's' : ''} vencida{overdue.length > 1 ? 's' : ''}</strong> esperando decisão — concluir, reagendar ou soltar.</>,
         to: '/planejar/tarefas',
         cta: 'Ver tarefas',
-      }
+      })
     }
 
     if (now.getHours() >= 18 && habits.length) {
@@ -129,12 +133,12 @@ export default function Home() {
         .filter(({ habit, streak }) => streak >= 3 && !todayHabitChecked[habit.id])
         .sort((a, b) => b.streak - a.streak)[0]
       if (atRisk) {
-        return {
+        candidates.push({
           variant: '',
           text: <>Sua sequência de <strong>{atRisk.streak} dias</strong> em <strong>"{atRisk.habit.name}"</strong> está em risco — ainda dá tempo hoje.</>,
           to: '/planejar/habitos',
           cta: 'Marcar agora',
-        }
+        })
       }
     }
 
@@ -146,12 +150,17 @@ export default function Home() {
       .sort((a, b) => a.ts - b.ts)[0]
     if (stalled) {
       const days = Math.floor((Date.now() / 1000 - stalled.ts) / 86400)
-      return {
+      candidates.push({
         variant: '',
         text: <>Sua meta <strong>"{stalled.goal.title}"</strong> está parada há <strong>{days} dias</strong> — nenhum progresso registrado.</>,
         to: '/planejar/metas',
         cta: 'Retomar',
-      }
+      })
+    }
+
+    if (candidates.length > 0) {
+      const [primary, ...rest] = candidates
+      return { ...primary, otherCount: rest.length }
     }
 
     if (allTasksDone && habits.length > 0 && habitsDone === habits.length) {
@@ -167,33 +176,29 @@ export default function Home() {
 
   return (
     <div className="page">
+      {/* Fica fora do branch hoje/revisão de propósito: se cada visão renderizasse
+          o próprio toggle dentro do seu layout, ele pulava de posição ao trocar
+          (um ficava dentro do page-header, o outro solto no topo). Assim é sempre
+          o mesmo lugar, nas duas visões, mobile ou desktop. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <Tabs
+          variant="segmented"
+          items={[{ key: 'hoje', label: 'Hoje' }, { key: 'revisao', label: 'Revisão semanal' }]}
+          active={view}
+          onChange={setView}
+        />
+      </div>
+
       {view === 'revisao' ? (
         <>
           <div className="page-header">
             <span className="page-kicker">Esta semana</span>
             <h1 className="page-title">Revisão semanal</h1>
-            <div style={{ marginTop: 20 }}>
-              <Tabs
-                variant="segmented"
-                items={[{ key: 'hoje', label: 'Hoje' }, { key: 'revisao', label: 'Revisão semanal' }]}
-                active={view}
-                onChange={setView}
-              />
-            </div>
           </div>
           <RevisaoSemanal />
         </>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <Tabs
-              variant="segmented"
-              items={[{ key: 'hoje', label: 'Hoje' }, { key: 'revisao', label: 'Revisão semanal' }]}
-              active={view}
-              onChange={setView}
-            />
-          </div>
-
           <div className="hero">
             <div className="hero-date reveal" style={{ '--d': 0 }}>
               <div className="hero-day">{String(now.getDate()).padStart(2, '0')}</div>
@@ -250,7 +255,12 @@ export default function Home() {
 
           {signal && (
             <div className={`hoje-signal reveal ${signal.variant}`} style={{ '--d': 0.5 }}>
-              <p>{signal.text}</p>
+              <div>
+                <p>{signal.text}</p>
+                {signal.otherCount > 0 && (
+                  <p className="hoje-signal-more">+{signal.otherCount} outra{signal.otherCount > 1 ? 's' : ''} coisa{signal.otherCount > 1 ? 's' : ''} pedindo atenção</p>
+                )}
+              </div>
               {signal.to && <Link to={signal.to} className="btn btn-ghost btn-sm">{signal.cta}</Link>}
             </div>
           )}

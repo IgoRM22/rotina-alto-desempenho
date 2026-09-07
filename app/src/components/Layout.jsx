@@ -11,10 +11,16 @@ import {
 import { useAuth } from '../context/AuthContext'
 import BoltIcon from './BoltIcon'
 import AssistantFab from './AssistantFab'
+import WhatsNewModal from './WhatsNewModal'
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const location = useLocation()
+  // Só a seção de topo entra na key (ex: "/planejar"), não o caminho
+  // inteiro — trocar de Noturno pra Agenda pra Tarefas é a MESMA seção,
+  // então não precisa remontar tudo (cabeçalho, abas) e piscar a cada
+  // clique. Só remonta de verdade ao trocar de seção (Hoje → Planejar).
+  const section = '/' + (location.pathname.split('/')[1] || '')
 
   return (
     <div className="app-layout">
@@ -39,7 +45,7 @@ export default function Layout({ children }) {
         </div>
       </nav>
 
-      <main key={location.pathname} className="page-fade">
+      <main key={section} className="page-fade">
         {children}
       </main>
 
@@ -70,6 +76,7 @@ export default function Layout({ children }) {
       </nav>
 
       <AssistantFab />
+      <WhatsNewModal />
     </div>
   )
 }

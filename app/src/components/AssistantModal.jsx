@@ -112,6 +112,14 @@ export default function AssistantModal({ onClose }) {
 
   const submit = () => send(text.trim())
 
+  // Sem isso, um comando digitado errado (typo, etc.) só podia ser corrigido
+  // mandando outra mensagem do zero — tocar na sua própria mensagem já
+  // devolve o texto pra caixa, pronto pra ajustar e reenviar.
+  const reuseMessage = (msgText) => {
+    setText(msgText)
+    inputRef.current?.focus()
+  }
+
   const useSuggestion = (s) => {
     if (s.endsWith(': ')) {
       setText(s)
@@ -183,7 +191,11 @@ export default function AssistantModal({ onClose }) {
               {m.role !== 'user' && (
                 <span className="assistant-avatar"><SparkleIcon size={15} /></span>
               )}
-              <div className={`assistant-msg assistant-msg--${m.role}`}>
+              <div
+                className={`assistant-msg assistant-msg--${m.role}`}
+                onClick={m.role === 'user' ? () => reuseMessage(m.text) : undefined}
+                title={m.role === 'user' ? 'Toque para editar e reenviar' : undefined}
+              >
                 {m.text}
                 {m.pending && typeof m.pending === 'object' && (
                   <div className="assistant-confirm-row">

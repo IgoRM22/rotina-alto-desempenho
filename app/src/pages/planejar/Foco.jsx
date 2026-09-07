@@ -4,12 +4,15 @@ import {
   listenGoals, listenFocusSessions, addFocusSession, deleteFocusSession,
   listenPrefs, savePrefs,
 } from '../../services/firestore'
-import { todayKey } from '../../utils/date'
+import { todayKey, dateKeyFromDate, addDays } from '../../utils/date'
+import { playChime, vibrateDevice, notifyPhaseEnd } from '../../utils/focusAlerts'
 import BoltIcon from '../../components/BoltIcon'
 import Toast from '../../components/Toast'
 
 const STORAGE_KEY = 'raio-foco-session'
 const TARGET_OPTIONS = [30, 45, 60, 90, 120]
+const WORK_OPTIONS = [15, 20, 25, 30, 45, 50]
+const BREAK_OPTIONS = [5, 10, 15, 20]
 
 const loadStored = () => {
   try {
@@ -27,6 +30,14 @@ const store = (session) => {
   } catch { /* storage indisponível — timer segue só em memória */ }
 }
 
+const heatmapLevel = (ratio) => {
+  if (ratio <= 0) return 0
+  if (ratio < 0.34) return 1
+  if (ratio < 0.67) return 2
+  if (ratio < 1) return 3
+  return 4
+}
+
 const fmtClock = (totalSec) => {
   const m = Math.floor(totalSec / 60)
   const s = Math.floor(totalSec % 60)
@@ -37,8 +48,11 @@ export default function Foco() {
   const [goals, setGoals] = useState([])
   const [sessions, setSessions] = useState([])
   const [prefs, setPrefs] = useState({})
-  // { startedAt: ms | null (pausado), accumulatedSec, goalId }
+  // Livre: { mode: 'livre', startedAt: ms | null (pausado), accumulatedSec, goalId }
+  // Pomodoro: { mode: 'pomodoro', phase: 'work'|'break', phaseStartedAt: ms | null,
+  //             phaseAccumulatedSec, cyclesCompleted, goalId }
   const [session, setSession] = useState(loadStored)
+  const [pendingMode, setPendingMode] = useState('livre')
   const [tick, setTick] = useState(0)
   const [toast, setToast] = useState(null)
   const dischargeRef = useRef(null)
@@ -50,7 +64,14 @@ export default function Foco() {
     return () => { u1(); u2(); u3() }
   }, [])
 
-  const running = !!session?.startedAt
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
+  }, [])
+
+  const isPomodoro = session?.mode === 'pomodoro'
+  const running = isPomodoro ? !!session?.phaseStartedAt : !!session?.startedAt
 
   useEffect(() => {
     if (!running) return
@@ -64,20 +85,48 @@ export default function Foco() {
   }
 
   const target = TARGET_OPTIONS.includes(prefs.focusDailyTarget) ? prefs.focusDailyTarget : 60
+  const workMin = WORK_OPTIONS.includes(prefs.pomodoroWork) ? prefs.pomodoroWork : 25
+  const breakMin = BREAK_OPTIONS.includes(prefs.pomodoroBreak) ? prefs.pomodoroBreak : 5
   const today = todayKey()
 
-  const elapsedSec = session
+  const elapsedSec = (session && !isPomodoro)
     ? session.accumulatedSec + (session.startedAt ? (Date.now() - session.startedAt) / 1000 : 0)
     : 0
   const elapsedMin = elapsedSec / 60
 
+  const phaseDurationSec = isPomodoro ? (session.phase === 'work' ? workMin : breakMin) * 60 : 0
+  const phaseElapsedSec = isPomodoro
+    ? session.phaseAccumulatedSec + (session.phaseStartedAt ? (Date.now() - session.phaseStartedAt) / 1000 : 0)
+    : 0
+  const remainingSec = isPomodoro ? Math.max(0, phaseDurationSec - phaseElapsedSec) : 0
+
   const todaySessions = sessions.filter(s => s.date === today)
   const todayMinutes = todaySessions.reduce((sum, s) => sum + (s.minutes || 0), 0)
-  const chargePct = Math.min(100, ((todayMinutes + elapsedMin) / target) * 100)
+  const chargePct = isPomodoro
+    ? Math.min(100, (phaseElapsedSec / phaseDurationSec) * 100)
+    : Math.min(100, ((todayMinutes + elapsedMin) / target) * 100)
 
   const activeGoals = goals.filter(g => !g.done)
   const goalTitle = (id) => goals.find(g => g.id === id)?.title || null
   const linkedGoal = session ? goalTitle(session.goalId) : null
+
+  // Hábitos tem o heatmap de 14 semanas pra dar aquele "estou mantendo isso?"
+  // de relance — Foco não tinha nada parecido, só a lista plana de sessões.
+  const last14Trend = useMemo(() => {
+    const minutesByDate = new Map()
+    sessions.forEach(s => {
+      if (!s.date) return
+      minutesByDate.set(s.date, (minutesByDate.get(s.date) || 0) + (s.minutes || 0))
+    })
+    const now = new Date()
+    return Array.from({ length: 14 }, (_, i) => {
+      const day = addDays(now, i - 13)
+      const key = dateKeyFromDate(day)
+      const minutes = minutesByDate.get(key) || 0
+      return { key, day, minutes, level: heatmapLevel(minutes / target) }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, target])
 
   const goalTotals = useMemo(() => {
     const totals = new Map()
@@ -97,31 +146,7 @@ export default function Foco() {
 
   const setAndStore = (next) => { setSession(next); store(next) }
 
-  const start = (goalId) => {
-    setAndStore({ startedAt: Date.now(), accumulatedSec: 0, goalId: goalId || null })
-  }
-
-  const pause = () => {
-    if (!session?.startedAt) return
-    setAndStore({
-      ...session,
-      startedAt: null,
-      accumulatedSec: session.accumulatedSec + (Date.now() - session.startedAt) / 1000,
-    })
-  }
-
-  const resume = () => {
-    if (!session || session.startedAt) return
-    setAndStore({ ...session, startedAt: Date.now() })
-  }
-
-  const finish = async () => {
-    if (!session) return
-    const minutes = Math.max(1, Math.round(elapsedSec / 60))
-    await addFocusSession({ date: today, minutes, goalId: session.goalId || null })
-    setAndStore(null)
-    showToast(`Sessão de ${minutes} min registrada.`)
-    // traço de conexão foco → meta (único momento de celebração do app)
+  const celebrate = () => {
     const svg = dischargeRef.current
     if (svg) {
       svg.classList.remove('draw')
@@ -130,10 +155,106 @@ export default function Foco() {
     }
   }
 
+  const start = (goalId) => {
+    if (pendingMode === 'pomodoro') {
+      setAndStore({
+        mode: 'pomodoro',
+        phase: 'work',
+        phaseStartedAt: Date.now(),
+        phaseAccumulatedSec: 0,
+        cyclesCompleted: 0,
+        goalId: goalId || null,
+      })
+    } else {
+      setAndStore({ mode: 'livre', startedAt: Date.now(), accumulatedSec: 0, goalId: goalId || null })
+    }
+  }
+
+  const pause = () => {
+    if (!session) return
+    if (isPomodoro) {
+      if (!session.phaseStartedAt) return
+      setAndStore({
+        ...session,
+        phaseStartedAt: null,
+        phaseAccumulatedSec: session.phaseAccumulatedSec + (Date.now() - session.phaseStartedAt) / 1000,
+      })
+    } else {
+      if (!session.startedAt) return
+      setAndStore({
+        ...session,
+        startedAt: null,
+        accumulatedSec: session.accumulatedSec + (Date.now() - session.startedAt) / 1000,
+      })
+    }
+  }
+
+  const resume = () => {
+    if (!session) return
+    if (isPomodoro) {
+      if (session.phaseStartedAt) return
+      setAndStore({ ...session, phaseStartedAt: Date.now() })
+    } else {
+      if (session.startedAt) return
+      setAndStore({ ...session, startedAt: Date.now() })
+    }
+  }
+
+  const finish = async () => {
+    if (!session || isPomodoro) return
+    const minutes = Math.max(1, Math.round(elapsedSec / 60))
+    await addFocusSession({ date: today, minutes, goalId: session.goalId || null })
+    setAndStore(null)
+    showToast(`Sessão de ${minutes} min registrada.`)
+    // traço de conexão foco → meta (único momento de celebração do app)
+    celebrate()
+  }
+
   const discard = () => {
     setAndStore(null)
     showToast('Sessão descartada.')
   }
+
+  const stopPomodoro = () => {
+    const cycles = session?.cyclesCompleted || 0
+    setAndStore(null)
+    showToast(cycles > 0 ? `Pomodoro encerrado — ${cycles} ciclo(s) completo(s).` : 'Pomodoro encerrado.')
+  }
+
+  // Fim de fase automático: cada vez que remainingSec chega a 0 com a fase
+  // rodando, toca o alarme, vibra e avança pra próxima fase sozinho — igual
+  // a um pomodoro de verdade, sem precisar tocar em nada.
+  useEffect(() => {
+    if (!isPomodoro || !running || remainingSec > 0) return
+    playChime()
+    vibrateDevice()
+
+    if (session.phase === 'work') {
+      const minutes = workMin
+      addFocusSession({ date: today, minutes, goalId: session.goalId || null }).then(() => {
+        celebrate()
+      })
+      showToast(`Ciclo de ${minutes} min concluído — hora da pausa.`)
+      notifyPhaseEnd('Foco concluído', `${minutes} min registrados. Hora da pausa de ${breakMin} min.`)
+      setAndStore({
+        ...session,
+        phase: 'break',
+        phaseStartedAt: Date.now(),
+        phaseAccumulatedSec: 0,
+        cyclesCompleted: (session.cyclesCompleted || 0) + 1,
+      })
+    } else {
+      showToast('Pausa terminada — de volta ao foco.')
+      notifyPhaseEnd('Pausa terminada', `Bora voltar ao foco por ${workMin} min.`)
+      setAndStore({
+        ...session,
+        phase: 'work',
+        phaseStartedAt: Date.now(),
+        phaseAccumulatedSec: 0,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick])
 
   const removeSession = async (s) => {
     await deleteFocusSession(s.id)
@@ -144,6 +265,8 @@ export default function Foco() {
     if (session) setAndStore({ ...session, goalId: goalId || null })
   }
 
+  const phaseLabel = isPomodoro ? (session.phase === 'work' ? 'foco' : 'pausa') : null
+
   return (
     <>
       <div className="foco-wrap">
@@ -153,10 +276,18 @@ export default function Foco() {
         </div>
 
         <div className="foco-info">
-          <div className="foco-info-label">{running ? 'sessão em andamento' : session ? 'sessão pausada' : 'foco de hoje'}</div>
+          <div className="foco-info-label">
+            {isPomodoro
+              ? `${phaseLabel}${running ? '' : ' · pausado'} · ciclo ${(session.cyclesCompleted || 0) + 1}`
+              : (running ? 'sessão em andamento' : session ? 'sessão pausada' : 'foco de hoje')}
+          </div>
           <div className="foco-time">
-            {session ? fmtClock(elapsedSec) : `${todayMinutes} min`}
-            <small> · {todayMinutes + Math.floor(elapsedMin)}/{target} min hoje</small>
+            {isPomodoro ? fmtClock(remainingSec) : (session ? fmtClock(elapsedSec) : `${todayMinutes} min`)}
+            <small>
+              {isPomodoro
+                ? ` · ${session.cyclesCompleted || 0} ciclo(s) hoje`
+                : ` · ${todayMinutes + Math.floor(elapsedMin)}/${target} min hoje`}
+            </small>
           </div>
           {session ? (
             linkedGoal
@@ -172,6 +303,22 @@ export default function Foco() {
         <div className="foco-actions">
           {!session && (
             <>
+              <div className="view-toggle">
+                <button
+                  type="button"
+                  className={`view-btn ${pendingMode === 'livre' ? 'active' : ''}`}
+                  onClick={() => setPendingMode('livre')}
+                >
+                  Livre
+                </button>
+                <button
+                  type="button"
+                  className={`view-btn ${pendingMode === 'pomodoro' ? 'active' : ''}`}
+                  onClick={() => setPendingMode('pomodoro')}
+                >
+                  Pomodoro
+                </button>
+              </div>
               <select
                 className="calendar-select"
                 style={{ height: 30, minHeight: 30 }}
@@ -206,8 +353,14 @@ export default function Foco() {
               ) : (
                 <button className="btn btn-primary" onClick={resume}><RiPlayLine size={14} /> Retomar</button>
               )}
-              <button className="btn btn-primary" onClick={finish}><RiStopLine size={14} /> Concluir</button>
-              <button className="btn btn-danger btn-sm" onClick={discard}>descartar</button>
+              {isPomodoro ? (
+                <button className="btn btn-danger btn-sm" onClick={stopPomodoro}><RiStopLine size={14} /> Parar</button>
+              ) : (
+                <>
+                  <button className="btn btn-primary" onClick={finish}><RiStopLine size={14} /> Concluir</button>
+                  <button className="btn btn-danger btn-sm" onClick={discard}>descartar</button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -217,14 +370,46 @@ export default function Foco() {
         </svg>
       </div>
 
-      <div className="subpage-controls" style={{ marginBottom: 32 }}>
-        <span className="subpage-controls-note">alvo diário de foco</span>
+      <div className="foco-trend">
+        <span className="foco-trend-label">últimos 14 dias</span>
+        <div className="foco-trend-strip">
+          {last14Trend.map(({ key, day, minutes, level }) => (
+            <span
+              key={key}
+              className={`foco-trend-cell level-${level}`}
+              title={`${day.toLocaleDateString('pt-BR')} — ${minutes} min`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="subpage-controls" style={{ marginBottom: 12, flexWrap: 'wrap', gap: '8px 16px' }}>
+        <span className="subpage-controls-note">alvo diário (livre)</span>
         <select
           className="calendar-select"
           value={target}
           onChange={e => savePrefs({ focusDailyTarget: Number(e.target.value) })}
         >
           {TARGET_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
+        </select>
+      </div>
+
+      <div className="subpage-controls" style={{ marginBottom: 32, flexWrap: 'wrap', gap: '8px 16px' }}>
+        <span className="subpage-controls-note">pomodoro: foco</span>
+        <select
+          className="calendar-select"
+          value={workMin}
+          onChange={e => savePrefs({ pomodoroWork: Number(e.target.value) })}
+        >
+          {WORK_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
+        </select>
+        <span className="subpage-controls-note">pausa</span>
+        <select
+          className="calendar-select"
+          value={breakMin}
+          onChange={e => savePrefs({ pomodoroBreak: Number(e.target.value) })}
+        >
+          {BREAK_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
         </select>
       </div>
 

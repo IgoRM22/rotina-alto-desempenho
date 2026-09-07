@@ -18,6 +18,7 @@ import { todayKey, MAX_TODAY_TASKS } from '../../utils/date'
 import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
+import Linkify from '../../components/Linkify'
 
 const PRIORITIES = [
   { value: 'alta', label: 'Alta', color: 'var(--coral)' },
@@ -217,7 +218,7 @@ export default function Tarefas() {
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className={`todo-text ${todo.done ? 'done' : ''}`}>{todo.title}</div>
-                {todo.note && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{todo.note}</div>}
+                {todo.note && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}><Linkify text={todo.note} /></div>}
                 <div className="todo-meta">
                   {todo.category && <span className={`pill pill-${todo.category}`}>{todo.category}</span>}
                   {todo.priority && (

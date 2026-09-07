@@ -13,6 +13,7 @@ import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 import Tabs from '../components/Tabs'
 import InspirationsPanel from '../components/InspirationsPanel'
+import Linkify from '../components/Linkify'
 
 const IMPORTANCE = [
   { value: 'alta', label: 'Alta' },
@@ -198,7 +199,7 @@ export default function Notes() {
                   </div>
                   <h3 className="note-title">{note.title}</h3>
                   {note.content && (
-                    <p className="note-preview">{note.content.slice(0, 130)}{note.content.length > 130 ? '…' : ''}</p>
+                    <p className="note-preview"><Linkify text={note.content.slice(0, 130)} />{note.content.length > 130 ? '…' : ''}</p>
                   )}
                   <div className="note-footer">
                     <span className="note-date">{fmtDate(note.updatedAt || note.createdAt)}</span>

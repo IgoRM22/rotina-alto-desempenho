@@ -43,29 +43,18 @@ body {
   overflow-x: hidden;
 }
 
-/* Keep scrollbar visuals aligned with the dark UI theme */
+/* Barra de scroll escondida em tudo — página curta (ex: Foco) e página
+   longa (ex: Alimentação) trocando de rota faziam o conteúdo "pular"
+   alguns pixels pra esquerda/direita conforme a barra aparecia/sumia.
+   Sem a barra visível, esse pulo desaparece e a rolagem continua igual. */
 * {
-  scrollbar-color: rgba(237,232,224,0.2) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: rgba(237,232,224,0.18);
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: rgba(237,232,224,0.28);
+  width: 0;
+  height: 0;
 }
 
 body::after {
@@ -179,8 +168,24 @@ body::after {
   to { opacity: 1; }
 }
 
+/* Mesmo degrade-escalonado que o Hoje já usava só nos seus próprios blocos
+   (.reveal + --d) — aqui aplicado automaticamente às seções de toda tela,
+   sem precisar marcar cada uma na mão. Overlays (modal, toast) ficam de
+   fora: eles têm que aparecer na hora, não em cascata. */
+.page > *:not(.modal-overlay):not(.toast-container):not(.reveal) {
+  animation: fade-up .5s cubic-bezier(.16,.84,.44,1) both;
+}
+
+.page > *:nth-child(1) { animation-delay: 0s; }
+.page > *:nth-child(2) { animation-delay: .06s; }
+.page > *:nth-child(3) { animation-delay: .12s; }
+.page > *:nth-child(4) { animation-delay: .18s; }
+.page > *:nth-child(5) { animation-delay: .24s; }
+.page > *:nth-child(n+6) { animation-delay: .28s; }
+
 @media (prefers-reduced-motion: reduce) {
-  .page-fade { animation: none; }
+  .page-fade,
+  .page > * { animation: none; }
 }
 
 /* ── NAV ── */
@@ -385,6 +390,24 @@ body::after {
 
 .field select option {
   background: #11100f;
+}
+
+/* Setinha nativa do sistema operacional destoava do resto do app (cada
+   navegador desenha uma diferente) — troca por uma seta coral desenhada
+   na mão, igual em toda a tela, em vez do controle "cru" do SO. */
+.field select,
+.calendar-select,
+.meal-add-item-row select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23E06445' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.field select {
+  padding-right: 34px;
 }
 
 /* ── INLINE EDIT ── */
@@ -1466,7 +1489,7 @@ body::after {
 }
 
 .calendar-select {
-  background: transparent;
+  background-color: transparent;
   border: 1px solid var(--border2);
   color: var(--text2);
   font-size: 11px;
@@ -1474,7 +1497,24 @@ body::after {
   letter-spacing: 0.04em;
   height: 24px;
   min-height: 24px;
-  padding: 0 8px;
+  padding: 0 22px 0 8px;
+  background-position: right 6px center;
+  background-size: 8px 6px;
+}
+
+.calendar-select:hover {
+  border-color: rgba(224,100,69,.35);
+  color: var(--text);
+}
+
+.calendar-select:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+
+.calendar-select option {
+  background: #11100f;
+  color: var(--text);
 }
 
 .month-calendar-grid {
@@ -3265,7 +3305,9 @@ details > summary::marker {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 16px;
+  border: 1px solid var(--border2);
+  background: var(--s1);
 }
 
 .habit-heatmap-weekdays {
@@ -3834,16 +3876,21 @@ details > summary::marker {
 .meal-add-item-row input:focus { border-color: var(--coral); }
 
 .meal-add-item-row select {
-  background: #11100f;
+  background-color: #11100f;
   border: 1px solid var(--border2);
   color: var(--text);
-  padding: 8px 12px;
+  padding: 8px 32px 8px 12px;
   font-size: 13px;
   font-family: var(--ff-b);
   outline: none;
 }
 
 .meal-add-item-row select:focus { border-color: var(--coral); }
+
+.meal-add-item-row select option {
+  background: #11100f;
+  color: var(--text);
+}
 
 /* ── DAILY LOG CARD ── */
 .daily-log-card {
@@ -3915,6 +3962,60 @@ details > summary::marker {
   .calendar-bar-overflow-panel { left: auto; right: 0; }
 }
 
+.planejar-subnav-select-wrap {
+  display: none;
+}
+
+.planejar-subnav-select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--ff-b);
+  font-size: 15px;
+  font-weight: 500;
+  height: 48px;
+  padding: 0 40px 0 16px;
+  border-radius: 2px;
+  transition: border-color .15s, background .15s;
+}
+
+.planejar-subnav-select:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+
+.planejar-subnav-select:active {
+  background: var(--s2, #1c1b1a);
+}
+
+.planejar-subnav-select option {
+  background: var(--s1);
+  color: var(--text);
+}
+
+.planejar-subnav-select-chevron {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: var(--coral);
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .planejar-subnav-select-wrap {
+    display: block;
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .planejar-subnav-tabs {
+    display: none;
+  }
+}
+
 /* ═══════════════════════ RAIO 2.0 ═══════════════════════ */
 
 /* ── MOTION LANGUAGE ── */
@@ -3974,9 +4075,11 @@ details > summary::marker {
 .hero::before {
   content: '';
   position: absolute;
-  top: -40%; left: -20%;
-  width: 70%; height: 140%;
-  background: radial-gradient(circle, rgba(224,100,69,0.10) 0%, transparent 70%);
+  inset: 0;
+  /* "circle" com a caixa retangular original deixava a borda do degradê
+     visível como um quadrado — ellipse com tamanho/posição explícitos
+     acompanha o formato do card e esmaece por completo antes da borda. */
+  background: radial-gradient(ellipse 55% 65% at 10% 15%, rgba(224,100,69,0.16), transparent 70%);
   pointer-events: none;
 }
 
@@ -4196,6 +4299,33 @@ details > summary::marker {
   flex-direction: column;
   gap: 8px;
   flex-shrink: 0;
+  width: 190px;
+}
+
+.foco-actions .calendar-select,
+.foco-actions .btn,
+.foco-actions .view-toggle {
+  width: 100%;
+}
+
+/* O toggle segmentado padrão (cinza neutro) some no fundo escuro do Foco —
+   aqui ganha o acento coral que o resto da tela já usa, pra ficar claro
+   qual modo está ativo sem parecer uma caixa cinza qualquer. */
+.foco-actions .view-toggle {
+  border-radius: 8px;
+  overflow: hidden;
+  border-color: var(--border2);
+}
+
+.foco-actions .view-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font-weight: 500;
+}
+
+.foco-actions .view-btn.active {
+  background: var(--coral-dim);
+  color: var(--coral-text);
 }
 
 .foco-discharge {
@@ -4368,8 +4498,8 @@ details > summary::marker {
   right: 24px;
   bottom: calc(24px + env(safe-area-inset-bottom));
   z-index: 1250;
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   border: 1px solid rgba(224,100,69,.4);
   background: var(--s1);
@@ -4378,19 +4508,36 @@ details > summary::marker {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color .2s, transform .15s;
+  /* Fica semi-transparente em repouso — em telas com listas/tabelas, a
+     posição fixa cai em cima de botões de verdade (editar, excluir,
+     "adicionar"); nunca esconder o que está atrás por completo evita que
+     ela vire um bloqueio permanente de clique visual. */
+  opacity: .75;
+  transition: opacity .2s, border-color .2s, transform .15s;
   animation: star-float 3.4s ease-in-out infinite;
 }
 
-.assistant-fab:hover {
+.assistant-fab:hover,
+.assistant-fab:focus-visible {
+  opacity: 1;
   border-color: var(--coral);
   transform: scale(1.06);
+}
+
+/* Enquanto a página rola, encolhe mais e fica ainda mais discreta — volta
+   ao normal ~500ms depois de parar (ver AssistantFab.jsx). */
+.assistant-fab.is-scrolling {
+  opacity: .5;
+  transform: scale(.82);
+  animation-play-state: paused;
 }
 
 @media (max-width: 720px) {
   .assistant-fab {
     right: 16px;
-    bottom: calc(88px + env(safe-area-inset-bottom));
+    bottom: calc(112px + env(safe-area-inset-bottom));
+    width: 42px;
+    height: 42px;
   }
 }
 
@@ -4426,9 +4573,8 @@ body.has-modal-open .assistant-fab { display: none; }
 .assistant-modal::before {
   content: '';
   position: absolute;
-  top: -30%; left: -10%;
-  width: 70%; height: 70%;
-  background: radial-gradient(circle, rgba(224,100,69,.08) 0%, transparent 70%);
+  inset: 0;
+  background: radial-gradient(ellipse 50% 40% at 15% 8%, rgba(224,100,69,.14), transparent 70%);
   pointer-events: none;
 }
 
@@ -4712,4 +4858,116 @@ body.has-modal-open .assistant-fab { display: none; }
   font-size: 11.5px;
   color: var(--text3);
   font-style: italic;
+}
+
+/* ── TABS SCROLL: pista visual de que há mais abas fora da tela ── */
+.tabs-scroll-wrap {
+  position: relative;
+}
+
+.tabs-scroll-fade {
+  position: absolute;
+  top: 0;
+  bottom: 1px;
+  width: 32px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tabs-scroll-fade--left {
+  left: 0;
+  background: linear-gradient(to right, var(--bg) 0%, transparent 100%);
+}
+
+.tabs-scroll-fade--right {
+  right: 0;
+  background: linear-gradient(to left, var(--bg) 0%, transparent 100%);
+}
+
+.hoje-signal-more {
+  font-size: 11.5px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+/* ── LINKIFY: URLs coladas em notas/tarefas viram link de verdade ── */
+.todo-text + div a,
+.note-preview a {
+  color: var(--blue-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── FOCO: tendência dos últimos 14 dias (mesma linguagem do heatmap de hábitos, em violeta) ── */
+.foco-trend {
+  margin-bottom: 24px;
+}
+
+.foco-trend-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.foco-trend-strip {
+  display: flex;
+  gap: 4px;
+}
+
+.foco-trend-cell {
+  flex: 1;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--border2);
+}
+
+.foco-trend-cell.level-0 { background: var(--border2); }
+.foco-trend-cell.level-1 { background: rgba(144,132,201,.28); }
+.foco-trend-cell.level-2 { background: rgba(144,132,201,.5); }
+.foco-trend-cell.level-3 { background: rgba(144,132,201,.74); }
+.foco-trend-cell.level-4 { background: var(--violet); }
+
+/* ── ASSISTANT: reaproveitar mensagem enviada (tocar devolve pra caixa) ── */
+.assistant-msg--user {
+  cursor: pointer;
+  transition: opacity .15s;
+}
+
+.assistant-msg--user:hover,
+.assistant-msg--user:active {
+  opacity: .85;
+}
+
+/* ── WHAT'S NEW MODAL ── */
+.whats-new-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.whats-new-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.whats-new-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.whats-new-item-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.whats-new-item-text {
+  font-size: 12.5px;
+  color: var(--text2);
+  line-height: 1.5;
 }

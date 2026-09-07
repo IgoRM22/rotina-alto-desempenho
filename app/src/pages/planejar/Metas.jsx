@@ -258,6 +258,7 @@ export default function Metas() {
 
       {/* Filter tabs */}
       <Tabs
+        scroll
         items={[['Todos', 'Todos'], ['semana', 'Semana'], ['mes', 'Mês'], ['trimestre', 'Trimestre'], ['ano', 'Ano'], ['longo_prazo', 'Longo Prazo']].map(([key, label]) => ({ key, label }))}
         active={activeFilter}
         onChange={setActiveFilter}

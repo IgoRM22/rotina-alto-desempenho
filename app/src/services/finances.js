@@ -1,7 +1,23 @@
 import { db } from '../firebase'
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore'
+import { doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore'
 
 const now = () => new Date().toISOString()
+
+// ── Fechamento mensal: sem isso, Finanças é só uma foto do estado atual —
+// não dá pra saber se este mês está melhor ou pior que o passado. Cada
+// "fechamento" salva um retrato dos totais daquele mês pra comparação.
+const monthKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+export const saveFinanceSnapshot = async (uid, totals) => {
+  const key = monthKey()
+  const docRef = doc(db, 'users', uid, 'financeSnapshots', key)
+  await setDoc(docRef, { ...totals, month: key, closedAt: now() })
+}
+
+export const listenFinanceSnapshots = (uid, callback, max = 6) => {
+  const q = query(collection(db, 'users', uid, 'financeSnapshots'), orderBy('month', 'desc'), limit(max))
+  return onSnapshot(q, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+}
 
 export const listenFinancesData = (uid, callback) => {
   const docRef = doc(db, 'users', uid, 'finances', 'main')
