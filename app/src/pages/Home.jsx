@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { RiAddLine, RiCheckboxBlankLine } from '@remixicon/react'
 import {
   listenTodos, updateTodo, listenWeekFocus, listenHabits, listenHabitLogs,
@@ -27,12 +27,18 @@ const dayOfYear = (date) => {
 }
 
 export default function Home() {
-  const [view, setView] = useState('hoje')
+  // Fica na URL (?view=revisao) em vez de estado local — assim QUALQUER link
+  // pra "Hoje" (inclusive o ícone da nav inferior no mobile) realmente volta
+  // pra visão Hoje, mesmo se a pessoa estiver presa rolada lá embaixo na
+  // Revisão Semanal. Com estado local puro, clicar em "Hoje" na nav inferior
+  // não fazia nada — já estava na mesma rota "/", React Router não navegava.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view = searchParams.get('view') === 'revisao' ? 'revisao' : 'hoje'
+  const setView = (next) => setSearchParams(next === 'revisao' ? { view: 'revisao' } : {})
 
-  // Trocar Hoje <-> Revisão semanal não muda de rota (mesma página), então o
-  // navegador nunca rola pro topo sozinho — se a pessoa está com scroll
-  // descido, o toggle no topo da nova visão fica fora da tela e parece ter
-  // sumido/travado.
+  // Trocar Hoje <-> Revisão semanal não muda de página inteira, então o
+  // navegador não rola pro topo sozinho — sem isso, o toggle no topo da nova
+  // visão poderia ficar fora da tela se a pessoa estivesse rolada.
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [view])
