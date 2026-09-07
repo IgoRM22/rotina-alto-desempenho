@@ -452,6 +452,26 @@ export const saveGoalCategories = (cats) =>
   setDoc(userDoc('settings', 'prefs'), { goalCategories: cats }, { merge: true })
 
 // ── First-login initialization ────────────────────────────────────────────────
+// ── Push notifications (avisos proativos do assistente) ─────────────────────
+// id = hash simples do endpoint, pra não duplicar a mesma inscrição do mesmo
+// navegador se o usuário clicar em "ativar" mais de uma vez.
+const subscriptionId = (endpoint) => {
+  let hash = 0
+  for (let i = 0; i < endpoint.length; i++) {
+    hash = (hash * 31 + endpoint.charCodeAt(i)) | 0
+  }
+  return `sub_${Math.abs(hash)}`
+}
+
+export const savePushSubscription = (subscription) =>
+  setDoc(userDoc('pushSubscriptions', subscriptionId(subscription.endpoint)), {
+    subscription: subscription.toJSON ? subscription.toJSON() : subscription,
+    createdAt: serverTimestamp(),
+  })
+
+export const removePushSubscription = (endpoint) =>
+  deleteDoc(userDoc('pushSubscriptions', subscriptionId(endpoint)))
+
 export const ensureUserDefaults = async (uid) => {
   const prefsRef = doc(db, 'users', uid, 'settings', 'prefs')
   const snap = await getDoc(prefsRef)

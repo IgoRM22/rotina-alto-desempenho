@@ -12,6 +12,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // injectManifest (em vez de generateSW): precisamos de um service worker
+      // próprio pra lidar com eventos `push`/`notificationclick` — o modo
+      // generateSW só sabe gerar cache, não dá pra estender com listeners.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+      },
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
@@ -28,27 +37,6 @@ export default defineConfig({
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
         ]
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            // Comandos do assistente nunca são cacheados — diferente dos assets
-            // estáticos (cache-first/stale-while-revalidate) logo abaixo.
-            urlPattern: /^https:\/\/southamerica-east1-vidapessoal-ebf84\.cloudfunctions\.net\/.*/i,
-            handler: 'NetworkOnly',
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } }
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts-files', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 } }
-          }
-        ]
-      }
     })
   ]
 })

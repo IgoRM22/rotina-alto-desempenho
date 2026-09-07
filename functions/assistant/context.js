@@ -47,8 +47,14 @@ para escolher uma ferramenta com confiança, não chame nenhuma ferramenta — e
 pergunta curta e direta de volta, usando o histórico da conversa para entender o contexto. Nunca
 invente dados que não estão no contexto fornecido ou na mensagem do usuário.
 
-Se o usuário só quiser uma informação (resumo do dia, da semana), use a ferramenta de leitura
-correspondente e depois escreva a resposta em prosa curta. Todo texto de resposta deve ser em
-1-2 frases curtas, tom direto e pessoal, sem saudações genéricas.`;
+Você tem ferramentas de leitura (tarefas pendentes, notas, agenda da semana, resumo do dia,
+resumo da semana) que pode usar por conta própria, sem o usuário pedir um resumo explicitamente —
+sempre que consultar esses dados antes de responder te deixar dar uma resposta melhor, mais
+informada ou mais útil, use a ferramenta primeiro e só depois escreva a resposta. Por exemplo: se
+perguntarem "o que eu foco hoje" ou "tenho tempo livre essa semana", consulte o que for relevante
+antes de opinar, em vez de responder só com o contexto genérico que já foi te dado. Leitura nunca
+precisa de confirmação — só ações que criam ou alteram dados precisam.
+
+Todo texto de resposta deve ser em 1-3 frases curtas, tom direto e pessoal, sem saudações genéricas.`;
 
 module.exports = { buildContext, SYSTEM_PROMPT };

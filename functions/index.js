@@ -1,4 +1,5 @@
 const {onRequest} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const {initializeApp} = require("firebase-admin/app");
 const {getAuth} = require("firebase-admin/auth");
@@ -12,6 +13,8 @@ const {buildContext, SYSTEM_PROMPT} = require("./assistant/context");
 const {TOOLS} = require("./assistant/tools");
 const {executeTool} = require("./assistant/executor");
 const {isReadTool, formatWriteConfirmation, formatConfirmationPrompt} = require("./assistant/format");
+const {detectSignal} = require("./assistant/signals");
+const {sendPushToUser} = require("./assistant/push");
 
 initializeApp();
 const db = getFirestore();
@@ -141,7 +144,12 @@ exports.api = onRequest(
 );
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+// Flash-Lite é a família da Google desenhada especificamente pra isto —
+// tarefas curtas, de alta frequência, com function-calling (não raciocínio
+// profundo). Fixamos uma versão específica (não "-latest") porque a própria
+// documentação recomenda isso em produção — um alias pode trocar de modelo
+// por baixo dos panos sem aviso, como já nos mordeu antes com thinkingConfig.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 const MAX_HISTORY_TURNS = 8;
 
 // Traduz o erro técnico numa mensagem que a pessoa realmente consegue agir —
@@ -156,7 +164,6 @@ const friendlyErrorMessage = (error) => {
   }
   return "Não consegui completar isso agora. Tenta reformular ou de novo em instantes.";
 };
-const NON_CONFIRMABLE_TOOLS = new Set(["consultarResumoDoDia", "resumirSemana"]);
 const TOOL_NAMES = new Set(TOOLS.map((t) => t.name));
 
 // Histórico vem do cliente (texto puro, sem functionCall/functionResponse —
@@ -231,7 +238,7 @@ exports.assistantCommand = onRequest(
         const tool = typeof body.tool === "string" ? body.tool : "";
         const args = (body.args && typeof body.args === "object") ? body.args : {};
 
-        if (!TOOL_NAMES.has(tool) || NON_CONFIRMABLE_TOOLS.has(tool)) {
+        if (!TOOL_NAMES.has(tool) || isReadTool(tool)) {
           const failure = {ok: false, error: "invalid tool for confirmation"};
           await completeIdempotentRequest(db, uid, requestId, failure);
           return res.status(400).json(failure);
@@ -275,12 +282,19 @@ exports.assistantCommand = onRequest(
           // 6 tentativas com backoff exponencial já chegou a levar ~30s numa
           // única mensagem de chat — melhor falhar rápido com uma mensagem
           // clara (friendlyErrorMessage) do que travar a pessoa esperando.
-          httpOptions: {retryOptions: {attempts: 3}},
+          // timeout limita cada tentativa individual — sem isso, uma única
+          // chamada lenta (visto: ~29s numa chamada só, sem nem precisar de
+          // retry) some no meio do caminho sem teto nenhum.
+          httpOptions: {timeout: 12000, retryOptions: {attempts: 2}},
         });
 
         const config = {
           systemInstruction: `${SYSTEM_PROMPT}\n\nContexto atual (JSON):\n${JSON.stringify(context)}`,
           tools: [{functionDeclarations: TOOLS}],
+          // Resposta é sempre 1-2 frases curtas por design — travar um teto
+          // baixo de tokens corta o tempo de geração (é literalmente
+          // token-a-token), sem perder nada do que já pedimos no prompt.
+          maxOutputTokens: 300,
           // thinkingConfig.thinkingLevel foi tentado para cortar latência, mas
           // "gemini-flash-latest" rejeitou o campo com 400 Bad Request — removido
           // até confirmar qual geração do modelo aceita esse parâmetro.
@@ -375,6 +389,92 @@ exports.assistantCommand = onRequest(
         const failure = {ok: false, error: friendlyErrorMessage(error)};
         await completeIdempotentRequest(db, uid, requestId, failure);
         return res.status(500).json(failure);
+      }
+    },
+);
+
+const PUSH_TITLES = {
+  overdue_tasks: "Tarefa vencida",
+  habit_at_risk: "Sequência em risco",
+  stalled_goal: "Meta parada",
+};
+
+const buildSignalPrompt = (signal) => {
+  switch (signal.kind) {
+    case "overdue_tasks":
+      return `O usuário tem ${signal.data.count} tarefa(s) vencida(s): ${signal.data.titles.join(", ")}. ` +
+        "Escreva o corpo de uma notificação push (1 frase curta, até ~90 caracteres) chamando atenção " +
+        "pra isso de forma direta e pessoal — pode ser uma pergunta ou provocação leve, nunca genérica.";
+    case "habit_at_risk":
+      return `O hábito "${signal.data.name}" está com sequência de ${signal.data.streak} dias e ainda não ` +
+        "foi marcado hoje. Escreva o corpo de uma notificação push (1 frase curta, até ~90 caracteres) " +
+        "incentivando a manter a sequência hoje, direto e pessoal, sem ser genérico.";
+    case "stalled_goal":
+      return `A meta "${signal.data.title}" está parada há ${signal.data.days} dias, sem nenhum progresso. ` +
+        "Escreva o corpo de uma notificação push (1 frase curta, até ~90 caracteres) chamando atenção pra " +
+        "isso — pode ser uma pergunta provocativa tipo perguntar se ainda importa, sem ser genérica.";
+    default:
+      return null;
+  }
+};
+
+// Roda 1x por dia — nunca mais. Só chama o Gemini quando (a) o usuário tem
+// pelo menos uma inscrição de push ativa E (b) há um sinal real e específico
+// pra contar (nada de "oi, tudo bem?" — ver assistant/signals.js). Na
+// maioria dos dias, pra maioria dos usuários, isso não gasta nem um token.
+exports.dailySignalCheck = onSchedule(
+    {
+      schedule: "every day 19:00",
+      timeZone: "America/Sao_Paulo",
+      region: "southamerica-east1",
+      secrets: ["GEMINI_API_KEY", "VAPID_PRIVATE_KEY"],
+    },
+    async () => {
+      const clientDate = new Date().toLocaleDateString("en-CA", {timeZone: "America/Sao_Paulo"});
+
+      const accessSnap = await db.collection("system").doc("accessControl").get();
+      const emails = accessSnap.exists && Array.isArray(accessSnap.data().allowedEmails)
+        ? accessSnap.data().allowedEmails
+        : [];
+
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {timeout: 12000, retryOptions: {attempts: 2}},
+      });
+
+      for (const email of emails) {
+        try {
+          const user = await getAuth().getUserByEmail(email).catch(() => null);
+          if (!user) continue;
+          const uid = user.uid;
+
+          // Pula tudo (nem consulta os dados) se não há nenhuma inscrição —
+          // não há como avisar ninguém, então não vale nem o custo de checar.
+          const subsSnap = await db.collection("users").doc(uid).collection("pushSubscriptions").limit(1).get();
+          if (subsSnap.empty) continue;
+
+          const signal = await detectSignal(db, uid, clientDate);
+          if (!signal) continue;
+
+          const prompt = buildSignalPrompt(signal);
+          const response = await ai.models.generateContent({
+            model: GEMINI_MODEL,
+            contents: [{role: "user", parts: [{text: prompt}]}],
+            config: {maxOutputTokens: 80},
+          });
+          const body = (response.text || "").trim();
+          if (!body) continue;
+
+          const result = await sendPushToUser(db, uid, {
+            title: PUSH_TITLES[signal.kind] || "Raio",
+            body,
+            url: "/rotina-alto-desempenho/",
+          });
+
+          logger.info("dailySignalCheck sent", {uid, kind: signal.kind, sent: result.sent});
+        } catch (error) {
+          logger.error("dailySignalCheck failed for user", {email, error: error.message});
+        }
       }
     },
 );

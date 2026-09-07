@@ -22,11 +22,14 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { OWNER_UID } from '../config'
 import Toast from '../components/Toast'
+import { isPushSupported, getPushPermission, isPushEnabled, enablePushNotifications, disablePushNotifications } from '../services/push'
 
 export default function Settings() {
   const { user, logout } = useAuth()
   const [toast, setToast] = useState(null)
   const [importing, setImporting] = useState(false)
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
   const fileRef = useRef()
   const schedColorRefs = useRef({})
   const newSchedColorRef = useRef()
@@ -50,6 +53,35 @@ export default function Settings() {
     const u5 = listenPrefs(setPrefs)
     return () => { u1(); u2(); u3(); u4(); u5() }
   }, [])
+
+  useEffect(() => {
+    if (isPushSupported()) isPushEnabled().then(setPushEnabled)
+  }, [])
+
+  const togglePush = async () => {
+    setPushLoading(true)
+    try {
+      if (pushEnabled) {
+        await disablePushNotifications()
+        setPushEnabled(false)
+        showToast('Notificações desativadas.')
+      } else {
+        await enablePushNotifications()
+        setPushEnabled(true)
+        showToast('Notificações ativadas — o assistente vai te avisar quando algo importante precisar de atenção.')
+      }
+    } catch (err) {
+      if (err.message === 'permission-denied') {
+        showToast('Permissão de notificação negada pelo navegador.', 'error')
+      } else if (err.message === 'not-supported') {
+        showToast('Seu navegador não suporta notificações push.', 'error')
+      } else {
+        showToast('Não consegui ativar as notificações agora.', 'error')
+      }
+    } finally {
+      setPushLoading(false)
+    }
+  }
 
   const personalCommitments = Array.isArray(prefs.commitments) ? prefs.commitments.filter(c => c?.text) : []
 
@@ -524,6 +556,27 @@ export default function Settings() {
       </div>
 
       {/* PWA */}
+      <div className="settings-section">
+        <h2 className="settings-section-title">Notificações</h2>
+        <div className="settings-row">
+          <div className="settings-row-info">
+            <h4>Avisos proativos do assistente</h4>
+            <p>
+              Uma vez por dia, o assistente confere se há algo que realmente precisa da sua atenção
+              (tarefa vencida, sequência de hábito em risco, meta parada) e só te avisa se houver —
+              nunca um lembrete genérico.
+            </p>
+          </div>
+          {isPushSupported() ? (
+            <button className={`btn ${pushEnabled ? 'btn-ghost' : 'btn-primary'}`} onClick={togglePush} disabled={pushLoading}>
+              {pushLoading ? '...' : pushEnabled ? 'Desativar' : 'Ativar'}
+            </button>
+          ) : (
+            <span style={{ fontSize: 12, color: 'var(--text3)' }}>Não suportado neste navegador.</span>
+          )}
+        </div>
+      </div>
+
       <div className="settings-section">
         <h2 className="settings-section-title">App</h2>
         <div className="settings-row">

@@ -2,9 +2,31 @@
 // as de escrita não: o resultado já é estruturado o bastante para uma frase
 // determinística, o que evita uma segunda chamada ao Gemini (e metade da
 // latência) na grande maioria dos comandos.
-const READ_TOOLS = new Set(["consultarResumoDoDia", "resumirSemana"]);
+const READ_TOOLS = new Set([
+  "consultarResumoDoDia",
+  "resumirSemana",
+  "consultarTarefasPendentes",
+  "consultarNotas",
+  "consultarAgendaSemana",
+  "consultarResumoFinanceiro",
+  "consultarCompromissosImportantes",
+  "consultarPlanoAlimentar",
+  "consultarResumoFoco",
+]);
 
 const isReadTool = (name) => READ_TOOLS.has(name);
+
+const brlFormatter = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"});
+const brl = (n) => brlFormatter.format(Number(n) || 0);
+
+const IMPORTANT_TYPE_LABELS = {
+  feriado: "feriado",
+  aniversario: "aniversário",
+  ferias: "férias",
+  importante: "data importante",
+  outros: "evento",
+};
+const typeLabel = (type) => IMPORTANT_TYPE_LABELS[type] || "evento";
 
 function formatWriteConfirmation(name, result) {
   if (!result.ok) {
@@ -32,6 +54,22 @@ function formatWriteConfirmation(name, result) {
       return `"${result.title}" agora em ${result.progress}%.`;
     case "criarItemAgenda":
       return `"${result.name}" adicionado à agenda de ${result.day}.`;
+    case "registrarDespesaFixa":
+      return `Despesa "${result.description}" (${brl(result.amount)}/mês) registrada.`;
+    case "registrarRenda":
+      return `Renda "${result.description}" registrada (líquido ${brl(result.net)}).`;
+    case "atualizarSaldoBanco":
+      return `${result.isNew ? "Banco criado" : "Saldo atualizado"}: "${result.bankName}" agora em ${brl(result.newBalance)}.`;
+    case "criarMetaFinanceira":
+      return `Meta financeira "${result.title}" criada (${brl(result.targetAmount)}).`;
+    case "criarCompromissoImportante":
+      return `"${result.title}" (${typeLabel(result.type)}) criado para ${result.startDate}.`;
+    case "criarRefeicao":
+      return `Refeição "${result.title}" criada.`;
+    case "adicionarItemRefeicao":
+      return `"${result.itemName}" adicionado em "${result.mealTitle}".`;
+    case "registrarSessaoFoco":
+      return `Sessão de ${result.minutes} min registrada${result.goalTitle ? ` em "${result.goalTitle}"` : ""}.`;
     default:
       return "Feito.";
   }
@@ -61,6 +99,24 @@ function formatConfirmationPrompt(name, args, result) {
       return `Confirma atualizar "${result.title}" para ${result.progress}%?`;
     case "criarItemAgenda":
       return `Confirma adicionar "${result.name}" à agenda de ${result.day}${args.horarioInicio ? ` às ${args.horarioInicio}` : ""}?`;
+    case "registrarDespesaFixa":
+      return `Confirma registrar a despesa "${result.description}" de ${brl(result.amount)}/mês?`;
+    case "registrarRenda":
+      return `Confirma registrar a renda "${result.description}" (líquido ${brl(result.net)})?`;
+    case "atualizarSaldoBanco":
+      return result.isNew
+        ? `Não achei o banco "${result.bankName}" — confirma criar com saldo de ${brl(result.newBalance)}?`
+        : `Confirma atualizar o saldo de "${result.bankName}" para ${brl(result.newBalance)}?`;
+    case "criarMetaFinanceira":
+      return `Confirma criar a meta financeira "${result.title}" de ${brl(result.targetAmount)}?`;
+    case "criarCompromissoImportante":
+      return `Confirma criar "${result.title}" (${typeLabel(result.type)}) em ${result.startDate}?`;
+    case "criarRefeicao":
+      return `Confirma criar a refeição "${result.title}"${result.time ? ` às ${result.time}` : ""}?`;
+    case "adicionarItemRefeicao":
+      return `Confirma adicionar "${result.itemName}" em "${result.mealTitle}"?`;
+    case "registrarSessaoFoco":
+      return `Confirma registrar ${result.minutes} min de foco${result.goalTitle ? ` em "${result.goalTitle}"` : " (sem meta vinculada)"}?`;
     default:
       return "Confirma essa ação?";
   }
