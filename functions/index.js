@@ -11,7 +11,7 @@ const {checkAndIncrementUsage, claimIdempotentRequest, completeIdempotentRequest
 const {buildContext, SYSTEM_PROMPT} = require("./assistant/context");
 const {TOOLS} = require("./assistant/tools");
 const {executeTool} = require("./assistant/executor");
-const {isReadTool, formatWriteConfirmation} = require("./assistant/format");
+const {isReadTool, formatWriteConfirmation, formatConfirmationPrompt} = require("./assistant/format");
 
 initializeApp();
 const db = getFirestore();
@@ -143,6 +143,19 @@ exports.api = onRequest(
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
 const MAX_HISTORY_TURNS = 8;
+
+// Traduz o erro técnico numa mensagem que a pessoa realmente consegue agir —
+// "tenta de novo" é diferente de "espera um pouco, a API está sobrecarregada".
+const friendlyErrorMessage = (error) => {
+  const text = `${error?.message || ""} ${error?.status || ""}`;
+  if (/too many requests|429|resource_exhausted/i.test(text)) {
+    return "O Gemini está com limite de uso atingido no momento. Espera uns 30 segundos e tenta de novo.";
+  }
+  if (/unavailable|503|overloaded|high demand/i.test(text)) {
+    return "O modelo está sobrecarregado agora. Tenta de novo em instantes.";
+  }
+  return "Não consegui completar isso agora. Tenta reformular ou de novo em instantes.";
+};
 const NON_CONFIRMABLE_TOOLS = new Set(["consultarResumoDoDia", "resumirSemana"]);
 const TOOL_NAMES = new Set(TOOLS.map((t) => t.name));
 
@@ -237,8 +250,8 @@ exports.assistantCommand = onRequest(
           logger.info("assistantCommand confirm", {uid, tool, totalMs: Date.now() - t0});
           return res.status(200).json(result);
         } catch (error) {
-          logger.error("assistantCommand confirm failed", {error: error.message, uid, tool});
-          const failure = {ok: false, error: "assistant_failed"};
+          logger.error("assistantCommand confirm failed", {error: error.message, errorName: error.name, uid, tool});
+          const failure = {ok: false, error: friendlyErrorMessage(error)};
           await completeIdempotentRequest(db, uid, requestId, failure);
           return res.status(500).json(failure);
         }
@@ -259,7 +272,10 @@ exports.assistantCommand = onRequest(
         // embutido, só precisa ser ligado via httpOptions.retryOptions.
         const ai = new GoogleGenAI({
           apiKey: process.env.GEMINI_API_KEY,
-          httpOptions: {retryOptions: {attempts: 4}},
+          // 6 tentativas com backoff exponencial já chegou a levar ~30s numa
+          // única mensagem de chat — melhor falhar rápido com uma mensagem
+          // clara (friendlyErrorMessage) do que travar a pessoa esperando.
+          httpOptions: {retryOptions: {attempts: 3}},
         });
 
         const config = {
@@ -356,7 +372,7 @@ exports.assistantCommand = onRequest(
           status: error.status,
           uid,
         });
-        const failure = {ok: false, error: "assistant_failed"};
+        const failure = {ok: false, error: friendlyErrorMessage(error)};
         await completeIdempotentRequest(db, uid, requestId, failure);
         return res.status(500).json(failure);
       }

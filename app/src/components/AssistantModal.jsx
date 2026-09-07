@@ -4,6 +4,17 @@ import { runAssistantCommand, confirmAssistantAction } from '../services/assista
 import { todayKey } from '../utils/date'
 import SparkleIcon from './SparkleIcon'
 
+// O backend já manda mensagens específicas em português (limite de uso,
+// sobrecarga, etc.) — só cai no texto genérico quando o erro é técnico
+// demais pra mostrar direto (rede caiu antes de chegar ao servidor).
+const displayError = (err) => {
+  const msg = err?.message || ''
+  if (!msg || msg.startsWith('assistant_error_') || msg === 'Failed to fetch' || msg === 'not-authenticated') {
+    return 'Não consegui completar isso agora. Tente de novo em instantes.'
+  }
+  return msg
+}
+
 const SUGGESTIONS = [
   'Resumo do meu dia',
   'Resumo da minha semana',
@@ -12,13 +23,35 @@ const SUGGESTIONS = [
 ]
 
 const MAX_HISTORY = 8
+const STORAGE_KEY = 'raio-assistant-chat'
+const MAX_STORED_MESSAGES = 60
+
+const loadStoredMessages = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const storeMessages = (messages) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)))
+  } catch {
+    // localStorage indisponível (aba privada, cota cheia) — histórico só não persiste, sem quebrar o chat
+  }
+}
 
 // Chat com o assistente: cada mensagem sua vira um comando enviado à Cloud
 // Function. Ações de escrita nunca acontecem direto — o assistente propõe,
 // e só executa de verdade depois que você confirma no chat.
 export default function AssistantModal({ onClose }) {
   // { role: 'user' | 'assistant' | 'error', text, pending?: { tool, args } | 'done' | 'cancelled' }
-  const [messages, setMessages] = useState([])
+  // Persistido no localStorage do navegador — sobrevive a fechar o modal e a
+  // recarregar a página (é por dispositivo, não sincroniza entre aparelhos).
+  const [messages, setMessages] = useState(loadStoredMessages)
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
@@ -47,6 +80,8 @@ export default function AssistantModal({ onClose }) {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
+  useEffect(() => { storeMessages(messages) }, [messages])
+
   const historyPayload = () => messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .slice(-MAX_HISTORY)
@@ -68,8 +103,7 @@ export default function AssistantModal({ onClose }) {
         pending: data.needsConfirmation ? { tool: data.tool, args: data.pendingArgs || {} } : undefined,
       }])
     } catch (err) {
-      setMessages((prev) => [...prev, { role: 'error', text: 'Não consegui completar isso agora. Tente de novo em instantes.' }])
-      void err
+      setMessages((prev) => [...prev, { role: 'error', text: displayError(err) }])
     } finally {
       setLoading(false)
       inputRef.current?.focus()
@@ -103,8 +137,7 @@ export default function AssistantModal({ onClose }) {
       const data = await confirmAssistantAction(tool, args, todayKey())
       setMessages((prev) => [...prev, { role: 'assistant', text: data.message }])
     } catch (err) {
-      setMessages((prev) => [...prev, { role: 'error', text: 'Não consegui confirmar isso agora. Tente de novo em instantes.' }])
-      void err
+      setMessages((prev) => [...prev, { role: 'error', text: displayError(err) }])
     } finally {
       setLoading(false)
     }
