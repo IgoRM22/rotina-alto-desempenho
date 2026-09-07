@@ -26,6 +26,11 @@ const SUGGESTIONS = [
 const MAX_HISTORY = 8
 const STORAGE_KEY = 'raio-assistant-chat'
 const MAX_STORED_MESSAGES = 60
+// Cada foto em base64 facilmente passa de 100KB, e localStorage tem cota
+// limitada (geralmente ~5-10MB no total do site) — guardar só as fotos mais
+// recentes evita estourar a cota enquanto ainda mantém o anexo visível ao
+// reabrir o chat, em vez de sumir sempre que a página recarrega.
+const MAX_STORED_IMAGES = 4
 
 const loadStoredMessages = () => {
   try {
@@ -37,15 +42,35 @@ const loadStoredMessages = () => {
   }
 }
 
+const dropOldImages = (messages) => {
+  let imagesKept = 0
+  return messages
+    .slice()
+    .reverse()
+    .map((m) => {
+      if (!m.image) return m
+      imagesKept += 1
+      if (imagesKept > MAX_STORED_IMAGES) {
+        const { image, ...rest } = m
+        return rest
+      }
+      return m
+    })
+    .reverse()
+}
+
 const storeMessages = (messages) => {
+  const trimmed = messages.slice(-MAX_STORED_MESSAGES)
   try {
-    // A miniatura da imagem não entra no localStorage — cada foto em base64
-    // facilmente passa de 100KB, e 60 mensagens guardadas assim estourariam
-    // a cota rápido. Ela só vive na sessão atual, em memória.
-    const trimmed = messages.slice(-MAX_STORED_MESSAGES).map(({ image, ...rest }) => rest)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dropOldImages(trimmed)))
   } catch {
-    // localStorage indisponível (aba privada, cota cheia) — histórico só não persiste, sem quebrar o chat
+    try {
+      // Cota estourou mesmo com o corte — tenta de novo sem nenhuma imagem,
+      // já que o texto sozinho é o que realmente não pode se perder.
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed.map(({ image, ...rest }) => rest)))
+    } catch {
+      // localStorage indisponível (aba privada) — histórico só não persiste, sem quebrar o chat
+    }
   }
 }
 
