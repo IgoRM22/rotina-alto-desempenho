@@ -17,7 +17,7 @@ import {
   addIncome, updateIncome, removeIncome,
   addFixedExpense, updateFixedExpense, removeFixedExpense,
   addGoal, updateGoal, removeGoal,
-  saveFinanceSnapshot, listenFinanceSnapshots,
+  saveFinanceSnapshot, listenFinanceSnapshots, deleteFinanceSnapshot,
 } from '../services/finances'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
@@ -73,6 +73,12 @@ export default function Finances() {
     setEditIndex(null)
     setForm({})
     setShowModal(type)
+  }
+
+  const openAddBankWithName = (name) => {
+    setEditIndex(null)
+    setForm({ bankName: name })
+    setShowModal('bank')
   }
 
   const openEdit = (type, idx) => {
@@ -162,6 +168,16 @@ export default function Finances() {
   const totalExpenses = (data.fixedExpenses || []).reduce((sum, e) => sum + (e.amount || 0), 0)
   const monthlyBalance = totalIncome - totalExpenses
 
+  // Despesa apontando pra um banco que não tem saldo cadastrado deixa
+  // "Patrimônio em bancos" sub-representado sem nenhum aviso — parece que
+  // está tudo certo quando na verdade falta cadastrar esse banco.
+  const knownBankNames = new Set((data.banks || []).map(b => (b.name || '').trim().toLowerCase()).filter(Boolean))
+  const missingBankNames = [...new Set(
+    (data.fixedExpenses || [])
+      .map(e => (e.bank || '').trim())
+      .filter(name => name && !knownBankNames.has(name.toLowerCase())),
+  )]
+
   const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const currentMonthClosed = snapshots.some(s => s.month === currentMonthKey)
   const lastClosedSnapshot = snapshots.find(s => s.month !== currentMonthKey) || snapshots[0]
@@ -241,7 +257,15 @@ export default function Finances() {
                 <span className="finance-table-cell finance-table-cell-highlight" style={{ color: s.monthlyBalance >= 0 ? 'var(--sage)' : 'var(--coral)' }}>
                   {fmtCurrency(s.monthlyBalance)}
                 </span>
-                <span></span>
+                <div className="finance-table-actions">
+                  <button
+                    className="btn btn-danger btn-sm btn-icon"
+                    onClick={async () => { await deleteFinanceSnapshot(user.uid, s.month); showToast('Fechamento removido.') }}
+                    aria-label="Remover fechamento"
+                  >
+                    <RiDeleteBinLine size={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -312,6 +336,23 @@ export default function Finances() {
             <RiAddLine size={13} /> Adicionar
           </button>
         </div>
+
+        {missingBankNames.length > 0 && (
+          <div className="finance-warning">
+            <span>
+              {missingBankNames.length === 1
+                ? `Suas despesas citam o banco "${missingBankNames[0]}", mas ele não tem saldo cadastrado — o patrimônio total não está contando com ele.`
+                : `Suas despesas citam bancos sem saldo cadastrado: ${missingBankNames.join(', ')} — o patrimônio total não está contando com eles.`}
+            </span>
+            <div className="finance-warning-actions">
+              {missingBankNames.map(name => (
+                <button key={name} className="btn btn-ghost btn-sm" onClick={() => openAddBankWithName(name)}>
+                  + {name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {(data.banks || []).length > 0 ? (
           <div className="finance-table">
@@ -399,7 +440,10 @@ export default function Finances() {
 
       {/* Emergency Fund Details */}
       <div className="finance-section">
-        <h2 className="finance-section-title" style={{ marginBottom: 20 }}>Reserva de Emergência</h2>
+        <h2 className="finance-section-title" style={{ marginBottom: 4 }}>Reserva de Emergência</h2>
+        <p className="finance-section-subtitle">
+          Se você tivesse que esticar sua reserva por esse período, quanto sobraria por mês — e como isso se compara aos seus R$ {fmtCurrencyInt(totalExpenses)}/mês de gastos hoje.
+        </p>
         <div className="finance-stats-grid">
           <div className="finance-stat-card">
             <span className="finance-stat-label">Total Acumulado</span>
@@ -409,9 +453,9 @@ export default function Finances() {
             )}
           </div>
           {[
-            { label: '3 Meses', months: 3 },
-            { label: '6 Meses', months: 6 },
-            { label: '1 Ano', months: 12 },
+            { label: 'Esticando por 3 meses', months: 3 },
+            { label: 'Esticando por 6 meses', months: 6 },
+            { label: 'Esticando por 1 ano', months: 12 },
           ].map(({ label, months }) => {
             const allowance = Math.round((data.emergencyFund || 0) / months)
             const diff = Math.round(allowance - totalExpenses)
@@ -425,8 +469,12 @@ export default function Finances() {
                   <small className="finance-stat-per-month">/mês</small>
                 </span>
                 {pct !== null && (
-                  <span className="finance-stat-diff" style={{ color: positive ? 'var(--sage)' : 'var(--coral)' }}>
-                    {positive ? '+' : ''}{fmtCurrencyInt(diff)} ({positive ? '+' : ''}{pct.toFixed(0)}%)
+                  <span
+                    className="finance-stat-diff"
+                    style={{ color: positive ? 'var(--sage)' : 'var(--coral)' }}
+                    title={`${positive ? 'Sobraria' : 'Faltaria'} ${fmtCurrencyInt(Math.abs(diff))}/mês comparado aos seus gastos atuais`}
+                  >
+                    {fmtCurrencyInt(Math.abs(diff))}/mês {positive ? 'a mais' : 'a menos'} que seus gastos ({positive ? '+' : '-'}{Math.abs(pct).toFixed(0)}%)
                   </span>
                 )}
               </div>

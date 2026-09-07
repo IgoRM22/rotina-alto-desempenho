@@ -17,10 +17,18 @@ import {
   setHabitChecked,
 } from '../services/firestore'
 import { todayKey, dateKeyFromDate } from '../utils/date'
-import { computeStreak } from '../utils/streak'
+import { computeStreak, computeWeeklyStreak, weekProgress, isDailyHabit } from '../utils/streak'
 import Toast from './Toast'
 
 const MILESTONES = [7, 30, 100, 365]
+const FREQUENCY_OPTIONS = [
+  { value: 7, label: 'Todos os dias' },
+  { value: 5, label: '5x por semana' },
+  { value: 4, label: '4x por semana' },
+  { value: 3, label: '3x por semana' },
+  { value: 2, label: '2x por semana' },
+  { value: 1, label: '1x por semana' },
+]
 
 const last14Days = () => Array.from({ length: 14 }, (_, i) => {
   const d = new Date()
@@ -33,6 +41,7 @@ export default function HabitChecklist() {
   const [logs, setLogs] = useState([])
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newFrequency, setNewFrequency] = useState(7)
   const [expanded, setExpanded] = useState(() => new Set())
   const [toast, setToast] = useState(null)
 
@@ -68,22 +77,32 @@ export default function HabitChecklist() {
 
     const simulated = new Map(logsByDate)
     simulated.set(today, { ...(simulated.get(today) || {}), [habit.id]: true })
-    const newStreak = computeStreak(habit.id, simulated, today)
-    const best = habit.bestStreak || 0
 
-    if (newStreak > best) {
-      updateHabit(habit.id, { bestStreak: newStreak })
+    if (isDailyHabit(habit)) {
+      const newStreak = computeStreak(habit.id, simulated, today)
+      const best = habit.bestStreak || 0
+      if (newStreak > best) updateHabit(habit.id, { bestStreak: newStreak })
+      if (MILESTONES.includes(newStreak)) {
+        showToast(`🔥 ${newStreak} dias seguidos em "${habit.name}"!`)
+      }
+      return
     }
-    if (MILESTONES.includes(newStreak)) {
-      showToast(`🔥 ${newStreak} dias seguidos em "${habit.name}"!`)
+
+    const newWeeklyStreak = computeWeeklyStreak(habit.id, simulated, today, habit.weeklyTarget)
+    const bestWeekly = habit.bestWeeklyStreak || 0
+    if (newWeeklyStreak > bestWeekly) updateHabit(habit.id, { bestWeeklyStreak: newWeeklyStreak })
+    const doneThisWeek = weekProgress(habit.id, simulated, today)
+    if (doneThisWeek === habit.weeklyTarget) {
+      showToast(`✅ Meta da semana batida em "${habit.name}"!`)
     }
   }
 
   const handleAdd = async () => {
     const name = newName.trim()
     if (!name) { setAdding(false); return }
-    await addHabit({ name })
+    await addHabit({ name, weeklyTarget: newFrequency })
     setNewName('')
+    setNewFrequency(7)
     setAdding(false)
   }
 
@@ -91,8 +110,12 @@ export default function HabitChecklist() {
     <div className="habit-list">
       {habits.map(habit => {
         const checked = !!todayChecked[habit.id]
-        const streak = computeStreak(habit.id, logsByDate, today)
-        const record = Math.max(habit.bestStreak || 0, streak)
+        const daily = isDailyHabit(habit)
+        const streak = daily ? computeStreak(habit.id, logsByDate, today) : computeWeeklyStreak(habit.id, logsByDate, today, habit.weeklyTarget)
+        const record = daily
+          ? Math.max(habit.bestStreak || 0, streak)
+          : Math.max(habit.bestWeeklyStreak || 0, streak)
+        const weekDone = daily ? null : weekProgress(habit.id, logsByDate, today)
         const isOpen = expanded.has(habit.id)
 
         return (
@@ -110,7 +133,15 @@ export default function HabitChecklist() {
               <button type="button" className="habit-name habit-name-btn" onClick={() => toggleExpand(habit.id)}>
                 {habit.name}
               </button>
-              <span className={`habit-streak ${streak === 0 ? 'is-zero' : ''}`} title="Sequência atual">
+              {!daily && (
+                <span
+                  className={`habit-week-progress ${weekDone >= habit.weeklyTarget ? 'is-met' : ''}`}
+                  title="Progresso desta semana"
+                >
+                  {weekDone}/{habit.weeklyTarget} semana
+                </span>
+              )}
+              <span className={`habit-streak ${streak === 0 ? 'is-zero' : ''}`} title={daily ? 'Sequência atual (dias)' : 'Sequência atual (semanas)'}>
                 <RiFireLine size={13} /> {streak}
               </span>
               <span className="habit-record" title="Recorde">
@@ -158,10 +189,18 @@ export default function HabitChecklist() {
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
             placeholder="Nome do hábito (ex: Dormir 7h+)"
           />
+          <select
+            className="calendar-select"
+            value={newFrequency}
+            onChange={e => setNewFrequency(Number(e.target.value))}
+            aria-label="Frequência"
+          >
+            {FREQUENCY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
           <button className="btn btn-primary btn-sm btn-icon" onClick={handleAdd} aria-label="Salvar">
             <RiCheckLine size={14} />
           </button>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setAdding(false); setNewName('') }} aria-label="Cancelar">
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setAdding(false); setNewName(''); setNewFrequency(7) }} aria-label="Cancelar">
             <RiCloseLine size={14} />
           </button>
         </div>

@@ -263,6 +263,19 @@ body::after {
 
 .btn-logout:hover { color: var(--text); }
 
+.nav-settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text3);
+  border: 1px solid var(--border2);
+  padding: 5px;
+  transition: color .2s, border-color .2s;
+}
+
+.nav-settings:hover { color: var(--text); }
+.nav-settings.active { color: var(--coral); border-color: var(--coral); }
+
 /* ── PAGE CONTAINER ── */
 .page {
   max-width: 960px;
@@ -725,6 +738,12 @@ body::after {
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
+}
+
+.schedule-day-empty {
+  font-size: 12.5px;
+  color: var(--text3);
+  padding: 4px 0 12px;
 }
 
 .schedule-today-badge {
@@ -1600,6 +1619,15 @@ body::after {
   padding-left: 2px;
 }
 
+/* Compromissos da semana (schedule) no Calendário — cor vem da categoria do
+   item (--pill-color, setada inline), pra distinguir visualmente das datas
+   importantes (que usam as cores fixas imp-*) sem precisar de outra paleta. */
+.month-item-pill--schedule {
+  border-color: color-mix(in srgb, var(--pill-color) 50%, transparent);
+  color: var(--pill-color);
+  background: color-mix(in srgb, var(--pill-color) 12%, transparent);
+}
+
 .month-calendar-legend {
   display: flex;
   align-items: center;
@@ -1699,6 +1727,102 @@ body::after {
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 16px;
+}
+
+/* Caderno com pergunta central vira "tema" — este card é o que separa isso
+   de uma pasta comum, sem precisar de uma tela nova pra caber a ideia. */
+.theme-card {
+  position: relative;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--nb-color, var(--coral));
+}
+
+.theme-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 4px;
+}
+
+.theme-question p {
+  font-family: var(--ff-s);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.theme-secondary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  margin-top: 14px;
+}
+
+.theme-secondary p {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+.theme-edit-link {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.theme-edit-link:hover { color: var(--text); }
+
+@media (max-width: 720px) {
+  .theme-secondary { grid-template-columns: 1fr; }
+  .theme-edit-link { position: static; display: block; margin-top: 12px; }
+}
+
+.theme-overview { margin-bottom: 20px; }
+
+.theme-overview-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.theme-overview-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--s1);
+  border-left: 3px solid var(--nb-color, var(--coral));
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.theme-overview-list li:hover { background: var(--s2); }
+
+.theme-overview-nb {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.theme-overview-q {
+  font-family: var(--ff-s);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text2);
 }
 .notebook-tab {
   padding: 6px 14px;
@@ -2130,7 +2254,7 @@ body::after {
 
 .mobile-nav-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   list-style: none;
   padding: 6px;
   gap: 2px;
@@ -2330,6 +2454,13 @@ body::after {
   color: var(--text);
 }
 
+.finance-section-subtitle {
+  font-size: 12.5px;
+  color: var(--text3);
+  max-width: 60ch;
+  margin-bottom: 20px;
+}
+
 .finance-section-sub {
   font-size: 12px;
   color: var(--text3);
@@ -2519,6 +2650,26 @@ body::after {
   color: var(--text3);
   padding: 32px 0;
   text-align: center;
+}
+
+.finance-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: var(--gold-dim);
+  border: 1px solid rgba(214,165,76,.35);
+  color: var(--gold-text);
+  font-size: 12.5px;
+}
+
+.finance-warning-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .finance-table {
@@ -3139,6 +3290,14 @@ details > summary::marker {
   margin-bottom: 44px;
 }
 
+.hoje-section--tomorrow {
+  padding: 16px 20px;
+  border-left: 3px solid var(--coral);
+  background: var(--coral-dim);
+}
+
+.hoje-section--tomorrow .hoje-section-title { color: var(--coral-text, var(--coral)); }
+
 .hoje-section-head {
   display: flex;
   align-items: baseline;
@@ -3266,6 +3425,26 @@ details > summary::marker {
   min-width: 24px;
 }
 
+/* Hábito com meta semanal (ex: 3x/semana) mostra progresso da semana em vez
+   de depender só do check diário — fica claro que faltar um dia específico
+   não "quebra" nada, só o total da semana importa. */
+.habit-week-progress {
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.habit-week-progress.is-met {
+  color: var(--sage);
+  border-color: rgba(143,174,131,.4);
+  background: rgba(143,174,131,.12);
+}
+
 .habit-row-actions {
   opacity: 0;
   transition: opacity .2s;
@@ -3301,6 +3480,73 @@ details > summary::marker {
   margin-bottom: 44px;
 }
 
+.habit-consistency-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.habit-consistency-primary {
+  font-family: var(--ff-s);
+  font-size: 32px;
+  line-height: 1.1;
+  margin-top: 6px;
+}
+
+.habit-consistency-primary span {
+  font-family: var(--ff-b);
+  font-size: 13px;
+  color: var(--text2);
+  margin-left: 4px;
+}
+
+.habit-consistency-stats {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 6px;
+}
+
+.habit-heatmap-explainer {
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 10px;
+  max-width: 46ch;
+}
+
+.habit-heatmap-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.habit-heatmap-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.habit-heatmap-months {
+  margin-bottom: 4px;
+  overflow: hidden;
+}
+
+.habit-heatmap-months-grid {
+  display: grid;
+  grid-auto-rows: 12px;
+  gap: 3px;
+  font-size: 9px;
+  color: var(--text3);
+}
+
+.habit-heatmap-months-grid span {
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .habit-heatmap-wrap {
   display: flex;
   gap: 6px;
@@ -3308,6 +3554,63 @@ details > summary::marker {
   padding: 16px;
   border: 1px solid var(--border2);
   background: var(--s1);
+  /* A caixa acompanha o tamanho da grade (14 semanas é bem estreito) em vez
+     de esticar até a largura da página inteira, deixando uma sobra de
+     espaço vazio à direita — só volta a ocupar 100% se o conteúdo for maior
+     que isso (períodos mais longos, telas pequenas), onde entra o scroll. */
+  width: fit-content;
+  max-width: 100%;
+}
+
+.habit-heatmap-detail {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border2);
+  background: var(--s1);
+  font-size: 12.5px;
+  color: var(--text2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.habit-heatmap-detail strong {
+  color: var(--text);
+}
+
+.habit-heatmap-detail ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--text3);
+}
+
+.habit-heatmap-insight {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--sage);
+}
+
+.habit-heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.habit-heatmap-legend .habit-heatmap-cell {
+  width: 10px;
+  height: 10px;
+  cursor: default;
+}
+
+/* Últimos N dias de um hábito selecionado — bem mais simples que um
+   calendário mensal completo, já que a única informação é "feito ou não". */
+.habit-recent-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .habit-heatmap-weekdays {
@@ -3332,9 +3635,33 @@ details > summary::marker {
   height: 12px;
   border-radius: 3px;
   background: var(--border2);
+  border: 1px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: outline-color .1s;
+}
+
+.habit-heatmap-cell:disabled { cursor: default; }
+
+.habit-heatmap-cell:not(:disabled):hover { border-color: rgba(237,232,224,.35); }
+
+.habit-heatmap-cell.is-selected {
+  border-color: var(--coral);
+  box-shadow: 0 0 0 1px var(--coral);
+}
+
+.habit-heatmap-cell:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 1px;
 }
 
 .habit-heatmap-cell.is-future { background: transparent; }
+/* "Sem dados" (hábito ainda não existia naquele dia) precisa parecer
+   diferente de "existia e não foi feito" — um hachurado sutil em vez de
+   simplesmente vazio, pra não confundir os dois estados. */
+.habit-heatmap-cell.is-nodata {
+  background: repeating-linear-gradient(135deg, var(--border2), var(--border2) 2px, transparent 2px, transparent 4px);
+}
 .habit-heatmap-cell.level-0 { background: var(--border2); }
 .habit-heatmap-cell.level-1 { background: rgba(143,174,131,.28); }
 .habit-heatmap-cell.level-2 { background: rgba(143,174,131,.5); }
@@ -3779,6 +4106,35 @@ details > summary::marker {
   min-width: 0;
 }
 
+.meal-table-title-btn {
+  cursor: pointer;
+}
+
+.meal-table-collapse-btn {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.meal-table-chevron {
+  transition: transform .15s;
+}
+
+.meal-table-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+.meal-table-count {
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
 .meal-table-actions {
   display: flex;
   gap: 4px;
@@ -4085,6 +4441,40 @@ details > summary::marker {
 
 .hero-date { position: relative; }
 
+.hero-greeting {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hero-greeting-word {
+  font-family: var(--ff-s);
+  font-style: italic;
+  font-size: 20px;
+  color: var(--gold-text, var(--gold));
+  text-transform: capitalize;
+}
+
+.hero-greeting-time {
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-greeting-time::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text3);
+  opacity: 0.6;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 .hero-day {
   font-family: var(--ff-s);
   font-size: 72px;
@@ -4135,6 +4525,83 @@ details > summary::marker {
 
 .hero-commitment a:hover { color: var(--violet-text); }
 
+.hero-commitment-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  padding: 0 0 2px;
+  font-family: var(--ff-s);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--text2);
+  line-height: 1.4;
+  transition: border-color 0.15s;
+}
+
+.hero-commitment-input::placeholder { color: var(--text3); opacity: 1; }
+
+.hero-commitment-input:focus {
+  outline: none;
+  border-bottom-color: var(--violet);
+}
+
+.hero-commitment-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.hero-commitment-hint:hover { color: var(--violet-text); }
+
+.hero-focus-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--coral);
+  background: linear-gradient(135deg, var(--coral-dim), transparent);
+  text-decoration: none;
+  color: var(--text);
+  transition: background .2s, transform .15s;
+}
+
+.hero-focus-card:hover {
+  background: linear-gradient(135deg, var(--coral-dim), var(--coral-dim));
+  transform: translateY(-1px);
+}
+
+.hero-focus-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--coral);
+  color: var(--bg, #14130f);
+}
+
+.hero-focus-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hero-focus-title {
+  font-family: var(--ff-s);
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.hero-focus-sub {
+  font-size: 11px;
+  color: var(--text3);
+}
+
 .hero-side {
   position: relative;
   display: flex;
@@ -4181,6 +4648,55 @@ details > summary::marker {
   gap: 10px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+}
+
+/* "Direção do dia" — intenção (renovada todo dia) + pergunta em aberto
+   (persiste até você trocar). Sem borda pesada de card — é uma pausa
+   silenciosa antes da lista de tarefas, não mais uma caixa pra preencher. */
+.direction-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 24px;
+  margin-bottom: 24px;
+}
+
+.direction-field label {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+
+.direction-field input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--ff-s);
+  font-style: italic;
+  font-size: 15px;
+  padding: 4px 0 8px;
+  outline: none;
+  transition: border-color .15s;
+}
+
+.direction-field input::placeholder {
+  color: var(--text3);
+  opacity: .7;
+}
+
+.direction-field input:focus {
+  border-color: var(--coral);
+}
+
+@media (max-width: 720px) {
+  .direction-card {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .status-pill {
@@ -4307,6 +4823,21 @@ details > summary::marker {
 .foco-actions .view-toggle {
   width: 100%;
 }
+
+.foco-objective-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--ff-b);
+  font-size: 12px;
+  height: 30px;
+  padding: 0 10px;
+  outline: none;
+}
+
+.foco-objective-input:focus { border-color: var(--coral); }
+.foco-objective-input::placeholder { color: var(--text3); }
 
 /* O toggle segmentado padrão (cinza neutro) some no fundo escuro do Foco —
    aqui ganha o acento coral que o resto da tela já usa, pra ficar claro
@@ -4821,27 +5352,101 @@ body.has-modal-open .assistant-fab { display: none; }
 .assistant-modal-composer {
   position: relative;
   display: flex;
+  align-items: flex-end;
   gap: 8px;
   padding: 14px 18px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
 
-.assistant-modal-composer input {
+.assistant-attach-btn {
+  align-self: flex-end;
+  margin-bottom: 8px;
+}
+
+.assistant-mic-btn {
+  align-self: flex-end;
+  margin-bottom: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+
+.assistant-mic-btn:hover { color: var(--coral); }
+.assistant-mic-btn:disabled { opacity: .4; cursor: default; }
+
+.assistant-mic-btn.is-listening {
+  color: var(--coral);
+}
+
+/* Barrinhas reagindo ao volume de verdade (via Web Audio API) — mesma
+   linguagem visual do áudio do WhatsApp, só que aqui é entrada de voz. */
+.assistant-mic-wave {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 19px;
+}
+
+.assistant-mic-wave-bar {
+  width: 3px;
+  min-height: 4px;
+  border-radius: 999px;
+  background: var(--coral);
+  transition: height .08s ease-out;
+}
+
+/* Segunda captura de microfone bloqueada — sem nível de áudio real pra
+   mostrar, então pulsa em sequência só pra confirmar "tá gravando sim". */
+.assistant-mic-wave.is-fallback .assistant-mic-wave-bar {
+  height: 14px !important;
+  animation: mic-wave-fallback 1s ease-in-out infinite;
+}
+
+.assistant-mic-wave.is-fallback .assistant-mic-wave-bar:nth-child(1) { animation-delay: 0s; }
+.assistant-mic-wave.is-fallback .assistant-mic-wave-bar:nth-child(2) { animation-delay: .1s; }
+.assistant-mic-wave.is-fallback .assistant-mic-wave-bar:nth-child(3) { animation-delay: .2s; }
+.assistant-mic-wave.is-fallback .assistant-mic-wave-bar:nth-child(4) { animation-delay: .3s; }
+.assistant-mic-wave.is-fallback .assistant-mic-wave-bar:nth-child(5) { animation-delay: .4s; }
+
+@keyframes mic-wave-fallback {
+  0%, 100% { transform: scaleY(.3); }
+  50% { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-mic-wave-bar { transition: none; }
+  .assistant-mic-wave.is-fallback .assistant-mic-wave-bar { animation: none; }
+}
+
+.assistant-modal-composer textarea {
   flex: 1;
+  resize: none;
   background: #11100f;
   border: 1px solid var(--border2);
   color: var(--text);
   font-family: var(--ff-b);
   font-size: 13.5px;
+  line-height: 1.4;
   padding: 10px 16px;
-  border-radius: 22px;
+  border-radius: 18px;
   outline: none;
   transition: border-color .15s;
+  /* Cresce junto com o texto (via JS ajustando scrollHeight) até um teto —
+     depois disso rola dentro da própria caixa em vez de crescer pra sempre. */
+  max-height: 120px;
+  overflow-y: auto;
 }
 
-.assistant-modal-composer input:focus { border-color: var(--violet); }
-.assistant-modal-composer input:disabled { opacity: .5; cursor: not-allowed; }
+.assistant-modal-composer textarea:focus { border-color: var(--violet); }
+.assistant-modal-composer textarea:disabled { opacity: .5; cursor: not-allowed; }
 
 .assistant-send-btn {
   flex-shrink: 0;

@@ -66,6 +66,12 @@ export default function Tarefas() {
     if (filter === 'concluídos') return t.done
     return true
   })
+  // Pendentes sobem por prioridade — sem isso, uma tarefa "alta" podia ficar
+  // enterrada no meio de várias "média" só por ordem de criação.
+  const PRIORITY_RANK = { alta: 0, media: 1, baixa: 2 }
+  if (filter === 'pendentes') {
+    filtered.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3))
+  }
 
   const toggle = async (todo) => {
     await updateTodo(todo.id, { done: !todo.done })

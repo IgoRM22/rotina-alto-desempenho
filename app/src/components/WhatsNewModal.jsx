@@ -39,7 +39,7 @@ export default function WhatsNewModal() {
   }
 
   return (
-    <Modal title="Novidades no Raio" onClose={dismiss} onSave={dismiss} saveLabel="Entendi" hideCancel>
+    <Modal title="Novidades no RaioDesk" onClose={dismiss} onSave={dismiss} saveLabel="Entendi" hideCancel>
       <div className="whats-new-list">
         {ITEMS.map((item) => (
           <div key={item.title} className="whats-new-item">

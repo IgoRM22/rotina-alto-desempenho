@@ -44,6 +44,46 @@ const dailyLogSummary = (result) => {
   return parts.join(", ");
 };
 
+const ANNOTATION_TAG_LABELS = {funcionou: "o que funcionou", ajustar: "o que ajustar", rabisco: "rabisco"};
+
+const goalChangeSummary = (changes) => {
+  const parts = [];
+  if (changes.title) parts.push(`título "${changes.title}"`);
+  if (changes.description !== undefined) parts.push("descrição atualizada");
+  if (changes.commitment !== undefined) parts.push("compromisso atualizado");
+  if (changes.category) parts.push(`categoria ${changes.category}`);
+  if (changes.targetDate) parts.push(`prazo ${changes.targetDate}`);
+  return parts.join(", ");
+};
+
+const agendaChangeSummary = (changes) => {
+  const parts = [];
+  if (changes.name) parts.push(`nome "${changes.name}"`);
+  if (changes.day) parts.push(`dia ${changes.day}`);
+  if (changes.timeStart) parts.push(`início ${changes.timeStart}`);
+  if (changes.timeEnd) parts.push(`fim ${changes.timeEnd}`);
+  if (changes.category) parts.push(`categoria ${changes.category}`);
+  return parts.join(", ");
+};
+
+const importantDateChangeSummary = (changes) => {
+  const parts = [];
+  if (changes.title) parts.push(`título "${changes.title}"`);
+  if (changes.type) parts.push(`tipo ${typeLabel(changes.type)}`);
+  if (changes.startDate) parts.push(`data ${changes.startDate}`);
+  if (changes.endDate) parts.push(`até ${changes.endDate}`);
+  if (changes.description !== undefined) parts.push("descrição atualizada");
+  return parts.join(", ");
+};
+
+const mealItemChangeSummary = (changes) => {
+  const parts = [];
+  if (changes.quantity) parts.push(`quantidade ${changes.quantity}`);
+  if (changes.grams) parts.push(changes.grams);
+  if (changes.type) parts.push(`tipo ${changes.type}`);
+  return parts.join(", ");
+};
+
 function formatWriteConfirmation(name, result) {
   if (!result.ok) {
     if (result.reason === "ambiguous") {
@@ -63,21 +103,35 @@ function formatWriteConfirmation(name, result) {
     case "reagendarTarefa":
       return `"${result.title}" atualizada (${changeSummary(result.changes)}).`;
     case "criarHabito":
-      return `Hábito "${result.name}" criado.`;
+      return `Hábito "${result.name}" criado${result.weeklyTarget < 7 ? ` (${result.weeklyTarget}x por semana)` : ""}.`;
     case "marcarHabito":
       return `"${result.name}" registrado como cumprido${result.date ? ` em ${result.date}` : ""}.`;
     case "desmarcarHabito":
       return `"${result.name}" desmarcado${result.date ? ` em ${result.date}` : ""}.`;
     case "registrarLogDiario":
       return `Registro do dia atualizado (${dailyLogSummary(result)}).`;
+    case "registrarAnotacaoSemanal":
+      return `Anotação de "${ANNOTATION_TAG_LABELS[result.tag]}" registrada.`;
+    case "adicionarFocoSemana":
+      return `"${result.text}" adicionado ao foco da próxima semana.`;
+    case "removerFocoSemana":
+      return `"${result.text}" removido do foco da semana.`;
     case "criarNota":
       return `Nota "${result.title}" criada${result.notebook ? ` em ${result.notebook}` : ""}.`;
+    case "editarNota":
+      return `Nota "${result.title}" atualizada${result.notebook ? ` (movida para ${result.notebook})` : ""}.`;
+    case "criarCaderno":
+      return `Caderno "${result.name}" criado.`;
     case "criarMeta":
       return `Meta "${result.title}" criada.`;
     case "atualizarProgressoMeta":
       return `"${result.title}" agora em ${result.progress}%.`;
+    case "editarMeta":
+      return `"${result.title}" atualizada (${goalChangeSummary(result.changes)}).`;
     case "criarItemAgenda":
       return `"${result.name}" adicionado à agenda de ${result.day}.`;
+    case "editarItemAgenda":
+      return `"${result.name}" atualizado (${agendaChangeSummary(result.changes)}).`;
     case "registrarDespesaFixa":
       return `Despesa "${result.description}" (${brl(result.amount)}/mês) registrada.`;
     case "registrarDespesasEmLote":
@@ -94,12 +148,22 @@ function formatWriteConfirmation(name, result) {
       return `"${result.title}" atualizada para ${brl(result.currentAmount)} de ${brl(result.targetAmount)}.`;
     case "criarCompromissoImportante":
       return `"${result.title}" (${typeLabel(result.type)}) criado para ${result.startDate}.`;
+    case "editarDataImportante":
+      return `"${result.title}" atualizado (${importantDateChangeSummary(result.changes)}).`;
     case "criarRefeicao":
       return `Refeição "${result.title}" criada.`;
     case "adicionarItemRefeicao":
       return `"${result.itemName}" adicionado em "${result.mealTitle}".`;
+    case "editarItemRefeicao":
+      return `"${result.itemName}" atualizado em "${result.mealTitle}" (${mealItemChangeSummary(result.changes)}).`;
+    case "removerItemRefeicao":
+      return `"${result.itemName}" removido de "${result.mealTitle}".`;
     case "registrarSessaoFoco":
       return `Sessão de ${result.minutes} min registrada${result.goalTitle ? ` em "${result.goalTitle}"` : ""}.`;
+    case "fecharMes":
+      return `Mês ${result.month} fechado (saldo ${brl(result.monthlyBalance)}).`;
+    case "excluirFechamentoMensal":
+      return `Fechamento de ${result.month} removido.`;
     default:
       return "Feito.";
   }
@@ -122,21 +186,35 @@ function formatConfirmationPrompt(name, args, result) {
     case "reagendarTarefa":
       return `Confirma atualizar "${result.title}" (${changeSummary(result.changes)})?`;
     case "criarHabito":
-      return `Confirma criar o hábito "${result.name}"?`;
+      return `Confirma criar o hábito "${result.name}"${result.weeklyTarget < 7 ? ` (${result.weeklyTarget}x por semana)` : ""}?`;
     case "marcarHabito":
       return `Confirma registrar "${result.name}" como cumprido${result.date ? ` em ${result.date}` : ""}?`;
     case "desmarcarHabito":
       return `Confirma desmarcar "${result.name}"${result.date ? ` em ${result.date}` : ""}?`;
     case "registrarLogDiario":
       return `Confirma registrar (${dailyLogSummary(result)})${result.note ? ` — nota: "${result.note}"` : ""}?`;
+    case "registrarAnotacaoSemanal":
+      return `Confirma registrar em "${ANNOTATION_TAG_LABELS[result.tag]}": "${result.text}"?`;
+    case "adicionarFocoSemana":
+      return `Confirma adicionar "${result.text}" ao foco da próxima semana?`;
+    case "removerFocoSemana":
+      return `Confirma remover "${result.text}" do foco da semana?`;
     case "criarNota":
       return `Confirma criar a nota "${result.title}"${result.notebook ? ` em ${result.notebook}` : ""}?`;
+    case "editarNota":
+      return `Confirma atualizar a nota "${result.title}"${result.notebook ? ` (mover para ${result.notebook})` : ""}?`;
+    case "criarCaderno":
+      return `Confirma criar o caderno "${result.name}"?`;
     case "criarMeta":
       return `Confirma criar a meta "${result.title}"?`;
     case "atualizarProgressoMeta":
       return `Confirma atualizar "${result.title}" para ${result.progress}%?`;
+    case "editarMeta":
+      return `Confirma atualizar "${result.title}" (${goalChangeSummary(result.changes)})?`;
     case "criarItemAgenda":
       return `Confirma adicionar "${result.name}" à agenda de ${result.day}${args.horarioInicio ? ` às ${args.horarioInicio}` : ""}?`;
+    case "editarItemAgenda":
+      return `Confirma atualizar "${result.name}" (${agendaChangeSummary(result.changes)})?`;
     case "registrarDespesaFixa":
       return `Confirma registrar a despesa "${result.description}" de ${brl(result.amount)}/mês?`;
     case "registrarDespesasEmLote": {
@@ -157,12 +235,22 @@ function formatConfirmationPrompt(name, args, result) {
       return `Confirma atualizar "${result.title}" para ${brl(result.currentAmount)} de ${brl(result.targetAmount)}?`;
     case "criarCompromissoImportante":
       return `Confirma criar "${result.title}" (${typeLabel(result.type)}) em ${result.startDate}?`;
+    case "editarDataImportante":
+      return `Confirma atualizar "${result.title}" (${importantDateChangeSummary(result.changes)})?`;
     case "criarRefeicao":
       return `Confirma criar a refeição "${result.title}"${result.time ? ` às ${result.time}` : ""}?`;
     case "adicionarItemRefeicao":
       return `Confirma adicionar "${result.itemName}" em "${result.mealTitle}"?`;
+    case "editarItemRefeicao":
+      return `Confirma atualizar "${result.itemName}" em "${result.mealTitle}" (${mealItemChangeSummary(result.changes)})?`;
+    case "removerItemRefeicao":
+      return `Confirma remover "${result.itemName}" de "${result.mealTitle}"?`;
     case "registrarSessaoFoco":
       return `Confirma registrar ${result.minutes} min de foco${result.goalTitle ? ` em "${result.goalTitle}"` : " (sem meta vinculada)"}?`;
+    case "fecharMes":
+      return `Confirma fechar o mês ${result.month} (saldo ${brl(result.monthlyBalance)})?`;
+    case "excluirFechamentoMensal":
+      return `Confirma excluir o fechamento de ${result.month}?`;
     default:
       return "Confirma essa ação?";
   }

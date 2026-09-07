@@ -4,7 +4,6 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import Tabs from '../../components/Tabs'
 
 const TABS = [
-  { key: 'noturno', label: 'Noturno', to: 'noturno' },
   { key: 'agenda', label: 'Agenda', to: 'agenda' },
   { key: 'tarefas', label: 'Tarefas', to: 'tarefas' },
   { key: 'metas', label: 'Metas', to: 'metas' },

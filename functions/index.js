@@ -14,6 +14,7 @@ const {TOOLS} = require("./assistant/tools");
 const {executeTool} = require("./assistant/executor");
 const {isReadTool, formatWriteConfirmation, formatConfirmationPrompt} = require("./assistant/format");
 const {detectSignal} = require("./assistant/signals");
+const {buildMorningData} = require("./assistant/morning");
 const {sendPushToUser} = require("./assistant/push");
 
 initializeApp();
@@ -512,6 +513,9 @@ exports.dailySignalCheck = onSchedule(
           const subsSnap = await db.collection("users").doc(uid).collection("pushSubscriptions").limit(1).get();
           if (subsSnap.empty) continue;
 
+          const prefsSnap = await db.collection("users").doc(uid).collection("settings").doc("prefs").get();
+          if (prefsSnap.exists && prefsSnap.data().notifyEvening === false) continue;
+
           const signal = await detectSignal(db, uid, clientDate);
           if (!signal) continue;
 
@@ -525,7 +529,7 @@ exports.dailySignalCheck = onSchedule(
           if (!body) continue;
 
           const result = await sendPushToUser(db, uid, {
-            title: PUSH_TITLES[signal.kind] || "Raio",
+            title: PUSH_TITLES[signal.kind] || "RaioDesk",
             body,
             url: "/rotina-alto-desempenho/",
           });
@@ -533,6 +537,81 @@ exports.dailySignalCheck = onSchedule(
           logger.info("dailySignalCheck sent", {uid, kind: signal.kind, sent: result.sent});
         } catch (error) {
           logger.error("dailySignalCheck failed for user", {email, error: error.message});
+        }
+      }
+    },
+);
+
+const buildMorningPrompt = (data) => {
+  const parts = [];
+  if (data.taskCount > 0) parts.push(`${data.taskCount} tarefa(s) hoje (${data.taskTitles.join(", ")})`);
+  if (data.habitCount > 0) parts.push(`${data.habitCount} hábito(s) diário(s) pra marcar`);
+  if (data.eventTitles.length > 0) parts.push(`compromisso(s): ${data.eventTitles.join(", ")}`);
+  if (data.intention) parts.push(`intenção do dia: "${data.intention}"`);
+
+  return `Dados do dia do usuário: ${parts.join("; ")}. ` +
+    "Escreva o corpo de uma notificação push de bom dia, em português, curta e bem estruturada " +
+    "(duas linhas, separadas por \\n): a 1ª linha resume o dia com os números acima de forma direta; " +
+    "a 2ª linha é um conselho prático e específico baseado nesses dados (nunca genérico tipo 'tenha um " +
+    "ótimo dia'). No máximo ~150 caracteres no total, no máximo 1 emoji.";
+};
+
+// Espelha o dailySignalCheck, só que de manhã e com um propósito diferente:
+// não é "algo está errado", é "aqui está o seu dia" + um empurrão prático.
+// Só gasta Gemini quando há de fato algo no dia (ver assistant/morning.js).
+exports.goodMorningCheck = onSchedule(
+    {
+      schedule: "every day 07:00",
+      timeZone: "America/Sao_Paulo",
+      region: "southamerica-east1",
+      secrets: ["GEMINI_API_KEY", "VAPID_PRIVATE_KEY"],
+    },
+    async () => {
+      const clientDate = new Date().toLocaleDateString("en-CA", {timeZone: "America/Sao_Paulo"});
+
+      const accessSnap = await db.collection("system").doc("accessControl").get();
+      const emails = accessSnap.exists && Array.isArray(accessSnap.data().allowedEmails)
+        ? accessSnap.data().allowedEmails
+        : [];
+
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {timeout: 12000, retryOptions: {attempts: 2}},
+      });
+
+      for (const email of emails) {
+        try {
+          const user = await getAuth().getUserByEmail(email).catch(() => null);
+          if (!user) continue;
+          const uid = user.uid;
+
+          const subsSnap = await db.collection("users").doc(uid).collection("pushSubscriptions").limit(1).get();
+          if (subsSnap.empty) continue;
+
+          const prefsSnap = await db.collection("users").doc(uid).collection("settings").doc("prefs").get();
+          if (prefsSnap.exists && prefsSnap.data().notifyMorning === false) continue;
+
+          const data = await buildMorningData(db, uid, clientDate);
+          if (!data) continue;
+
+          const prompt = buildMorningPrompt(data);
+          const response = await ai.models.generateContent({
+            model: GEMINI_MODEL,
+            contents: [{role: "user", parts: [{text: prompt}]}],
+            config: {maxOutputTokens: 120},
+          });
+          const body = (response.text || "").trim();
+          if (!body) continue;
+
+          const result = await sendPushToUser(db, uid, {
+            title: "Bom dia",
+            body,
+            url: "/rotina-alto-desempenho/",
+          });
+
+          logger.info("goodMorningCheck sent", {uid, sent: result.sent});
+        } catch (error) {
+          logger.error("goodMorningCheck failed for user", {email, error: error.message});
         }
       }
     },

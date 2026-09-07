@@ -22,7 +22,10 @@ const IMPORTANCE = [
 ]
 
 const NB_COLORS = ['#E06445', '#6C93B8', '#8FAE83', '#9084C9', '#D6A54C', '#C97B93', '#7A7570']
-const EMPTY_NB = { name: '', emoji: '📓', color: NB_COLORS[0] }
+// Um caderno não precisa ser só uma pasta — quando carrega uma pergunta
+// central, ele vira um "tema" de verdade: a unidade deixa de ser a nota
+// solta e passa a ser a pergunta que as notas dentro dele ajudam a responder.
+const EMPTY_NB = { name: '', emoji: '📓', color: NB_COLORS[0], centralQuestion: '', synthesis: '', application: '' }
 const EMPTY_NOTE = { title: '', content: '', importance: 'media', notebookId: null }
 
 export default function Notes() {
@@ -60,7 +63,14 @@ export default function Notes() {
     })
 
   const openAddNb = () => { setEditingNb(null); setNbForm(EMPTY_NB); setShowNbModal(true) }
-  const openEditNb = (nb) => { setEditingNb(nb); setNbForm({ name: nb.name, emoji: nb.emoji || '📓', color: nb.color || NB_COLORS[0] }); setShowNbModal(true) }
+  const openEditNb = (nb) => {
+    setEditingNb(nb)
+    setNbForm({
+      name: nb.name, emoji: nb.emoji || '📓', color: nb.color || NB_COLORS[0],
+      centralQuestion: nb.centralQuestion || '', synthesis: nb.synthesis || '', application: nb.application || '',
+    })
+    setShowNbModal(true)
+  }
 
   const handleSaveNb = async () => {
     if (!nbForm.name.trim()) return
@@ -172,6 +182,54 @@ export default function Notes() {
         </button>
       </div>
 
+      {/* Tema: quando um caderno tem pergunta central, ele vira mais que uma
+          pasta — é a pergunta que as notas dentro dele ajudam a responder. */}
+      {activeNb && (() => {
+        const nb = notebooks.find(n => n.id === activeNb)
+        if (!nb || (!nb.centralQuestion && !nb.synthesis && !nb.application)) return null
+        return (
+          <div className="theme-card" style={{ '--nb-color': nb.color }}>
+            {nb.centralQuestion && (
+              <div className="theme-question">
+                <span className="theme-label">pergunta central</span>
+                <p>{nb.centralQuestion}</p>
+              </div>
+            )}
+            <div className="theme-secondary">
+              {nb.synthesis && (
+                <div>
+                  <span className="theme-label">síntese</span>
+                  <p>{nb.synthesis}</p>
+                </div>
+              )}
+              {nb.application && (
+                <div>
+                  <span className="theme-label">aplicação</span>
+                  <p>{nb.application}</p>
+                </div>
+              )}
+            </div>
+            <button type="button" className="theme-edit-link" onClick={() => openEditNb(nb)}>editar tema</button>
+          </div>
+        )
+      })()}
+
+      {/* Visão consolidada: todas as perguntas centrais em aberto, para ver
+          de uma vez o que está sendo pensado em paralelo. */}
+      {activeNb === null && notebooks.some(nb => nb.centralQuestion) && (
+        <div className="theme-overview">
+          <span className="theme-label">perguntas em aberto</span>
+          <ul className="theme-overview-list">
+            {notebooks.filter(nb => nb.centralQuestion).map(nb => (
+              <li key={nb.id} style={{ '--nb-color': nb.color }} onClick={() => setActiveNb(nb.id)}>
+                <span className="theme-overview-nb">{nb.emoji} {nb.name}</span>
+                <span className="theme-overview-q">{nb.centralQuestion}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Notes grid */}
       {visibleNotes.length === 0 ? (
         <div className="empty-state">
@@ -247,6 +305,36 @@ export default function Notes() {
                 />
               ))}
             </div>
+          </div>
+          {/* Sem isso, um caderno é só uma pasta — com isso, vira um tema de
+              verdade: a unidade deixa de ser a nota solta e passa a ser a
+              pergunta que as notas aqui dentro ajudam a responder. */}
+          <div className="field">
+            <label>Pergunta central (opcional)</label>
+            <textarea
+              rows={2}
+              value={nbForm.centralQuestion}
+              onChange={e => setNbForm(f => ({ ...f, centralQuestion: e.target.value }))}
+              placeholder="Que pergunta as notas deste caderno ajudam a responder?"
+            />
+          </div>
+          <div className="field">
+            <label>Síntese (opcional)</label>
+            <textarea
+              rows={2}
+              value={nbForm.synthesis}
+              onChange={e => setNbForm(f => ({ ...f, synthesis: e.target.value }))}
+              placeholder="O que você já entendeu, juntando tudo?"
+            />
+          </div>
+          <div className="field">
+            <label>Aplicação (opcional)</label>
+            <textarea
+              rows={2}
+              value={nbForm.application}
+              onChange={e => setNbForm(f => ({ ...f, application: e.target.value }))}
+              placeholder="O que isso já mudou na prática?"
+            />
           </div>
           {editingNb && (
             <button

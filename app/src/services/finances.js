@@ -1,5 +1,5 @@
 import { db } from '../firebase'
-import { doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore'
+import { doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore'
 
 const now = () => new Date().toISOString()
 
@@ -17,6 +17,10 @@ export const saveFinanceSnapshot = async (uid, totals) => {
 export const listenFinanceSnapshots = (uid, callback, max = 6) => {
   const q = query(collection(db, 'users', uid, 'financeSnapshots'), orderBy('month', 'desc'), limit(max))
   return onSnapshot(q, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+}
+
+export const deleteFinanceSnapshot = async (uid, month) => {
+  await deleteDoc(doc(db, 'users', uid, 'financeSnapshots', month))
 }
 
 export const listenFinancesData = (uid, callback) => {

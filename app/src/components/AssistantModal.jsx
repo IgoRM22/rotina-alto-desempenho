@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { RiCloseLine, RiDeleteBin6Line, RiImageAddLine, RiSendPlaneFill } from '@remixicon/react'
+import { RiCloseLine, RiDeleteBin6Line, RiImageAddLine, RiMicLine, RiSendPlaneFill } from '@remixicon/react'
 import { runAssistantCommand, confirmAssistantActions } from '../services/assistant'
 import { todayKey } from '../utils/date'
 import { resizeImageFile } from '../utils/imageResize'
@@ -87,10 +87,125 @@ export default function AssistantModal({ onClose }) {
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
   // { data (base64 sem prefixo), mimeType, previewUrl } — anexo pendente, ex: foto de um extrato
   const [pendingImage, setPendingImage] = useState(null)
+  // Imagem "em foco" da conversa — sem isso, uma pergunta de acompanhamento
+  // ("qual dia?", "inclui o nome dele") chegava ao Gemini só com texto, sem a
+  // imagem, e ele esquecia o que tinha acabado de ver. Continua sendo
+  // reenviada em turnos seguintes até a ação ser confirmada/cancelada ou uma
+  // imagem nova ser anexada.
+  const [activeImage, setActiveImage] = useState(null)
   const [imageBusy, setImageBusy] = useState(false)
+  const [listening, setListening] = useState(false)
+  const [waveMeterFailed, setWaveMeterFailed] = useState(false)
+  const WAVE_BARS = 5
+  const [waveLevels, setWaveLevels] = useState(() => Array(WAVE_BARS).fill(0.15))
   const inputRef = useRef(null)
   const bodyRef = useRef(null)
   const fileInputRef = useRef(null)
+  const recognitionRef = useRef(null)
+  const micStreamRef = useRef(null)
+  const audioCtxRef = useRef(null)
+  const rafRef = useRef(null)
+
+  // Transcrição de voz é feita no navegador (Web Speech API) — grátis, sem
+  // gastar token nenhum, e o resultado vira texto normal, reaproveitando o
+  // mesmo caminho de sempre. Só existe no Chrome/Edge; some sem quebrar nada
+  // quando o navegador não suporta.
+  const speechSupported = typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+
+  // Barrinhas reagindo ao volume de verdade (igual o WhatsApp) — pede o
+  // microfone separado do SpeechRecognition (que não expõe o stream bruto)
+  // só pra medir o nível e animar. Se a permissão falhar por algum motivo,
+  // a transcrição em si continua funcionando normalmente, só sem a animação.
+  const startWaveMeter = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      micStreamRef.current = stream
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      const ctx = new AudioCtx()
+      audioCtxRef.current = ctx
+      // Criado depois de um await, fora do gesto de clique síncrono — o
+      // navegador entrega o contexto em estado "suspended" por padrão, e sem
+      // resume() o analyser nunca recebe áudio de verdade (era por isso que
+      // as barras ficavam paradas, mesmo com o microfone funcionando).
+      if (ctx.state === 'suspended') await ctx.resume()
+
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 64
+      analyser.smoothingTimeConstant = 0.4
+      source.connect(analyser)
+      const data = new Uint8Array(analyser.frequencyBinCount)
+
+      // rAF roda a ~60fps — empurrando uma amostra por frame, as 5 barras
+      // enchem com o MESMO instante em ~80ms, então todas pulavam juntas pra
+      // cheio em vez de formar uma onda. Espaçando as amostras a cada 90ms,
+      // as 5 barras passam a cobrir quase meio segundo de histórico de
+      // verdade — aí sim parece uma onda, igual o WhatsApp.
+      const SAMPLE_INTERVAL_MS = 90
+      let lastSampleAt = 0
+      const tick = (now) => {
+        if (now - lastSampleAt >= SAMPLE_INTERVAL_MS) {
+          lastSampleAt = now
+          analyser.getByteFrequencyData(data)
+          const avg = data.reduce((sum, v) => sum + v, 0) / data.length
+          const level = Math.min(1, avg / 70)
+          setWaveLevels((prev) => [...prev.slice(1), level])
+        }
+        rafRef.current = requestAnimationFrame(tick)
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    } catch {
+      // Segunda captura de mic bloqueada (ou sem suporte) — a transcrição em
+      // si segue funcionando normal via SpeechRecognition; aqui só troca pra
+      // um pulso simples via CSS, pra nunca ficar sem nenhum feedback visual.
+      setWaveMeterFailed(true)
+    }
+  }
+
+  const stopWaveMeter = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = null
+    if (audioCtxRef.current) audioCtxRef.current.close().catch(() => {})
+    audioCtxRef.current = null
+    micStreamRef.current?.getTracks().forEach((t) => t.stop())
+    micStreamRef.current = null
+    setWaveLevels(Array(WAVE_BARS).fill(0.15))
+    setWaveMeterFailed(false)
+  }
+
+  useEffect(() => () => { recognitionRef.current?.stop(); stopWaveMeter() }, [])
+
+  const toggleListening = () => {
+    if (!speechSupported) return
+    if (listening) {
+      recognitionRef.current?.stop()
+      return
+    }
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition
+    const recognition = new SpeechRecognitionCtor()
+    recognition.lang = 'pt-BR'
+    recognition.interimResults = false
+    recognition.continuous = false
+    recognition.onresult = (event) => {
+      let finalTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript
+      }
+      if (finalTranscript.trim()) {
+        setText((prev) => (prev.trim() ? `${prev.trim()} ${finalTranscript.trim()}` : finalTranscript.trim()))
+      }
+    }
+    recognition.onerror = () => { setListening(false); stopWaveMeter() }
+    recognition.onend = () => { setListening(false); stopWaveMeter() }
+    recognitionRef.current = recognition
+    try {
+      recognition.start()
+      setListening(true)
+      startWaveMeter()
+    } catch {
+      setListening(false)
+    }
+  }
 
   useEffect(() => {
     document.body.classList.add('has-modal-open')
@@ -110,6 +225,17 @@ export default function AssistantModal({ onClose }) {
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
+  // Cresce a caixa de texto junto com o conteúdo (em vez de rolar escondendo
+  // o começo do que foi digitado) — reage a qualquer mudança em `text`, não
+  // só ao digitar, então também funciona ao reaproveitar uma mensagem antiga
+  // ou usar uma sugestão, e volta ao tamanho mínimo quando o texto é limpo.
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [text])
+
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
@@ -121,23 +247,28 @@ export default function AssistantModal({ onClose }) {
     .slice(-MAX_HISTORY)
     .map((m) => ({ role: m.role, text: m.text }))
 
-  const send = async (command, image) => {
-    if ((!command && !image) || loading || !online) return
+  const send = async (command, explicitImage) => {
+    const imageForRequest = explicitImage || activeImage
+    if ((!command && !imageForRequest) || loading || !online) return
 
     const history = historyPayload()
     setMessages((prev) => [...prev, {
       role: 'user',
       text: command || '(imagem enviada)',
-      image: image?.previewUrl,
+      // Só mostra a miniatura na bolha quando é um anexo novo desta
+      // mensagem — nos turnos seguintes a imagem viaja escondida, só pro
+      // Gemini, sem repetir a foto visualmente no chat.
+      image: explicitImage?.previewUrl,
     }])
     setText('')
     setPendingImage(null)
+    if (explicitImage) setActiveImage(explicitImage)
     setLoading(true)
 
     try {
       const data = await runAssistantCommand(
         command, todayKey(), history,
-        image ? { data: image.data, mimeType: image.mimeType } : undefined,
+        imageForRequest ? { data: imageForRequest.data, mimeType: imageForRequest.mimeType } : undefined,
       )
       setMessages((prev) => [...prev, {
         role: 'assistant',
@@ -194,6 +325,7 @@ export default function AssistantModal({ onClose }) {
 
     if (action === 'cancel') {
       setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, pending: 'cancelled' } : m)))
+      setActiveImage(null)
       return
     }
 
@@ -203,6 +335,7 @@ export default function AssistantModal({ onClose }) {
     try {
       const data = await confirmAssistantActions(actions, todayKey())
       setMessages((prev) => [...prev, { role: 'assistant', text: data.message }])
+      setActiveImage(null)
     } catch (err) {
       setMessages((prev) => [...prev, { role: 'error', text: displayError(err) }])
     } finally {
@@ -211,8 +344,8 @@ export default function AssistantModal({ onClose }) {
   }
 
   return (
-    <div className="assistant-modal-overlay" onClick={onClose}>
-      <div className="assistant-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="assistant-modal-overlay">
+      <div className="assistant-modal">
         <div className="assistant-modal-header">
           <div>
             <span className="assistant-modal-title"><SparkleIcon size={19} /> Assistente</span>
@@ -220,7 +353,7 @@ export default function AssistantModal({ onClose }) {
           </div>
           <div className="assistant-modal-header-actions">
             {messages.length > 0 && (
-              <button className="btn-icon assistant-modal-clear" onClick={() => setMessages([])} aria-label="Limpar conversa" title="Limpar conversa">
+              <button className="btn-icon assistant-modal-clear" onClick={() => { setMessages([]); setActiveImage(null) }} aria-label="Limpar conversa" title="Limpar conversa">
                 <RiDeleteBin6Line size={17} />
               </button>
             )}
@@ -294,6 +427,16 @@ export default function AssistantModal({ onClose }) {
           </div>
         )}
 
+        {!pendingImage && activeImage && (
+          <div className="assistant-image-preview">
+            <img src={activeImage.previewUrl} alt="prévia do anexo em foco" />
+            <span className="assistant-image-preview-name">ainda olhando essa imagem — some ao confirmar/cancelar</span>
+            <button type="button" className="assistant-image-remove" onClick={() => setActiveImage(null)} aria-label="Parar de considerar a imagem">
+              <RiCloseLine size={16} />
+            </button>
+          </div>
+        )}
+
         <div className="assistant-modal-composer">
           <input
             ref={fileInputRef}
@@ -312,11 +455,35 @@ export default function AssistantModal({ onClose }) {
           >
             <RiImageAddLine size={19} />
           </button>
-          <input
+          {speechSupported && (
+            <button
+              type="button"
+              className={`assistant-mic-btn ${listening ? 'is-listening' : ''}`}
+              onClick={toggleListening}
+              disabled={!online}
+              aria-label={listening ? 'Parar gravação' : 'Falar em vez de digitar'}
+              title={listening ? 'Parar gravação' : 'Falar em vez de digitar'}
+            >
+              {listening ? (
+                <span className={`assistant-mic-wave ${waveMeterFailed ? 'is-fallback' : ''}`} aria-hidden="true">
+                  {waveLevels.map((lvl, i) => (
+                    <span key={i} className="assistant-mic-wave-bar" style={{ height: `${4 + lvl * 15}px` }} />
+                  ))}
+                </span>
+              ) : <RiMicLine size={19} />}
+            </button>
+          )}
+          <textarea
             ref={inputRef}
             value={text}
+            rows={1}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                submit()
+              }
+            }}
             disabled={!online}
             placeholder={online ? 'ex: criar tarefa comprar pão amanhã' : 'sem conexão...'}
           />

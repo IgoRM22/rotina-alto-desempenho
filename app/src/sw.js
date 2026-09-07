@@ -2,8 +2,16 @@ import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { CacheFirst, NetworkOnly } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
+import { clientsClaim } from 'workbox-core'
 
 self.skipWaiting()
+// Sem isso, um service worker novo instala e ativa (skipWaiting cuida disso)
+// mas as abas/PWA já abertas continuam sendo servidas pelo antigo até uma
+// navegação nova de verdade — que num PWA instalado (que fica "resumido" em
+// vez de fechado) quase nunca acontece sozinho. clientsClaim() faz o SW novo
+// assumir o controle na hora, pra registerSW() (main.jsx) conseguir recarregar
+// com o conteúdo atualizado de fato, em vez de reservar isso pra depois.
+clientsClaim()
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
@@ -27,7 +35,7 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('/rotina-alto-desempen
 
 // ── Push notifications (avisos proativos do assistente) ──────────────────
 self.addEventListener('push', (event) => {
-  let payload = { title: 'Raio', body: 'Você tem uma atualização.' }
+  let payload = { title: 'RaioDesk', body: 'Você tem uma atualização.' }
   try {
     if (event.data) payload = { ...payload, ...event.data.json() }
   } catch { /* payload não era JSON — usa o texto puro */ }

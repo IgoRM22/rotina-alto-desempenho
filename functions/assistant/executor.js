@@ -38,6 +38,16 @@ const findBestMatch = (list, field, query) => {
 
 const base = (db, uid, col) => db.collection("users").doc(uid).collection(col);
 
+// Semana segunda-início, usada por weekFocus — distinta do weekMetaFor
+// (domingo-início) que a Agenda usa pros itens de cronograma. Mesma
+// convenção de utils/date.js (getWeekKey) no frontend.
+const mondayWeekKey = (date) => {
+  const d = new Date(date);
+  const isoDay = d.getDay() === 0 ? 7 : d.getDay();
+  d.setDate(d.getDate() - (isoDay - 1));
+  return `W-${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+};
+
 // Finanças usa um formato diferente do resto do app: um único doc com
 // arrays dentro (banks/incomes/fixedExpenses/goals), indexados por posição
 // em vez de subcoleção com IDs — espelha services/finances.js do frontend.
@@ -123,12 +133,14 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
     case "criarHabito": {
       const name = String(args.nome || "").trim();
       if (!name) return {ok: false, error: "nome vazio"};
-      if (dryRun) return {ok: true, name};
+      const rawFrequency = Math.round(Number(args.vezesPorSemana));
+      const weeklyTarget = Number.isFinite(rawFrequency) && rawFrequency >= 1 && rawFrequency <= 7 ? rawFrequency : 7;
+      if (dryRun) return {ok: true, name, weeklyTarget};
 
       const ref = await base(db, uid, "habits").add({
-        name, active: true, createdAt: FieldValue.serverTimestamp(), order: Date.now(),
+        name, weeklyTarget, active: true, createdAt: FieldValue.serverTimestamp(), order: Date.now(),
       });
-      return {ok: true, id: ref.id, name};
+      return {ok: true, id: ref.id, name, weeklyTarget};
     }
 
     case "marcarHabito": {
@@ -180,6 +192,52 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       return {ok: true, date, ...data};
     }
 
+    case "registrarAnotacaoSemanal": {
+      const text = String(args.texto || "").trim();
+      const tag = ["funcionou", "ajustar", "rabisco"].includes(args.tipo) ? args.tipo : null;
+      if (!text || !tag) return {ok: false, error: "dados inválidos"};
+      const date = args.data || clientDate;
+      if (dryRun) return {ok: true, text, tag, date};
+
+      const docRef = db.collection("users").doc(uid).collection("dailyLogs").doc(date);
+      const snap = await docRef.get();
+      const annotations = [...((snap.exists && snap.data().annotations) || [])];
+      annotations.push({id: `${Date.now()}`, text, tag});
+      await docRef.set({date, annotations, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+      return {ok: true, text, tag, date};
+    }
+
+    case "adicionarFocoSemana": {
+      const text = String(args.texto || "").trim();
+      if (!text) return {ok: false, error: "texto vazio"};
+      if (dryRun) return {ok: true, text};
+
+      const nextWeek = new Date(`${clientDate}T00:00:00`);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      const weekKey = mondayWeekKey(nextWeek);
+      const docRef = db.collection("users").doc(uid).collection("weekFocus").doc(weekKey);
+      const snap = await docRef.get();
+      const items = [...((snap.exists && snap.data().items) || [])];
+      items.push({id: `${Date.now()}`, text});
+      await docRef.set({items, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+      return {ok: true, text};
+    }
+
+    case "removerFocoSemana": {
+      const nextWeek = new Date(`${clientDate}T00:00:00`);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      const weekKey = mondayWeekKey(nextWeek);
+      const docRef = db.collection("users").doc(uid).collection("weekFocus").doc(weekKey);
+      const snap = await docRef.get();
+      const items = (snap.exists && snap.data().items) || [];
+      const found = findBestMatch(items, "text", args.texto);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      if (dryRun) return {ok: true, text: found.match.text};
+
+      await docRef.set({items: items.filter((i) => i.id !== found.match.id), updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+      return {ok: true, text: found.match.text};
+    }
+
     case "criarNota": {
       const title = String(args.titulo || "").trim();
       if (!title) return {ok: false, error: "título vazio"};
@@ -208,6 +266,42 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       };
       const ref = await base(db, uid, "notes").add(data);
       return {ok: true, id: ref.id, title, notebook: notebookName};
+    }
+
+    case "editarNota": {
+      const snap = await base(db, uid, "notes").get();
+      const notes = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(notes, "title", args.titulo);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+
+      const changes = {};
+      if (typeof args.novoConteudo === "string") changes.content = args.novoConteudo;
+      if (args.novaImportancia) changes.importance = args.novaImportancia;
+      let notebookName = null;
+      if (args.novoCaderno) {
+        const nbSnap = await base(db, uid, "notebooks").get();
+        const notebooks = nbSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+        const foundNb = findBestMatch(notebooks, "name", args.novoCaderno);
+        if (foundNb.match) {
+          changes.notebookId = foundNb.match.id;
+          notebookName = foundNb.match.name;
+        }
+      }
+      if (Object.keys(changes).length === 0) return {ok: false, error: "dados inválidos"};
+
+      if (dryRun) return {ok: true, title: found.match.title, notebook: notebookName};
+      changes.updatedAt = FieldValue.serverTimestamp();
+      await base(db, uid, "notes").doc(found.match.id).update(changes);
+      return {ok: true, title: found.match.title, notebook: notebookName};
+    }
+
+    case "criarCaderno": {
+      const name = String(args.nome || "").trim();
+      if (!name) return {ok: false, error: "nome vazio"};
+      if (dryRun) return {ok: true, name};
+
+      const ref = await base(db, uid, "notebooks").add({name, createdAt: FieldValue.serverTimestamp()});
+      return {ok: true, id: ref.id, name};
     }
 
     case "criarMeta": {
@@ -255,6 +349,26 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       return {ok: true, title: found.match.title, progress};
     }
 
+    case "editarMeta": {
+      const snap = await base(db, uid, "goals").where("done", "==", false).get();
+      const goals = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(goals, "title", args.titulo);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+
+      const changes = {};
+      if (args.novoTitulo) changes.title = String(args.novoTitulo).trim();
+      if (typeof args.novaDescricao === "string") changes.description = args.novaDescricao;
+      if (typeof args.novoCompromisso === "string") changes.commitment = args.novoCompromisso;
+      if (args.novaCategoria) changes.category = String(args.novaCategoria).trim().toLowerCase();
+      if (args.novoPrazoAlvo) changes.targetDate = args.novoPrazoAlvo;
+      if (Object.keys(changes).length === 0) return {ok: false, error: "dados inválidos"};
+
+      if (dryRun) return {ok: true, title: found.match.title, changes};
+      changes.updatedAt = FieldValue.serverTimestamp();
+      await base(db, uid, "goals").doc(found.match.id).update(changes);
+      return {ok: true, title: changes.title || found.match.title, changes};
+    }
+
     case "criarItemAgenda": {
       const name = String(args.nome || "").trim();
       if (!name) return {ok: false, error: "nome vazio"};
@@ -277,6 +391,28 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       };
       const ref = await base(db, uid, "schedule").add(data);
       return {ok: true, id: ref.id, name, day};
+    }
+
+    case "editarItemAgenda": {
+      const {planKey} = weekMetaFor(clientDate);
+      const snap = await base(db, uid, "schedule").get();
+      const items = snap.docs
+          .map((d) => ({id: d.id, ...d.data()}))
+          .filter((item) => (!item.planScope || item.planScope === "week") && (!item.planKey || item.planKey === planKey));
+      const found = findBestMatch(items, "name", args.nome);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+
+      const changes = {};
+      if (args.novoNome) changes.name = String(args.novoNome).trim();
+      if (DAYS.includes(args.novoDia)) changes.day = args.novoDia;
+      if (args.novoHorarioInicio) changes.timeStart = args.novoHorarioInicio;
+      if (args.novoHorarioFim) changes.timeEnd = args.novoHorarioFim;
+      if (args.novaCategoria) changes.category = String(args.novaCategoria).trim().toLowerCase();
+      if (Object.keys(changes).length === 0) return {ok: false, error: "dados inválidos"};
+
+      if (dryRun) return {ok: true, name: found.match.name, changes};
+      await base(db, uid, "schedule").doc(found.match.id).update(changes);
+      return {ok: true, name: changes.name || found.match.name, changes};
     }
 
     case "consultarResumoDoDia": {
@@ -502,6 +638,36 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       };
     }
 
+    case "fecharMes": {
+      const snap = await financesDoc(db, uid).get();
+      const data = snap.exists ? snap.data() : emptyFinances();
+      const totalBanks = (data.banks || []).reduce((sum, b) => sum + (b.balance || 0), 0);
+      const totalIncome = (data.incomes || []).reduce((sum, i) => sum + (i.net || 0), 0);
+      const totalExpenses = (data.fixedExpenses || []).reduce((sum, e) => sum + (e.amount || 0), 0);
+      const monthlyBalance = totalIncome - totalExpenses;
+      const d = new Date(`${clientDate}T00:00:00`);
+      const month = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+
+      if (dryRun) return {ok: true, month, totalBanks, totalIncome, totalExpenses, monthlyBalance};
+
+      await db.collection("users").doc(uid).collection("financeSnapshots").doc(month).set({
+        month, totalBanks, totalIncome, totalExpenses, monthlyBalance, closedAt: new Date().toISOString(),
+      });
+      return {ok: true, month, totalBanks, totalIncome, totalExpenses, monthlyBalance};
+    }
+
+    case "excluirFechamentoMensal": {
+      const month = String(args.mes || "").trim();
+      if (!/^\d{4}-\d{2}$/.test(month)) return {ok: false, error: "dados inválidos"};
+      const docRef = db.collection("users").doc(uid).collection("financeSnapshots").doc(month);
+      const snap = await docRef.get();
+      if (!snap.exists) return {ok: false, error: "not_found"};
+
+      if (dryRun) return {ok: true, month};
+      await docRef.delete();
+      return {ok: true, month};
+    }
+
     case "criarCompromissoImportante": {
       const title = String(args.titulo || "").trim();
       const startDate = args.dataInicio || "";
@@ -519,6 +685,25 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       };
       const ref = await base(db, uid, "importantDates").add(data);
       return {ok: true, id: ref.id, title, startDate, type: data.type};
+    }
+
+    case "editarDataImportante": {
+      const snap = await base(db, uid, "importantDates").get();
+      const dates = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(dates, "title", args.titulo);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+
+      const changes = {};
+      if (args.novoTitulo) changes.title = String(args.novoTitulo).trim();
+      if (args.novoTipo) changes.type = args.novoTipo;
+      if (DATE_KEY_RE.test(args.novaDataInicio || "")) changes.startDate = args.novaDataInicio;
+      if (DATE_KEY_RE.test(args.novaDataFim || "")) changes.endDate = args.novaDataFim;
+      if (typeof args.novaDescricao === "string") changes.description = args.novaDescricao;
+      if (Object.keys(changes).length === 0) return {ok: false, error: "dados inválidos"};
+
+      if (dryRun) return {ok: true, title: found.match.title, changes};
+      await base(db, uid, "importantDates").doc(found.match.id).update(changes);
+      return {ok: true, title: changes.title || found.match.title, changes};
     }
 
     case "consultarCompromissosImportantes": {
@@ -569,6 +754,45 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
         items: FieldValue.arrayUnion(newItem),
       });
       return {ok: true, mealTitle: found.match.title, itemName};
+    }
+
+    case "editarItemRefeicao": {
+      const tablesSnap = await base(db, uid, "mealTables").get();
+      const tables = tablesSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const foundTable = findBestMatch(tables, "title", args.refeicao);
+      if (!foundTable.match) return {ok: false, error: foundTable.reason, candidates: foundTable.candidates};
+
+      const items = foundTable.match.items || [];
+      const foundItem = findBestMatch(items, "name", args.item);
+      if (!foundItem.match) return {ok: false, error: foundItem.reason, candidates: foundItem.candidates};
+
+      const changes = {};
+      if (args.novaQuantidade) changes.quantity = args.novaQuantidade;
+      if (args.novasGramas) changes.grams = args.novasGramas;
+      if (args.novoTipo) changes.type = args.novoTipo;
+      if (Object.keys(changes).length === 0) return {ok: false, error: "dados inválidos"};
+
+      if (dryRun) return {ok: true, mealTitle: foundTable.match.title, itemName: foundItem.match.name, changes};
+      const nextItems = items.map((it) => (it.id === foundItem.match.id ? {...it, ...changes} : it));
+      await base(db, uid, "mealTables").doc(foundTable.match.id).update({items: nextItems});
+      return {ok: true, mealTitle: foundTable.match.title, itemName: foundItem.match.name, changes};
+    }
+
+    case "removerItemRefeicao": {
+      const tablesSnap = await base(db, uid, "mealTables").get();
+      const tables = tablesSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const foundTable = findBestMatch(tables, "title", args.refeicao);
+      if (!foundTable.match) return {ok: false, error: foundTable.reason, candidates: foundTable.candidates};
+
+      const items = foundTable.match.items || [];
+      const foundItem = findBestMatch(items, "name", args.item);
+      if (!foundItem.match) return {ok: false, error: foundItem.reason, candidates: foundItem.candidates};
+
+      if (dryRun) return {ok: true, mealTitle: foundTable.match.title, itemName: foundItem.match.name};
+      await base(db, uid, "mealTables").doc(foundTable.match.id).update({
+        items: items.filter((it) => it.id !== foundItem.match.id),
+      });
+      return {ok: true, mealTitle: foundTable.match.title, itemName: foundItem.match.name};
     }
 
     case "consultarPlanoAlimentar": {

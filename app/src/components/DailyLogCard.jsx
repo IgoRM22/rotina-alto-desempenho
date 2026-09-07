@@ -62,13 +62,13 @@ export default function DailyLogCard() {
         </div>
       </div>
       <div className="field" style={{ marginBottom: 0 }}>
-        <label>Nota do dia (opcional)</label>
+        <label>O que realmente importou hoje? (opcional)</label>
         <textarea
           rows={2}
           value={note}
           onChange={e => setNote(e.target.value)}
           onBlur={saveNote}
-          placeholder="Como foi o dia?"
+          placeholder="Uma frase basta"
         />
       </div>
     </div>

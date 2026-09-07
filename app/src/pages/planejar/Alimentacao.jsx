@@ -1,7 +1,25 @@
 import React, { useEffect, useState } from 'react'
-import { RiAddLine, RiCheckLine, RiCloseLine, RiDeleteBinLine, RiPencilLine } from '@remixicon/react'
+import { RiAddLine, RiArrowDownSLine, RiCheckLine, RiCloseLine, RiDeleteBinLine, RiPencilLine } from '@remixicon/react'
 import { listenMealTables, addMealTable, updateMealTable, deleteMealTable } from '../../services/firestore'
 import Toast from '../../components/Toast'
+
+const COLLAPSED_STORAGE_KEY = 'raio-meal-tables-collapsed'
+
+const loadCollapsed = () => {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return new Set(Array.isArray(parsed) ? parsed : [])
+  } catch {
+    return new Set()
+  }
+}
+
+const storeCollapsed = (set) => {
+  try {
+    localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify([...set]))
+  } catch { /* localStorage indisponível — só não persiste entre sessões */ }
+}
 
 const EMPTY_TABLE_FORM = { time: '', title: '' }
 const EMPTY_ITEM_FORM = { quantity: '', name: '', grams: '', type: '' }
@@ -129,6 +147,16 @@ export default function Alimentacao() {
 
   const [addingItemTableId, setAddingItemTableId] = useState(null)
   const [itemForm, setItemForm] = useState(EMPTY_ITEM_FORM)
+  const [collapsed, setCollapsed] = useState(loadCollapsed)
+
+  const toggleCollapsed = (tableId) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      next.has(tableId) ? next.delete(tableId) : next.add(tableId)
+      storeCollapsed(next)
+      return next
+    })
+  }
 
   useEffect(() => {
     const unsub = listenMealTables((data) => { setTables(data); setLoading(false) })
@@ -247,7 +275,9 @@ export default function Alimentacao() {
         </div>
       )}
 
-      {tables.map((table) => (
+      {tables.map((table) => {
+        const isCollapsed = collapsed.has(table.id)
+        return (
         <div key={table.id} className="meal-table-card">
           <div className="meal-table-header">
             {editingTableId === table.id ? (
@@ -273,8 +303,22 @@ export default function Alimentacao() {
               </>
             ) : (
               <>
+                <button
+                  type="button"
+                  className="meal-table-collapse-btn"
+                  onClick={() => toggleCollapsed(table.id)}
+                  aria-label={isCollapsed ? 'Expandir refeição' : 'Recolher refeição'}
+                  aria-expanded={!isCollapsed}
+                >
+                  <RiArrowDownSLine size={15} className={`meal-table-chevron ${isCollapsed ? 'is-collapsed' : ''}`} />
+                </button>
                 {table.time && <span className="meal-table-time">{table.time}</span>}
-                <span className="meal-table-title">{table.title}</span>
+                <span className="meal-table-title meal-table-title-btn" onClick={() => toggleCollapsed(table.id)}>
+                  {table.title}
+                </span>
+                {isCollapsed && (table.items || []).length > 0 && (
+                  <span className="meal-table-count">{table.items.length} {table.items.length === 1 ? 'item' : 'itens'}</span>
+                )}
                 <div className="meal-table-actions">
                   <button className="btn btn-ghost btn-sm btn-icon" onClick={() => startEditTable(table)} aria-label="Editar tabela"><RiPencilLine size={13} /></button>
                   <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDeleteTable(table)} aria-label="Excluir tabela"><RiDeleteBinLine size={13} /></button>
@@ -283,6 +327,8 @@ export default function Alimentacao() {
             )}
           </div>
 
+          {!isCollapsed && (
+          <>
           <table className="meal-table">
             <thead>
               <tr>
@@ -366,8 +412,11 @@ export default function Alimentacao() {
               </button>
             )}
           </div>
+          </>
+          )}
         </div>
-      ))}
+        )
+      })}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </>

@@ -46,11 +46,15 @@ const TOOLS = [
   },
   {
     name: "criarHabito",
-    description: "Cria um novo hábito para acompanhar diariamente.",
+    description: "Cria um novo hábito para acompanhar. Por padrão é diário, mas pode ter uma meta semanal (ex: ir à academia 3x por semana, sem precisar ser todo dia).",
     parameters: {
       type: Type.OBJECT,
       properties: {
         nome: { type: Type.STRING },
+        vezesPorSemana: {
+          type: Type.NUMBER,
+          description: "Quantas vezes por semana, de 1 a 7. Omitir (ou usar 7) para um hábito diário.",
+        },
       },
       required: ["nome"],
     },
@@ -93,6 +97,41 @@ const TOOLS = [
     },
   },
   {
+    name: "registrarAnotacaoSemanal",
+    description: "Adiciona uma anotação do dia marcada como 'o que funcionou', 'o que ajustar' ou um rabisco livre — aparece na Revisão Semanal.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        texto: { type: Type.STRING },
+        tipo: { type: Type.STRING, enum: ["funcionou", "ajustar", "rabisco"] },
+        data: { type: Type.STRING, description: "Data YYYY-MM-DD; se omitida, usa hoje." },
+      },
+      required: ["texto", "tipo"],
+    },
+  },
+  {
+    name: "adicionarFocoSemana",
+    description: "Adiciona um item à lista de 'Foco da próxima semana' (Revisão Semanal).",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        texto: { type: Type.STRING },
+      },
+      required: ["texto"],
+    },
+  },
+  {
+    name: "removerFocoSemana",
+    description: "Remove um item da lista de 'Foco da próxima semana', buscando pelo texto.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        texto: { type: Type.STRING, description: "Texto (ou parte dele) do item a remover." },
+      },
+      required: ["texto"],
+    },
+  },
+  {
     name: "criarNota",
     description: "Cria uma nova nota pessoal.",
     parameters: {
@@ -104,6 +143,31 @@ const TOOLS = [
         importancia: { type: Type.STRING, enum: ["alta", "media", "baixa"] },
       },
       required: ["titulo"],
+    },
+  },
+  {
+    name: "editarNota",
+    description: "Edita o conteúdo, caderno ou importância de uma nota já existente, buscando pelo título.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) da nota existente." },
+        novoConteudo: { type: Type.STRING },
+        novoCaderno: { type: Type.STRING },
+        novaImportancia: { type: Type.STRING, enum: ["alta", "media", "baixa"] },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
+    name: "criarCaderno",
+    description: "Cria um novo caderno (notebook) para organizar notas.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        nome: { type: Type.STRING },
+      },
+      required: ["nome"],
     },
   },
   {
@@ -134,6 +198,22 @@ const TOOLS = [
     },
   },
   {
+    name: "editarMeta",
+    description: "Edita título, descrição, compromisso, categoria ou prazo de uma meta de vida já existente, buscando pelo título.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) da meta existente." },
+        novoTitulo: { type: Type.STRING },
+        novaDescricao: { type: Type.STRING },
+        novoCompromisso: { type: Type.STRING },
+        novaCategoria: { type: Type.STRING },
+        novoPrazoAlvo: { type: Type.STRING, description: "Nova data alvo YYYY-MM-DD." },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
     name: "criarItemAgenda",
     description: "Cria um item no cronograma semanal (agenda) do usuário.",
     parameters: {
@@ -153,6 +233,25 @@ const TOOLS = [
           enum: ["daily", "weekdays", "weekend"],
           description: "Omitir se o item não se repete (dia específico apenas).",
         },
+      },
+      required: ["nome"],
+    },
+  },
+  {
+    name: "editarItemAgenda",
+    description: "Edita nome, dia, horário ou categoria de um item da agenda já existente NESTA semana, buscando pelo nome.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        nome: { type: Type.STRING, description: "Nome (ou parte dele) do item já cadastrado." },
+        novoNome: { type: Type.STRING },
+        novoDia: {
+          type: Type.STRING,
+          enum: ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"],
+        },
+        novoHorarioInicio: { type: Type.STRING, description: "Formato HH:MM." },
+        novoHorarioFim: { type: Type.STRING, description: "Formato HH:MM." },
+        novaCategoria: { type: Type.STRING },
       },
       required: ["nome"],
     },
@@ -281,6 +380,22 @@ const TOOLS = [
     },
   },
   {
+    name: "fecharMes",
+    description: "Fecha o mês financeiro atual, guardando uma foto dos totais (saldo em bancos, renda, despesas, saldo mensal) pra comparar com o próximo mês.",
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: "excluirFechamentoMensal",
+    description: "Exclui um fechamento mensal já salvo, buscando pelo mês (formato YYYY-MM).",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        mes: { type: Type.STRING, description: "Mês no formato YYYY-MM, ex: 2026-09." },
+      },
+      required: ["mes"],
+    },
+  },
+  {
     name: "consultarResumoFinanceiro",
     description: "Leitura — retorna fundo de emergência, saldo total em bancos, renda líquida mensal, despesas fixas mensais, saldo mensal e metas financeiras. Use por conta própria quando a pergunta envolver dinheiro, gastos, saldo ou orçamento.",
     parameters: { type: Type.OBJECT, properties: {} },
@@ -303,6 +418,22 @@ const TOOLS = [
         descricao: { type: Type.STRING },
       },
       required: ["titulo", "tipo", "dataInicio"],
+    },
+  },
+  {
+    name: "editarDataImportante",
+    description: "Edita título, tipo, data ou descrição de uma data importante já existente, buscando pelo título.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) da data importante existente." },
+        novoTitulo: { type: Type.STRING },
+        novoTipo: { type: Type.STRING, enum: ["feriado", "aniversario", "ferias", "importante", "outros"] },
+        novaDataInicio: { type: Type.STRING, description: "Nova data YYYY-MM-DD." },
+        novaDataFim: { type: Type.STRING },
+        novaDescricao: { type: Type.STRING },
+      },
+      required: ["titulo"],
     },
   },
   {
@@ -338,6 +469,36 @@ const TOOLS = [
         },
       },
       required: ["refeicao", "nome"],
+    },
+  },
+  {
+    name: "editarItemRefeicao",
+    description: "Edita a quantidade, gramas ou tipo de um alimento já lançado numa refeição, buscando a refeição e o item pelo nome.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        refeicao: { type: Type.STRING, description: "Nome (ou parte dele) da refeição." },
+        item: { type: Type.STRING, description: "Nome (ou parte dele) do alimento já lançado." },
+        novaQuantidade: { type: Type.STRING },
+        novasGramas: { type: Type.STRING },
+        novoTipo: {
+          type: Type.STRING,
+          enum: ["proteina", "carboidrato", "gordura", "fruta", "vegetal", "laticinio", "bebida", "outros"],
+        },
+      },
+      required: ["refeicao", "item"],
+    },
+  },
+  {
+    name: "removerItemRefeicao",
+    description: "Remove um alimento de uma refeição, buscando a refeição e o item pelo nome.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        refeicao: { type: Type.STRING, description: "Nome (ou parte dele) da refeição." },
+        item: { type: Type.STRING, description: "Nome (ou parte dele) do alimento a remover." },
+      },
+      required: ["refeicao", "item"],
     },
   },
   {

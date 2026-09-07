@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { RiAddLine, RiCheckLine, RiCloseLine } from '@remixicon/react'
 import { listenHabits, listenHabitLogs, listenDailyLogsForDates, listenWeekFocus, saveWeekFocus, listenImportantDates } from '../services/firestore'
 import { getWeekDates, getWeekLabel, getWeekKey, dateKeyFromDate, addDays, todayKey, weekDayShortLabel } from '../utils/date'
@@ -87,6 +87,30 @@ export default function RevisaoSemanal() {
 
   const list = activeTab === 'funcionou' ? funcionou : ajustar
 
+  // Sem isso, a tabela cortava sáb/dom no mobile sem nenhuma pista de que
+  // dava pra arrastar pra ver o resto — mesmo problema que as abas já
+  // tinham antes de ganhar esse fade.
+  const weekTableRef = useRef(null)
+  const [weekTableFade, setWeekTableFade] = useState({ left: false, right: false })
+
+  useEffect(() => {
+    const el = weekTableRef.current
+    if (!el) return undefined
+    const update = () => {
+      setWeekTableFade({
+        left: el.scrollLeft > 4,
+        right: el.scrollLeft < el.scrollWidth - el.clientWidth - 4,
+      })
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      el.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [table])
+
   return (
     <>
       {commitments.length > 0 && (
@@ -107,29 +131,33 @@ export default function RevisaoSemanal() {
         {table.length === 0 ? (
           <div className="empty-state">Nenhum hábito cadastrado ainda.</div>
         ) : (
-          <div className="week-table-wrap">
-            <table className="week-table">
-              <thead>
-                <tr>
-                  <th className="week-table-habit">Hábito</th>
-                  {weekDates.map((d, i) => (
-                    <th key={i} className={dateKeyFromDate(d) === todayKey() ? 'is-today' : ''}>{weekDayShortLabel(i)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {table.map(({ habit, cells }) => (
-                  <tr key={habit.id}>
-                    <td className="week-table-habit">{habit.name}</td>
-                    {cells.map((done, i) => (
-                      <td key={i} className={dateKeyFromDate(weekDates[i]) === todayKey() ? 'is-today' : ''}>
-                        {done && <RiCheckLine size={14} className="week-table-check" />}
-                      </td>
+          <div className="tabs-scroll-wrap">
+            <div className="week-table-wrap" ref={weekTableRef}>
+              <table className="week-table">
+                <thead>
+                  <tr>
+                    <th className="week-table-habit">Hábito</th>
+                    {weekDates.map((d, i) => (
+                      <th key={i} className={dateKeyFromDate(d) === todayKey() ? 'is-today' : ''}>{weekDayShortLabel(i)}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {table.map(({ habit, cells }) => (
+                    <tr key={habit.id}>
+                      <td className="week-table-habit">{habit.name}</td>
+                      {cells.map((done, i) => (
+                        <td key={i} className={dateKeyFromDate(weekDates[i]) === todayKey() ? 'is-today' : ''}>
+                          {done && <RiCheckLine size={14} className="week-table-check" />}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {weekTableFade.left && <div className="tabs-scroll-fade tabs-scroll-fade--left" aria-hidden="true" />}
+            {weekTableFade.right && <div className="tabs-scroll-fade tabs-scroll-fade--right" aria-hidden="true" />}
           </div>
         )}
       </section>
@@ -169,7 +197,7 @@ export default function RevisaoSemanal() {
 
       <section className="hoje-section">
         <div className="hoje-section-head">
-          <h2 className="hoje-section-title">Foco da próxima semana</h2>
+          <h2 className="hoje-section-title">Prioridades da semana</h2>
         </div>
         {focusItems.length > 0 && (
           <ul className="nb-focus-list">

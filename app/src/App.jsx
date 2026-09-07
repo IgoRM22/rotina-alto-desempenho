@@ -6,7 +6,6 @@ import AuthScreen from './pages/AuthScreen'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import Planejar from './pages/planejar/Planejar'
-import Noturno from './pages/planejar/Noturno'
 import Agenda from './pages/planejar/Agenda'
 import Tarefas from './pages/planejar/Tarefas'
 import PlanejarMetas from './pages/planejar/Metas'
@@ -38,8 +37,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
 
         <Route path="/planejar" element={<Planejar />}>
-          <Route index element={<Navigate to="noturno" replace />} />
-          <Route path="noturno" element={<Noturno />} />
+          <Route index element={<Navigate to="agenda" replace />} />
+          <Route path="noturno" element={<Navigate to="/" replace />} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="tarefas" element={<Tarefas />} />
           <Route path="metas" element={<PlanejarMetas />} />

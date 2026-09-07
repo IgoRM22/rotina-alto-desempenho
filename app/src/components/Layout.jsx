@@ -22,11 +22,15 @@ export default function Layout({ children }) {
   // clique. Só remonta de verdade ao trocar de seção (Hoje → Planejar).
   const section = '/' + (location.pathname.split('/')[1] || '')
 
+  const handleLogout = () => {
+    if (window.confirm('Tem certeza que deseja sair do app?')) logout()
+  }
+
   return (
     <div className="app-layout">
       <nav className="nav">
         <NavLink to="/" className="nav-brand">
-          <BoltIcon size={17} /> <span>Raio</span>
+          <BoltIcon size={17} /> <span>RaioDesk</span>
         </NavLink>
 
         <ul className="nav-links">
@@ -34,12 +38,14 @@ export default function Layout({ children }) {
           <li><NavLink to="/planejar" className={({ isActive }) => isActive ? 'active' : ''}>Planejar</NavLink></li>
           <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>Notas</NavLink></li>
           <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>Finanças</NavLink></li>
-          <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>Ajustes</NavLink></li>
         </ul>
 
         <div className="nav-right">
           <span className="nav-user">{user?.email}</span>
-          <button className="btn-logout btn-icon" onClick={logout} aria-label="Sair">
+          <NavLink to="/config" className={({ isActive }) => `btn-icon nav-settings ${isActive ? 'active' : ''}`} aria-label="Ajustes" title="Ajustes">
+            <RiSettings3Line size={17} />
+          </NavLink>
+          <button className="btn-logout btn-icon" onClick={handleLogout} aria-label="Sair">
             <RiLogoutBoxRLine size={16} />
           </button>
         </div>
@@ -67,10 +73,6 @@ export default function Layout({ children }) {
           <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon"><RiMoneyDollarCircleLine size={18} aria-hidden="true" /></span>
             <span className="mobile-nav-label">Finanças</span>
-          </NavLink></li>
-          <li><NavLink to="/config" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon"><RiSettings3Line size={18} aria-hidden="true" /></span>
-            <span className="mobile-nav-label">Ajustes</span>
           </NavLink></li>
         </ul>
       </nav>

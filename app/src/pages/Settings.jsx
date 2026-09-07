@@ -83,6 +83,21 @@ export default function Settings() {
     }
   }
 
+  // Padrão é ligado — só existe um jeito de desligar (clicar), nunca um
+  // jeito de "esquecer de ligar", então ausência do campo = ativado.
+  const notifyMorning = prefs.notifyMorning !== false
+  const notifyEvening = prefs.notifyEvening !== false
+
+  const toggleNotifyMorning = () => {
+    savePrefs({ notifyMorning: !notifyMorning })
+    showToast(notifyMorning ? 'Notificação de bom dia desativada.' : 'Notificação de bom dia ativada.')
+  }
+
+  const toggleNotifyEvening = () => {
+    savePrefs({ notifyEvening: !notifyEvening })
+    showToast(notifyEvening ? 'Aviso das 19h desativado.' : 'Aviso das 19h ativado.')
+  }
+
   const personalCommitments = Array.isArray(prefs.commitments) ? prefs.commitments.filter(c => c?.text) : []
 
   const addPersonalCommitment = async () => {
@@ -291,7 +306,7 @@ export default function Settings() {
         <h2 className="settings-section-title">Seus compromissos</h2>
         <p className="commitment-hint">
           Escreva em texto livre as 2–3 coisas que mais importam agora — na sua própria voz
-          ("20 minutos de inglês todo dia, até dezembro"). O Raio devolve essas frases para você
+          ("20 minutos de inglês todo dia, até dezembro"). O RaioDesk devolve essas frases para você
           todos os dias no topo da Home.
         </p>
         {personalCommitments.length > 0 && (
@@ -560,11 +575,10 @@ export default function Settings() {
         <h2 className="settings-section-title">Notificações</h2>
         <div className="settings-row">
           <div className="settings-row-info">
-            <h4>Avisos proativos do assistente</h4>
+            <h4>Notificações push</h4>
             <p>
-              Uma vez por dia, o assistente confere se há algo que realmente precisa da sua atenção
-              (tarefa vencida, sequência de hábito em risco, meta parada) e só te avisa se houver —
-              nunca um lembrete genérico.
+              Liga o canal de notificações do navegador. Com isso ativo, você escolhe abaixo quais
+              avisos proativos de IA quer receber.
             </p>
           </div>
           {isPushSupported() ? (
@@ -574,6 +588,40 @@ export default function Settings() {
           ) : (
             <span style={{ fontSize: 12, color: 'var(--text3)' }}>Não suportado neste navegador.</span>
           )}
+        </div>
+
+        <div className="settings-row">
+          <div className="settings-row-info">
+            <h4>Bom dia (07h)</h4>
+            <p>
+              Um resumo curto do que tem no seu dia — tarefas, hábitos e compromissos — com um
+              conselho da IA baseado nisso. Clicar nela abre o app direto na Home.
+            </p>
+          </div>
+          <button
+            className={`btn ${notifyMorning ? 'btn-ghost' : 'btn-primary'}`}
+            onClick={toggleNotifyMorning}
+            disabled={!pushEnabled}
+          >
+            {notifyMorning ? 'Desativar' : 'Ativar'}
+          </button>
+        </div>
+
+        <div className="settings-row">
+          <div className="settings-row-info">
+            <h4>Sinal do fim do dia (19h)</h4>
+            <p>
+              Só avisa se houver algo que realmente precisa de atenção (tarefa vencida, sequência de
+              hábito em risco, meta parada) — nunca um lembrete genérico.
+            </p>
+          </div>
+          <button
+            className={`btn ${notifyEvening ? 'btn-ghost' : 'btn-primary'}`}
+            onClick={toggleNotifyEvening}
+            disabled={!pushEnabled}
+          >
+            {notifyEvening ? 'Desativar' : 'Ativar'}
+          </button>
         </div>
       </div>
 

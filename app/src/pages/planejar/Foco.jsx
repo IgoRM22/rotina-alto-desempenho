@@ -2,17 +2,21 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { RiDeleteBinLine, RiPauseLine, RiPlayLine, RiStopLine } from '@remixicon/react'
 import {
   listenGoals, listenFocusSessions, addFocusSession, deleteFocusSession,
-  listenPrefs, savePrefs,
+  listenPrefs, savePrefs, listenNotebooks, addNote, addTodo,
 } from '../../services/firestore'
 import { todayKey, dateKeyFromDate, addDays } from '../../utils/date'
-import { playChime, vibrateDevice, notifyPhaseEnd } from '../../utils/focusAlerts'
+import { playChime, vibrateDevice, notifyPhaseEnd, updateLiveFocusNotification, closeLiveFocusNotification } from '../../utils/focusAlerts'
 import BoltIcon from '../../components/BoltIcon'
 import Toast from '../../components/Toast'
+import Modal from '../../components/Modal'
 
 const STORAGE_KEY = 'raio-foco-session'
 const TARGET_OPTIONS = [30, 45, 60, 90, 120]
 const WORK_OPTIONS = [15, 20, 25, 30, 45, 50]
 const BREAK_OPTIONS = [5, 10, 15, 20]
+// Foco deixa de ser só "cronômetro rodando" — cada sessão carrega uma
+// intenção (o quê) desde o início e fecha com uma reflexão (o que descobri),
+// pra atenção virar compreensão em vez de só minutos acumulados.
 
 const loadStored = () => {
   try {
@@ -55,13 +59,22 @@ export default function Foco() {
   const [pendingMode, setPendingMode] = useState('livre')
   const [tick, setTick] = useState(0)
   const [toast, setToast] = useState(null)
+  // Guarda os dados da sessão que acabou de terminar (Livre) enquanto pede
+  // a reflexão de fechamento — só grava de verdade depois que a pessoa
+  // responde (ou pula) "o que descobri" / "próximo passo".
+  const [pendingFinish, setPendingFinish] = useState(null)
+  const [resultDraft, setResultDraft] = useState('')
+  const [nextStepDraft, setNextStepDraft] = useState('')
+  const [notebooks, setNotebooks] = useState([])
+  const [reflectionTopicId, setReflectionTopicId] = useState('')
   const dischargeRef = useRef(null)
 
   useEffect(() => {
     const u1 = listenGoals(setGoals)
     const u2 = listenFocusSessions(setSessions, 300)
     const u3 = listenPrefs(setPrefs)
-    return () => { u1(); u2(); u3() }
+    const u4 = listenNotebooks(setNotebooks)
+    return () => { u1(); u2(); u3(); u4() }
   }, [])
 
   useEffect(() => {
@@ -78,6 +91,28 @@ export default function Foco() {
     const timer = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(timer)
   }, [running])
+
+  // Notificação com o cronômetro contando em tempo real enquanto a sessão
+  // está rodando — some assim que pausa, termina ou a fase muda. Não retorna
+  // cleanup a cada tick: fechar e recriar a notificação todo segundo faria
+  // ela piscar/vibrar no Android em vez de só atualizar o texto.
+  useEffect(() => {
+    if (!running) {
+      closeLiveFocusNotification()
+      return
+    }
+    if (isPomodoro) {
+      updateLiveFocusNotification(
+        session.phase === 'work' ? 'Foco em andamento' : 'Pausa em andamento',
+        fmtClock(remainingSec) + ' restantes',
+      )
+    } else {
+      updateLiveFocusNotification('Foco em andamento', fmtClock(elapsedSec) + ' decorridos')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, tick, isPomodoro, session?.phase])
+
+  useEffect(() => () => closeLiveFocusNotification(), [])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -200,12 +235,42 @@ export default function Foco() {
     }
   }
 
-  const finish = async () => {
+  const finish = () => {
     if (!session || isPomodoro) return
     const minutes = Math.max(1, Math.round(elapsedSec / 60))
-    await addFocusSession({ date: today, minutes, goalId: session.goalId || null })
+    // Não grava ainda — primeiro pergunta o que saiu da sessão. A sessão
+    // "acabou" na tela (some o timer), mas o registro só vira dado quando
+    // a reflexão é respondida ou pulada, logo abaixo.
+    setPendingFinish({ minutes, goalId: session.goalId || null, category: session.category || null, objective: session.objective || null })
+    setResultDraft('')
+    setNextStepDraft('')
+    setReflectionTopicId('')
     setAndStore(null)
-    showToast(`Sessão de ${minutes} min registrada.`)
+  }
+
+  const saveReflection = async (skip) => {
+    if (!pendingFinish) return
+    const result = skip ? null : (resultDraft.trim() || null)
+    const nextStep = skip ? null : (nextStepDraft.trim() || null)
+    await addFocusSession({ date: today, ...pendingFinish, result, nextStep })
+
+    let extra = ''
+    if (!skip && result && reflectionTopicId) {
+      await addNote({
+        title: pendingFinish.objective || `Sessão de foco — ${today}`,
+        content: result,
+        notebookId: reflectionTopicId,
+        importance: 'media',
+      })
+      extra += ' Nota criada no tema.'
+    }
+    if (!skip && nextStep) {
+      await addTodo({ title: nextStep, category: 'projeto' })
+      extra += ' Próximo passo virou tarefa.'
+    }
+
+    showToast(`Sessão de ${pendingFinish.minutes} min registrada.${extra}`)
+    setPendingFinish(null)
     // traço de conexão foco → meta (único momento de celebração do app)
     celebrate()
   }
@@ -290,9 +355,12 @@ export default function Foco() {
             </small>
           </div>
           {session ? (
-            linkedGoal
-              ? <div className="foco-linked">vinculado a: {linkedGoal}</div>
-              : <div className="foco-linked" style={{ color: 'var(--text3)' }}>sem meta vinculada</div>
+            <>
+              {session.objective && <div className="foco-linked">{session.category ? `${session.category.toLowerCase()} · ` : ''}"{session.objective}"</div>}
+              {linkedGoal
+                ? <div className="foco-linked">vinculado a: {linkedGoal}</div>
+                : <div className="foco-linked" style={{ color: 'var(--text3)' }}>sem meta vinculada</div>}
+            </>
           ) : (
             <div className="foco-linked" style={{ color: 'var(--text3)' }}>
               cada minuto focado conta para a meta que você escolher
@@ -423,8 +491,13 @@ export default function Foco() {
           ) : (
             <div>
               {sessions.slice(0, 12).map(s => (
-                <div key={s.id} className="foco-session-row">
+                <div
+                  key={s.id}
+                  className="foco-session-row"
+                  title={[s.objective, s.result && `descoberta: ${s.result}`, s.nextStep && `próximo passo: ${s.nextStep}`].filter(Boolean).join(' · ') || undefined}
+                >
                   <span className="foco-session-min">{s.minutes} min</span>
+                  {s.category && <span className="foco-session-goal">{s.category}</span>}
                   {s.goalId && <span className="foco-session-goal">{goalTitle(s.goalId) || 'meta removida'}</span>}
                   <span className="foco-session-date">
                     {s.date ? new Date(`${s.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : ''}
@@ -456,6 +529,42 @@ export default function Foco() {
           )}
         </section>
       </div>
+
+      {pendingFinish && (
+        <Modal
+          title="Sessão concluída"
+          onClose={() => saveReflection(true)}
+          onSave={() => saveReflection(false)}
+          saveLabel="Salvar"
+          hideCancel
+        >
+          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16 }}>
+            {pendingFinish.minutes} min registrados{pendingFinish.objective ? ` — "${pendingFinish.objective}"` : ''}. Vale a pena fechar com uma reflexão rápida (ou só salvar sem ela).
+          </p>
+          <div className="field">
+            <label>O que descobri?</label>
+            <textarea rows={2} value={resultDraft} onChange={e => setResultDraft(e.target.value)} placeholder="Opcional" />
+          </div>
+          {resultDraft.trim() && notebooks.length > 0 && (
+            <div className="field">
+              <label>Salvar como nota em qual tema?</label>
+              <select
+                className="calendar-select"
+                style={{ width: '100%' }}
+                value={reflectionTopicId}
+                onChange={e => setReflectionTopicId(e.target.value)}
+              >
+                <option value="">Não salvar como nota</option>
+                {notebooks.map(nb => <option key={nb.id} value={nb.id}>{nb.emoji ? `${nb.emoji} ` : ''}{nb.name}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>Qual é o próximo passo?</label>
+            <textarea rows={2} value={nextStepDraft} onChange={e => setNextStepDraft(e.target.value)} placeholder="Opcional — vira uma tarefa" />
+          </div>
+        </Modal>
+      )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </>

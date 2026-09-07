@@ -571,6 +571,34 @@ export default function Cronograma() {
     return byDay
   }, [importantDates, monthCells])
 
+  // Compromissos (schedule items) são salvos por semana (planKey), não como
+  // recorrência genérica igual às datas importantes — então pra cada dia do
+  // mês visível é preciso descobrir a QUAL semana ele pertence e procurar
+  // ali. Sem isso, o Calendário só mostrava datas importantes, nunca a
+  // rotina semanal normal (o que o usava sentia como "solto").
+  const scheduleByDay = useMemo(() => {
+    const byDay = {}
+    monthCells.forEach((cell) => { byDay[cell.key] = [] })
+    if (monthCells.length === 0 || items.length === 0) return byDay
+
+    monthCells.forEach((cell) => {
+      const date = fromDateKey(cell.key)
+      const dayName = DAYS[date.getDay()]
+      const weekMeta = getWeekMeta(date)
+      const dayItems = items.filter((item) => {
+        if (item.planScope && item.planScope !== 'week') return false
+        const matchesWeek = item.planKey
+          ? (item.planKey === weekMeta.key || weekMeta.legacyKeys.includes(item.planKey))
+          : (weekMeta.key === currentWeekMeta.key || weekMeta.legacyKeys.includes(legacyWeekKey))
+        if (!matchesWeek) return false
+        return getItemDays(item).includes(dayName)
+      })
+      byDay[cell.key] = dayItems.sort((a, b) => sortKey(a) - sortKey(b))
+    })
+
+    return byDay
+  }, [items, monthCells, currentWeekMeta.key, legacyWeekKey])
+
   const weekImportantByDay = useMemo(() => {
     const byDay = {}
     DAYS.forEach((day) => { byDay[day] = [] })
@@ -708,6 +736,22 @@ export default function Cronograma() {
 
   const moveCalendarMonth = (step) => {
     setCalendarCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + step, 1))
+  }
+
+  // Lista/Semanal (planDate) e Calendário (calendarCursor) navegavam cada um
+  // por conta própria — trocar de visão sem passar pelo "Hoje" deixava as
+  // duas soltas, cada uma numa semana/mês diferente. Sincroniza no momento
+  // da troca: leva o mês visível junto ao entrar no Calendário, e volta com
+  // a semana daquele mesmo mês ao sair dele.
+  const changeView = (nextView) => {
+    if (nextView === 'calendario' && view !== 'calendario') {
+      setCalendarCursor(new Date(planDate.getFullYear(), planDate.getMonth(), 1))
+    } else if (view === 'calendario' && nextView !== 'calendario') {
+      const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate()
+      const day = Math.min(planDate.getDate(), daysInMonth)
+      setPlanDate(new Date(calendarYear, calendarMonth, day))
+    }
+    setView(nextView)
   }
 
   const openAddImportantDate = (dateKey) => {
@@ -887,7 +931,7 @@ export default function Cronograma() {
             variant="segmented"
             items={[{ key: 'lista', label: 'Lista' }, { key: 'semanal', label: 'Semanal' }, { key: 'calendario', label: 'Calendário' }]}
             active={view}
-            onChange={setView}
+            onChange={changeView}
           />
           <button className="btn btn-primary" onClick={view === 'calendario' ? openAddImportantForVisibleMonth : openAdd}>
             {view === 'calendario' ? '+ Data importante' : '+ Adicionar'}
@@ -918,12 +962,18 @@ export default function Cronograma() {
           {visibleDays.map((day) => {
             const segments = dayFlows[day] || []
             const isToday = isCurrentWeek && day === todayDay
+            const hasContent = (weekImportantByDay[day] || []).length > 0
+              || (untimedGrouped[day] || []).length > 0
+              || segments.some((entry) => entry.type !== 'now')
             return (
               <div key={day} className={`schedule-group ${isPastDay(day) ? 'is-past' : ''}`}>
                 <div className="schedule-day-label">
                   {day}
                   {isToday && <span className="schedule-today-badge">Hoje</span>}
                 </div>
+                {!hasContent && (
+                  <div className="schedule-day-empty">Nada marcado {isToday ? 'hoje' : `${day.toLowerCase()}`} ainda.</div>
+                )}
                 {(weekImportantByDay[day] || []).map((occ, idx) => (
                   <button
                     key={`imp-${occ.id}-${idx}`}
@@ -1241,7 +1291,12 @@ export default function Cronograma() {
             ))}
 
             {monthCells.map((cell) => {
-              const dayItems = importantByDay[cell.key] || []
+              const importantItems = importantByDay[cell.key] || []
+              const scheduleItems = scheduleByDay[cell.key] || []
+              const combined = [
+                ...scheduleItems.map((item) => ({ kind: 'schedule', data: item })),
+                ...importantItems.map((entry) => ({ kind: 'important', data: entry })),
+              ]
               return (
                 <div key={cell.key} className={`month-cell ${cell.inMonth ? '' : 'is-outside'} ${cell.isToday ? 'is-today' : ''}`}>
                   <button
@@ -1254,21 +1309,35 @@ export default function Cronograma() {
                   </button>
 
                   <div className="month-cell-items">
-                    {dayItems.slice(0, 3).map((entry) => (
-                      <button
-                        key={`${entry.id}-${cell.key}`}
-                        type="button"
-                        className={`month-item-pill imp-${entry.type || 'importante'}`}
-                        onClick={() => openEditImportantDate(entry)}
-                        title={`${entry.title}${entry.endDate ? ` (${entry.startDate} ate ${entry.endDate})` : ''}`}
-                      >
-                        {entry.recurrence && <RiRepeat2Line size={9} aria-hidden="true" />}
-                        <MarqueeText text={entry.title} />
-                      </button>
+                    {combined.slice(0, 3).map((entry) => (
+                      entry.kind === 'schedule' ? (
+                        <button
+                          key={`sch-${entry.data.id}-${cell.key}`}
+                          type="button"
+                          className="month-item-pill month-item-pill--schedule"
+                          style={{ '--pill-color': categories.find((c) => c.value === entry.data.category)?.color || 'var(--text3)' }}
+                          onClick={() => openEdit(entry.data)}
+                          title={`${entry.data.name}${entry.data.timeStart ? ` · ${entry.data.timeStart}` : ''}`}
+                        >
+                          {entry.data.repeat && <RiRepeat2Line size={9} aria-hidden="true" />}
+                          <MarqueeText text={entry.data.name} />
+                        </button>
+                      ) : (
+                        <button
+                          key={`imp-${entry.data.id}-${cell.key}`}
+                          type="button"
+                          className={`month-item-pill imp-${entry.data.type || 'importante'}`}
+                          onClick={() => openEditImportantDate(entry.data)}
+                          title={`${entry.data.title}${entry.data.endDate ? ` (${entry.data.startDate} ate ${entry.data.endDate})` : ''}`}
+                        >
+                          {entry.data.recurrence && <RiRepeat2Line size={9} aria-hidden="true" />}
+                          <MarqueeText text={entry.data.title} />
+                        </button>
+                      )
                     ))}
 
-                    {dayItems.length > 3 && (
-                      <span className="month-item-more">+{dayItems.length - 3}</span>
+                    {combined.length > 3 && (
+                      <span className="month-item-more">+{combined.length - 3}</span>
                     )}
                   </div>
                 </div>

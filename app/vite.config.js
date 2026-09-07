@@ -24,8 +24,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'Raio',
-        short_name: 'Raio',
+        name: 'RaioDesk',
+        short_name: 'RaioDesk',
         description: 'Organizador pessoal de alto desempenho',
         theme_color: '#0D0C0B',
         background_color: '#0D0C0B',
