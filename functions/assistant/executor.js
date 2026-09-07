@@ -103,6 +103,34 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       return {ok: true, title: found.match.title};
     }
 
+    case "reagendarTarefa": {
+      const snap = await base(db, uid, "todos").where("done", "==", false).get();
+      const todos = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(todos, "title", args.titulo);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+
+      const changes = {};
+      if (args.novoPrazo) changes.dueDate = args.novoPrazo;
+      if (args.novaPrioridade) changes.priority = args.novaPrioridade;
+      if (args.novaCategoria) changes.category = String(args.novaCategoria).trim().toLowerCase();
+      if (Object.keys(changes).length === 0) return {ok: false, error: "dados inválidos"};
+
+      if (dryRun) return {ok: true, title: found.match.title, changes};
+      await base(db, uid, "todos").doc(found.match.id).update(changes);
+      return {ok: true, title: found.match.title, changes};
+    }
+
+    case "criarHabito": {
+      const name = String(args.nome || "").trim();
+      if (!name) return {ok: false, error: "nome vazio"};
+      if (dryRun) return {ok: true, name};
+
+      const ref = await base(db, uid, "habits").add({
+        name, active: true, createdAt: FieldValue.serverTimestamp(), order: Date.now(),
+      });
+      return {ok: true, id: ref.id, name};
+    }
+
     case "marcarHabito": {
       const snap = await base(db, uid, "habits").get();
       const habits = snap.docs.map((d) => ({id: d.id, ...d.data()}));
@@ -116,6 +144,40 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
         );
       }
       return {ok: true, name: found.match.name, date};
+    }
+
+    case "desmarcarHabito": {
+      const snap = await base(db, uid, "habits").get();
+      const habits = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(habits, "name", args.nome);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      const date = args.data || clientDate;
+      if (!dryRun) {
+        await base(db, uid, "habitLogs").doc(date).set(
+            {date, checked: {[found.match.id]: false}, updatedAt: FieldValue.serverTimestamp()},
+            {merge: true},
+        );
+      }
+      return {ok: true, name: found.match.name, date};
+    }
+
+    case "registrarLogDiario": {
+      const date = args.data || clientDate;
+      const data = {};
+      const sleepQuality = Math.round(Number(args.sono));
+      if (Number.isFinite(sleepQuality) && sleepQuality >= 1 && sleepQuality <= 5) data.sleepQuality = sleepQuality;
+      const energy = Math.round(Number(args.energia));
+      if (Number.isFinite(energy) && energy >= 1 && energy <= 5) data.energy = energy;
+      if (typeof args.nota === "string" && args.nota.trim()) data.note = args.nota.trim();
+
+      if (Object.keys(data).length === 0) return {ok: false, error: "dados inválidos"};
+      if (dryRun) return {ok: true, date, ...data};
+
+      await db.collection("users").doc(uid).collection("dailyLogs").doc(date).set(
+          {date, ...data, updatedAt: FieldValue.serverTimestamp()},
+          {merge: true},
+      );
+      return {ok: true, date, ...data};
     }
 
     case "criarNota": {

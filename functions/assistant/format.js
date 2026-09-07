@@ -28,6 +28,22 @@ const IMPORTANT_TYPE_LABELS = {
 };
 const typeLabel = (type) => IMPORTANT_TYPE_LABELS[type] || "evento";
 
+const changeSummary = (changes) => {
+  const parts = [];
+  if (changes.dueDate) parts.push(`prazo ${changes.dueDate}`);
+  if (changes.priority) parts.push(`prioridade ${changes.priority}`);
+  if (changes.category) parts.push(`categoria ${changes.category}`);
+  return parts.join(", ");
+};
+
+const dailyLogSummary = (result) => {
+  const parts = [];
+  if (result.sleepQuality) parts.push(`sono ${result.sleepQuality}/5`);
+  if (result.energy) parts.push(`energia ${result.energy}/5`);
+  if (result.note) parts.push("nota registrada");
+  return parts.join(", ");
+};
+
 function formatWriteConfirmation(name, result) {
   if (!result.ok) {
     if (result.reason === "ambiguous") {
@@ -44,8 +60,16 @@ function formatWriteConfirmation(name, result) {
       return `Tarefa "${result.title}" criada.`;
     case "concluirTarefa":
       return `"${result.title}" marcada como concluída.`;
+    case "reagendarTarefa":
+      return `"${result.title}" atualizada (${changeSummary(result.changes)}).`;
+    case "criarHabito":
+      return `Hábito "${result.name}" criado.`;
     case "marcarHabito":
       return `"${result.name}" registrado como cumprido${result.date ? ` em ${result.date}` : ""}.`;
+    case "desmarcarHabito":
+      return `"${result.name}" desmarcado${result.date ? ` em ${result.date}` : ""}.`;
+    case "registrarLogDiario":
+      return `Registro do dia atualizado (${dailyLogSummary(result)}).`;
     case "criarNota":
       return `Nota "${result.title}" criada${result.notebook ? ` em ${result.notebook}` : ""}.`;
     case "criarMeta":
@@ -95,8 +119,16 @@ function formatConfirmationPrompt(name, args, result) {
     }
     case "concluirTarefa":
       return `Confirma marcar "${result.title}" como concluída?`;
+    case "reagendarTarefa":
+      return `Confirma atualizar "${result.title}" (${changeSummary(result.changes)})?`;
+    case "criarHabito":
+      return `Confirma criar o hábito "${result.name}"?`;
     case "marcarHabito":
       return `Confirma registrar "${result.name}" como cumprido${result.date ? ` em ${result.date}` : ""}?`;
+    case "desmarcarHabito":
+      return `Confirma desmarcar "${result.name}"${result.date ? ` em ${result.date}` : ""}?`;
+    case "registrarLogDiario":
+      return `Confirma registrar (${dailyLogSummary(result)})${result.note ? ` — nota: "${result.note}"` : ""}?`;
     case "criarNota":
       return `Confirma criar a nota "${result.title}"${result.notebook ? ` em ${result.notebook}` : ""}?`;
     case "criarMeta":

@@ -31,6 +31,31 @@ const TOOLS = [
     },
   },
   {
+    name: "reagendarTarefa",
+    description: "Altera o prazo, prioridade ou categoria de uma tarefa pendente já existente, buscando pelo título.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) da tarefa pendente." },
+        novoPrazo: { type: Type.STRING, description: "Nova data limite, formato YYYY-MM-DD." },
+        novaPrioridade: { type: Type.STRING, enum: ["alta", "media", "baixa"] },
+        novaCategoria: { type: Type.STRING },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
+    name: "criarHabito",
+    description: "Cria um novo hábito para acompanhar diariamente.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        nome: { type: Type.STRING },
+      },
+      required: ["nome"],
+    },
+  },
+  {
     name: "marcarHabito",
     description: "Registra um hábito como cumprido em uma data (padrão: hoje).",
     parameters: {
@@ -40,6 +65,31 @@ const TOOLS = [
         data: { type: Type.STRING, description: "Data YYYY-MM-DD; se omitida, usa hoje." },
       },
       required: ["nome"],
+    },
+  },
+  {
+    name: "desmarcarHabito",
+    description: "Desfaz a marcação de um hábito numa data (padrão: hoje) — para corrigir uma marcação feita por engano.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        nome: { type: Type.STRING, description: "Nome (ou parte dele) do hábito." },
+        data: { type: Type.STRING, description: "Data YYYY-MM-DD; se omitida, usa hoje." },
+      },
+      required: ["nome"],
+    },
+  },
+  {
+    name: "registrarLogDiario",
+    description: "Registra sono, energia e/ou uma nota livre sobre o dia (registro diário), padrão hoje. Pode informar só um dos campos.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        sono: { type: Type.NUMBER, description: "Qualidade do sono, de 1 (pouco) a 5 (ótimo)." },
+        energia: { type: Type.NUMBER, description: "Nível de energia, de 1 (baixa) a 5 (alta)." },
+        nota: { type: Type.STRING, description: "Nota livre sobre como foi o dia." },
+        data: { type: Type.STRING, description: "Data YYYY-MM-DD; se omitida, usa hoje." },
+      },
     },
   },
   {
