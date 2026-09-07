@@ -146,6 +146,29 @@ const TOOLS = [
     },
   },
   {
+    name: "registrarDespesasEmLote",
+    description: "Registra várias despesas fixas de uma vez. Use quando o usuário mandar uma imagem de extrato/fatura com vários lançamentos — extraia cada item visível (descrição e valor) em vez de pedir um por um.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        despesas: {
+          type: Type.ARRAY,
+          description: "Lista de despesas encontradas.",
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              descricao: { type: Type.STRING },
+              valor: { type: Type.NUMBER },
+              banco: { type: Type.STRING, description: "Nome do banco/cartão de onde saiu, se souber." },
+            },
+            required: ["descricao", "valor"],
+          },
+        },
+      },
+      required: ["despesas"],
+    },
+  },
+  {
     name: "registrarRenda",
     description: "Registra uma nova fonte de renda mensal.",
     parameters: {
@@ -168,6 +191,29 @@ const TOOLS = [
         novoSaldo: { type: Type.NUMBER, description: "Novo saldo atual." },
       },
       required: ["banco", "novoSaldo"],
+    },
+  },
+  {
+    name: "atualizarFundoEmergencia",
+    description: "Atualiza o valor total guardado na reserva de emergência.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        valor: { type: Type.NUMBER, description: "Novo valor total da reserva de emergência." },
+      },
+      required: ["valor"],
+    },
+  },
+  {
+    name: "atualizarMetaFinanceira",
+    description: "Atualiza o valor já guardado (progresso) de uma meta financeira EXISTENTE, buscando pelo título. Use isto em vez de criarMetaFinanceira quando a meta já existir no resumo financeiro.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) da meta financeira já existente." },
+        valorAtual: { type: Type.NUMBER, description: "Novo valor já guardado." },
+      },
+      required: ["titulo", "valorAtual"],
     },
   },
   {

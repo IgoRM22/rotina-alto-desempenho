@@ -231,33 +231,58 @@ exports.assistantCommand = onRequest(
         return res.status(429).json(failure);
       }
 
-      // ── Modo confirmação: o usuário já aprovou uma ação proposta no turno
-      // anterior. Executa direto, sem tocar o Gemini — rápido, e o único
-      // caminho onde uma ferramenta de escrita realmente grava algo.
+      // ── Modo confirmação: o usuário já aprovou uma ou mais ações propostas
+      // no turno anterior. Executa direto, sem tocar o Gemini — rápido, e o
+      // único caminho onde uma ferramenta de escrita realmente grava algo.
+      // Aceita `actions` (lista, o caso comum — inclusive de 1 item) ou o
+      // formato antigo `tool`/`args` (compat, uma ação só).
       if (body.confirm === true) {
-        const tool = typeof body.tool === "string" ? body.tool : "";
-        const args = (body.args && typeof body.args === "object") ? body.args : {};
+        const actions = Array.isArray(body.actions)
+          ? body.actions
+          : (typeof body.tool === "string" ? [{tool: body.tool, args: body.args}] : []);
 
-        if (!TOOL_NAMES.has(tool) || isReadTool(tool)) {
+        const normalized = actions
+            .map((a) => ({
+              tool: typeof a?.tool === "string" ? a.tool : "",
+              args: (a?.args && typeof a.args === "object") ? a.args : {},
+            }))
+            .filter((a) => a.tool);
+
+        const invalid = normalized.find((a) => !TOOL_NAMES.has(a.tool) || isReadTool(a.tool));
+        if (normalized.length === 0 || invalid) {
           const failure = {ok: false, error: "invalid tool for confirmation"};
           await completeIdempotentRequest(db, uid, requestId, failure);
           return res.status(400).json(failure);
         }
 
         try {
-          const toolResult = await executeTool(db, uid, clientDate, tool, args, {dryRun: false});
-          const message = formatWriteConfirmation(tool, toolResult);
-          const result = {ok: true, message, tool, toolResult};
+          const results = [];
+          // Sequencial, não paralelo: cada ação lê o documento de finanças
+          // (ou outra coleção) antes de gravar — rodar em paralelo poderia
+          // fazer duas ações pisarem uma na leitura da outra.
+          for (const {tool, args} of normalized) {
+            const toolResult = await executeTool(db, uid, clientDate, tool, args, {dryRun: false});
+            results.push({tool, args, toolResult});
+          }
+
+          const message = results.map((r) => formatWriteConfirmation(r.tool, r.toolResult)).join(" ");
+          const result = {
+            ok: true,
+            message,
+            tool: results[0].tool,
+            toolResult: results[0].toolResult,
+            actions: results.map((r) => ({tool: r.tool, toolResult: r.toolResult})),
+          };
 
           await Promise.all([
             completeIdempotentRequest(db, uid, requestId, result),
-            logExecution(db, uid, {command: `[confirm] ${tool}`, tool, toolResult, requestId}),
+            logExecution(db, uid, {command: `[confirm] ${normalized.map((a) => a.tool).join(", ")}`, tool: results[0].tool, toolResult: results, requestId}),
           ]);
 
-          logger.info("assistantCommand confirm", {uid, tool, totalMs: Date.now() - t0});
+          logger.info("assistantCommand confirm", {uid, tools: normalized.map((a) => a.tool), totalMs: Date.now() - t0});
           return res.status(200).json(result);
         } catch (error) {
-          logger.error("assistantCommand confirm failed", {error: error.message, errorName: error.name, uid, tool});
+          logger.error("assistantCommand confirm failed", {error: error.message, errorName: error.name, uid});
           const failure = {ok: false, error: friendlyErrorMessage(error)};
           await completeIdempotentRequest(db, uid, requestId, failure);
           return res.status(500).json(failure);
@@ -266,7 +291,17 @@ exports.assistantCommand = onRequest(
 
       // ── Modo normal: primeira mensagem do usuário sobre um novo comando.
       const command = typeof body.command === "string" ? body.command.trim() : "";
-      if (!command) {
+
+      // Imagem opcional (ex: foto de extrato) — já vem redimensionada e
+      // comprimida do cliente, então o teto aqui é só uma rede de segurança
+      // contra payload absurdo, não o limite real de tamanho.
+      const image = (body.image && typeof body.image === "object") ? body.image : null;
+      const imageMime = typeof image?.mimeType === "string" ? image.mimeType : "";
+      const imageData = typeof image?.data === "string" ? image.data : "";
+      const ALLOWED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+      const hasImage = imageData.length > 0 && imageData.length < 8_000_000 && ALLOWED_IMAGE_MIME.has(imageMime);
+
+      if (!command && !hasImage) {
         return res.status(400).json({ok: false, error: "command is required"});
       }
 
@@ -300,7 +335,10 @@ exports.assistantCommand = onRequest(
           // até confirmar qual geração do modelo aceita esse parâmetro.
         };
 
-        const contents = [...sanitizeHistory(body.history), {role: "user", parts: [{text: command}]}];
+        const userParts = [{text: command || "Analise a imagem anexada e proponha o que fizer sentido."}];
+        if (hasImage) userParts.push({inlineData: {mimeType: imageMime, data: imageData}});
+
+        const contents = [...sanitizeHistory(body.history), {role: "user", parts: userParts}];
 
         let response = await ai.models.generateContent({model: GEMINI_MODEL, contents, config});
         const tGemini1 = Date.now();
@@ -309,41 +347,62 @@ exports.assistantCommand = onRequest(
         let toolResult = null;
         let message = null;
         let needsConfirmation = false;
-        let pendingArgs = null;
+        let pendingActions = null;
 
-        const calls = response.functionCalls;
-        if (calls && calls.length > 0) {
-          const call = calls[0]; // uma ação por comando, por design — nada de paralelismo aqui.
-          toolName = call.name;
-          const args = call.args || {};
+        const calls = response.functionCalls || [];
+        // Uma imagem (ex: extrato) ou pedido composto pode implicar várias
+        // atualizações distintas ao mesmo tempo (reserva + meta + saldo de
+        // banco) — o modelo pode devolver mais de uma function call num só
+        // turno, e todas viram UMA proposta combinada de confirmação, ainda
+        // numa chamada só ao Gemini.
+        const writeCalls = calls.filter((c) => !isReadTool(c.name));
+        const readCalls = calls.filter((c) => isReadTool(c.name));
 
-          if (isReadTool(call.name)) {
-            // Leitura: sem risco, executa direto; só o modelo sabe transformar
-            // os dados brutos em prosa, por isso a segunda chamada.
-            toolResult = await executeTool(db, uid, clientDate, call.name, args);
-            contents.push({role: "model", parts: response.candidates[0].content.parts});
-            contents.push({
-              role: "user",
-              parts: [{
-                functionResponse: {id: call.id, name: call.name, response: {result: toolResult}},
-              }],
-            });
-            response = await ai.models.generateContent({model: GEMINI_MODEL, contents, config});
-            message = response.text || "Feito.";
-          } else {
-            // Escrita: nunca executa aqui. Resolve/valida em modo dryRun (sem
-            // gravar nada) e devolve uma pergunta de confirmação — a ação só
-            // acontece de fato se o usuário confirmar no chat.
+        if (writeCalls.length > 0) {
+          const previews = [];
+          for (const call of writeCalls) {
+            const args = call.args || {};
             const preview = await executeTool(db, uid, clientDate, call.name, args, {dryRun: true});
-            toolResult = preview;
-            if (!preview.ok) {
-              message = formatWriteConfirmation(call.name, preview);
-            } else {
-              needsConfirmation = true;
-              pendingArgs = args;
-              message = formatConfirmationPrompt(call.name, args, preview);
+            previews.push({tool: call.name, args, preview});
+          }
+
+          const okPreviews = previews.filter((p) => p.preview.ok);
+          const failedPreviews = previews.filter((p) => !p.preview.ok);
+          toolName = previews[0].tool;
+          toolResult = previews[0].preview;
+
+          if (okPreviews.length === 0) {
+            message = failedPreviews.map((p) => formatWriteConfirmation(p.tool, p.preview)).join(" ");
+          } else {
+            needsConfirmation = true;
+            pendingActions = okPreviews.map((p) => ({tool: p.tool, args: p.args}));
+            const prompts = okPreviews.map((p) => formatConfirmationPrompt(p.tool, p.args, p.preview));
+            message = prompts.length === 1
+              ? prompts[0]
+              : `Encontrei ${prompts.length} coisas pra atualizar:\n${
+                prompts.map((p, i) => `${i + 1}) ${p.replace(/^Confirma /, "").replace(/\?$/, "")}`).join("\n")
+              }\nConfirma tudo?`;
+            if (failedPreviews.length > 0) {
+              message += ` (${failedPreviews.length} item(ns) não processado(s): ${
+                failedPreviews.map((p) => formatWriteConfirmation(p.tool, p.preview)).join(" ")})`;
             }
           }
+        } else if (readCalls.length > 0) {
+          // Leitura: sem risco, executa direto; só o modelo sabe transformar
+          // os dados brutos em prosa, por isso a segunda chamada.
+          const call = readCalls[0];
+          toolName = call.name;
+          const args = call.args || {};
+          toolResult = await executeTool(db, uid, clientDate, call.name, args);
+          contents.push({role: "model", parts: response.candidates[0].content.parts});
+          contents.push({
+            role: "user",
+            parts: [{
+              functionResponse: {id: call.id, name: call.name, response: {result: toolResult}},
+            }],
+          });
+          response = await ai.models.generateContent({model: GEMINI_MODEL, contents, config});
+          message = response.text || "Feito.";
         } else {
           message = response.text || "Feito.";
         }
@@ -355,7 +414,7 @@ exports.assistantCommand = onRequest(
           tool: toolName,
           toolResult,
           needsConfirmation,
-          pendingArgs: needsConfirmation ? pendingArgs : undefined,
+          pendingActions: needsConfirmation ? pendingActions : undefined,
         };
 
         await Promise.all([

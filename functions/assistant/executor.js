@@ -313,6 +313,28 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       return {ok: true, description, amount};
     }
 
+    case "registrarDespesasEmLote": {
+      const rawItems = Array.isArray(args.despesas) ? args.despesas : [];
+      const items = rawItems
+          .map((it) => ({
+            description: String(it.descricao || "").trim(),
+            amount: Number(it.valor),
+            bank: it.banco || "",
+          }))
+          .filter((it) => it.description && Number.isFinite(it.amount));
+      if (!items.length) return {ok: false, error: "dados inválidos"};
+      const total = items.reduce((sum, it) => sum + it.amount, 0);
+      if (dryRun) return {ok: true, items, count: items.length, total};
+
+      const snap = await financesDoc(db, uid).get();
+      const current = snap.exists ? snap.data() : emptyFinances();
+      const fixedExpenses = [...(current.fixedExpenses || [])];
+      const now = new Date().toISOString();
+      items.forEach((it) => fixedExpenses.push({description: it.description, amount: it.amount, bank: it.bank, updatedAt: now}));
+      await financesDoc(db, uid).set({fixedExpenses}, {merge: true});
+      return {ok: true, items, count: items.length, total};
+    }
+
     case "registrarRenda": {
       const description = String(args.descricao || "").trim();
       const gross = Number(args.valorBruto);
@@ -352,6 +374,38 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       }
       await financesDoc(db, uid).set({banks}, {merge: true});
       return {ok: true, bankName: resolvedName, isNew, newBalance};
+    }
+
+    case "atualizarFundoEmergencia": {
+      const amount = Number(args.valor);
+      if (!Number.isFinite(amount)) return {ok: false, error: "dados inválidos"};
+      if (dryRun) return {ok: true, amount};
+
+      await financesDoc(db, uid).set(
+          {emergencyFund: amount, emergencyFundUpdatedAt: new Date().toISOString()},
+          {merge: true},
+      );
+      return {ok: true, amount};
+    }
+
+    case "atualizarMetaFinanceira": {
+      const title = String(args.titulo || "").trim();
+      const currentAmount = Number(args.valorAtual);
+      if (!title || !Number.isFinite(currentAmount)) return {ok: false, error: "dados inválidos"};
+
+      const snap = await financesDoc(db, uid).get();
+      const current = snap.exists ? snap.data() : emptyFinances();
+      const goals = [...(current.goals || [])];
+      const found = findArrayMatch(goals, "title", title);
+
+      if (found.reason === "ambiguous") return {ok: false, error: found.reason, candidates: found.candidates};
+      if (found.index === -1) return {ok: false, error: "not_found"};
+
+      if (dryRun) return {ok: true, title: found.item.title, currentAmount, targetAmount: found.item.targetAmount};
+
+      goals[found.index] = {...goals[found.index], currentAmount, updatedAt: new Date().toISOString()};
+      await financesDoc(db, uid).set({goals}, {merge: true});
+      return {ok: true, title: found.item.title, currentAmount, targetAmount: found.item.targetAmount};
     }
 
     case "criarMetaFinanceira": {

@@ -56,12 +56,18 @@ function formatWriteConfirmation(name, result) {
       return `"${result.name}" adicionado à agenda de ${result.day}.`;
     case "registrarDespesaFixa":
       return `Despesa "${result.description}" (${brl(result.amount)}/mês) registrada.`;
+    case "registrarDespesasEmLote":
+      return `${result.count} despesa${result.count > 1 ? "s" : ""} registrada${result.count > 1 ? "s" : ""} (total ${brl(result.total)}/mês).`;
     case "registrarRenda":
       return `Renda "${result.description}" registrada (líquido ${brl(result.net)}).`;
     case "atualizarSaldoBanco":
       return `${result.isNew ? "Banco criado" : "Saldo atualizado"}: "${result.bankName}" agora em ${brl(result.newBalance)}.`;
     case "criarMetaFinanceira":
       return `Meta financeira "${result.title}" criada (${brl(result.targetAmount)}).`;
+    case "atualizarFundoEmergencia":
+      return `Reserva de emergência atualizada para ${brl(result.amount)}.`;
+    case "atualizarMetaFinanceira":
+      return `"${result.title}" atualizada para ${brl(result.currentAmount)} de ${brl(result.targetAmount)}.`;
     case "criarCompromissoImportante":
       return `"${result.title}" (${typeLabel(result.type)}) criado para ${result.startDate}.`;
     case "criarRefeicao":
@@ -101,6 +107,10 @@ function formatConfirmationPrompt(name, args, result) {
       return `Confirma adicionar "${result.name}" à agenda de ${result.day}${args.horarioInicio ? ` às ${args.horarioInicio}` : ""}?`;
     case "registrarDespesaFixa":
       return `Confirma registrar a despesa "${result.description}" de ${brl(result.amount)}/mês?`;
+    case "registrarDespesasEmLote": {
+      const lines = result.items.map((it) => `• ${it.description} — ${brl(it.amount)}`).join("\n");
+      return `Encontrei ${result.count} despesa${result.count > 1 ? "s" : ""} (total ${brl(result.total)}/mês):\n${lines}\nConfirma registrar todas?`;
+    }
     case "registrarRenda":
       return `Confirma registrar a renda "${result.description}" (líquido ${brl(result.net)})?`;
     case "atualizarSaldoBanco":
@@ -109,6 +119,10 @@ function formatConfirmationPrompt(name, args, result) {
         : `Confirma atualizar o saldo de "${result.bankName}" para ${brl(result.newBalance)}?`;
     case "criarMetaFinanceira":
       return `Confirma criar a meta financeira "${result.title}" de ${brl(result.targetAmount)}?`;
+    case "atualizarFundoEmergencia":
+      return `Confirma atualizar a reserva de emergência para ${brl(result.amount)}?`;
+    case "atualizarMetaFinanceira":
+      return `Confirma atualizar "${result.title}" para ${brl(result.currentAmount)} de ${brl(result.targetAmount)}?`;
     case "criarCompromissoImportante":
       return `Confirma criar "${result.title}" (${typeLabel(result.type)}) em ${result.startDate}?`;
     case "criarRefeicao":

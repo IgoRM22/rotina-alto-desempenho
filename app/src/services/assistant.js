@@ -33,10 +33,12 @@ const callAssistant = async (body) => {
 
 // history: últimas mensagens da conversa (texto puro), para o modelo manter
 // contexto entre turnos — perguntas de acompanhamento, correções, etc.
-export const runAssistantCommand = (command, clientDate, history) =>
-  callAssistant({ command, clientDate, history })
+// image (opcional): { data: base64 sem prefixo, mimeType } — ex: foto de um
+// extrato, já redimensionada no cliente antes de chegar aqui.
+export const runAssistantCommand = (command, clientDate, history, image) =>
+  callAssistant({ command, clientDate, history, image })
 
-// Executa de verdade uma ação que o usuário já confirmou no chat — sem
-// tocar o Gemini, só o Firestore.
-export const confirmAssistantAction = (tool, args, clientDate) =>
-  callAssistant({ confirm: true, tool, args, clientDate })
+// Executa de verdade uma ou mais ações que o usuário já confirmou no chat —
+// sem tocar o Gemini, só o Firestore. `actions`: [{ tool, args }, ...].
+export const confirmAssistantActions = (actions, clientDate) =>
+  callAssistant({ confirm: true, actions, clientDate })

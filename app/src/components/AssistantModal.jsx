@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { RiCloseLine, RiDeleteBin6Line, RiSendPlaneFill } from '@remixicon/react'
-import { runAssistantCommand, confirmAssistantAction } from '../services/assistant'
+import { RiCloseLine, RiDeleteBin6Line, RiImageAddLine, RiSendPlaneFill } from '@remixicon/react'
+import { runAssistantCommand, confirmAssistantActions } from '../services/assistant'
 import { todayKey } from '../utils/date'
+import { resizeImageFile } from '../utils/imageResize'
 import SparkleIcon from './SparkleIcon'
 
 // O backend já manda mensagens específicas em português (limite de uso,
@@ -38,7 +39,11 @@ const loadStoredMessages = () => {
 
 const storeMessages = (messages) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)))
+    // A miniatura da imagem não entra no localStorage — cada foto em base64
+    // facilmente passa de 100KB, e 60 mensagens guardadas assim estourariam
+    // a cota rápido. Ela só vive na sessão atual, em memória.
+    const trimmed = messages.slice(-MAX_STORED_MESSAGES).map(({ image, ...rest }) => rest)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed))
   } catch {
     // localStorage indisponível (aba privada, cota cheia) — histórico só não persiste, sem quebrar o chat
   }
@@ -55,8 +60,12 @@ export default function AssistantModal({ onClose }) {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
+  // { data (base64 sem prefixo), mimeType, previewUrl } — anexo pendente, ex: foto de um extrato
+  const [pendingImage, setPendingImage] = useState(null)
+  const [imageBusy, setImageBusy] = useState(false)
   const inputRef = useRef(null)
   const bodyRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     document.body.classList.add('has-modal-open')
@@ -87,20 +96,28 @@ export default function AssistantModal({ onClose }) {
     .slice(-MAX_HISTORY)
     .map((m) => ({ role: m.role, text: m.text }))
 
-  const send = async (command) => {
-    if (!command || loading || !online) return
+  const send = async (command, image) => {
+    if ((!command && !image) || loading || !online) return
 
     const history = historyPayload()
-    setMessages((prev) => [...prev, { role: 'user', text: command }])
+    setMessages((prev) => [...prev, {
+      role: 'user',
+      text: command || '(imagem enviada)',
+      image: image?.previewUrl,
+    }])
     setText('')
+    setPendingImage(null)
     setLoading(true)
 
     try {
-      const data = await runAssistantCommand(command, todayKey(), history)
+      const data = await runAssistantCommand(
+        command, todayKey(), history,
+        image ? { data: image.data, mimeType: image.mimeType } : undefined,
+      )
       setMessages((prev) => [...prev, {
         role: 'assistant',
         text: data.message,
-        pending: data.needsConfirmation ? { tool: data.tool, args: data.pendingArgs || {} } : undefined,
+        pending: data.needsConfirmation ? { actions: data.pendingActions || [] } : undefined,
       }])
     } catch (err) {
       setMessages((prev) => [...prev, { role: 'error', text: displayError(err) }])
@@ -110,7 +127,24 @@ export default function AssistantModal({ onClose }) {
     }
   }
 
-  const submit = () => send(text.trim())
+  const submit = () => send(text.trim(), pendingImage)
+
+  const pickImage = () => fileInputRef.current?.click()
+
+  const onImageSelected = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !file.type.startsWith('image/')) return
+    setImageBusy(true)
+    try {
+      const resized = await resizeImageFile(file)
+      setPendingImage(resized)
+    } catch {
+      setMessages((prev) => [...prev, { role: 'error', text: 'Não consegui ler essa imagem. Tenta outra?' }])
+    } finally {
+      setImageBusy(false)
+    }
+  }
 
   // Sem isso, um comando digitado errado (typo, etc.) só podia ser corrigido
   // mandando outra mensagem do zero — tocar na sua própria mensagem já
@@ -138,11 +172,11 @@ export default function AssistantModal({ onClose }) {
       return
     }
 
-    const { tool, args } = target.pending
+    const { actions } = target.pending
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, pending: 'done' } : m)))
     setLoading(true)
     try {
-      const data = await confirmAssistantAction(tool, args, todayKey())
+      const data = await confirmAssistantActions(actions, todayKey())
       setMessages((prev) => [...prev, { role: 'assistant', text: data.message }])
     } catch (err) {
       setMessages((prev) => [...prev, { role: 'error', text: displayError(err) }])
@@ -196,6 +230,7 @@ export default function AssistantModal({ onClose }) {
                 onClick={m.role === 'user' ? () => reuseMessage(m.text) : undefined}
                 title={m.role === 'user' ? 'Toque para editar e reenviar' : undefined}
               >
+                {m.image && <img className="assistant-msg-image" src={m.image} alt="anexo enviado" />}
                 {m.text}
                 {m.pending && typeof m.pending === 'object' && (
                   <div className="assistant-confirm-row">
@@ -224,7 +259,34 @@ export default function AssistantModal({ onClose }) {
 
         {!online && <div className="assistant-offline">Você está offline — tente novamente em instantes.</div>}
 
+        {pendingImage && (
+          <div className="assistant-image-preview">
+            <img src={pendingImage.previewUrl} alt="prévia do anexo" />
+            <span className="assistant-image-preview-name">imagem anexada — ex: extrato ou comprovante</span>
+            <button type="button" className="assistant-image-remove" onClick={() => setPendingImage(null)} aria-label="Remover imagem">
+              <RiCloseLine size={16} />
+            </button>
+          </div>
+        )}
+
         <div className="assistant-modal-composer">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={onImageSelected}
+          />
+          <button
+            type="button"
+            className="assistant-attach-btn"
+            onClick={pickImage}
+            disabled={!online || imageBusy}
+            aria-label="Anexar imagem"
+            title="Anexar imagem (ex: extrato)"
+          >
+            <RiImageAddLine size={19} />
+          </button>
           <input
             ref={inputRef}
             value={text}
@@ -233,7 +295,7 @@ export default function AssistantModal({ onClose }) {
             disabled={!online}
             placeholder={online ? 'ex: criar tarefa comprar pão amanhã' : 'sem conexão...'}
           />
-          <button className="assistant-send-btn" onClick={submit} disabled={loading || !online || !text.trim()} aria-label="Enviar">
+          <button className="assistant-send-btn" onClick={submit} disabled={loading || !online || (!text.trim() && !pendingImage)} aria-label="Enviar">
             <RiSendPlaneFill size={16} />
           </button>
         </div>
