@@ -327,10 +327,10 @@ exports.assistantCommand = onRequest(
         const config = {
           systemInstruction: `${SYSTEM_PROMPT}\n\nContexto atual (JSON):\n${JSON.stringify(context)}`,
           tools: [{functionDeclarations: TOOLS}],
-          // Resposta é sempre 1-2 frases curtas por design — travar um teto
-          // baixo de tokens corta o tempo de geração (é literalmente
-          // token-a-token), sem perder nada do que já pedimos no prompt.
-          maxOutputTokens: 300,
+          // Resposta é curta por design, mas o tom mais humano/conversacional
+          // pode usar uma frase a mais que o antigo teto de 300 cortava no
+          // meio — 420 dá essa folga sem abrir espaço pra respostas longas.
+          maxOutputTokens: 420,
           // thinkingConfig.thinkingLevel foi tentado para cortar latência, mas
           // "gemini-flash-latest" rejeitou o campo com 400 Bad Request — removido
           // até confirmar qual geração do modelo aceita esse parâmetro.
