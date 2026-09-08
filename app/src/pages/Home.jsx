@@ -265,7 +265,7 @@ export default function Home() {
       candidates.push({
         variant: 'is-coral',
         text: <>Você tem <strong>{overdue.length} tarefa{overdue.length > 1 ? 's' : ''} vencida{overdue.length > 1 ? 's' : ''}</strong> esperando decisão — concluir, reagendar ou soltar.</>,
-        to: '/planejar/tarefas',
+        to: '/planejar/tarefas?vencidas=1',
         cta: 'Ver tarefas',
       })
     }

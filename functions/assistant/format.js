@@ -102,8 +102,12 @@ function formatWriteConfirmation(name, result) {
       return `"${result.title}" marcada como concluída.`;
     case "reagendarTarefa":
       return `"${result.title}" atualizada (${changeSummary(result.changes)}).`;
+    case "excluirTarefa":
+      return `Tarefa "${result.title}" excluída.`;
     case "criarHabito":
       return `Hábito "${result.name}" criado${result.weeklyTarget < 7 ? ` (${result.weeklyTarget}x por semana)` : ""}.`;
+    case "excluirHabito":
+      return `Hábito "${result.name}" excluído.`;
     case "marcarHabito":
       return `"${result.name}" registrado como cumprido${result.date ? ` em ${result.date}` : ""}.`;
     case "desmarcarHabito":
@@ -120,18 +124,26 @@ function formatWriteConfirmation(name, result) {
       return `Nota "${result.title}" criada${result.notebook ? ` em ${result.notebook}` : ""}.`;
     case "editarNota":
       return `Nota "${result.title}" atualizada${result.notebook ? ` (movida para ${result.notebook})` : ""}.`;
+    case "excluirNota":
+      return `Nota "${result.title}" excluída.`;
     case "criarCaderno":
       return `Caderno "${result.name}" criado.`;
+    case "excluirCaderno":
+      return `Caderno "${result.name}" excluído.`;
     case "criarMeta":
       return `Meta "${result.title}" criada.`;
     case "atualizarProgressoMeta":
       return `"${result.title}" agora em ${result.progress}%.`;
     case "editarMeta":
       return `"${result.title}" atualizada (${goalChangeSummary(result.changes)}).`;
+    case "excluirMeta":
+      return `Meta "${result.title}" excluída.`;
     case "criarItemAgenda":
       return `"${result.name}" adicionado à agenda de ${result.day}.`;
     case "editarItemAgenda":
       return `"${result.name}" atualizado (${agendaChangeSummary(result.changes)}).`;
+    case "excluirItemAgenda":
+      return `"${result.name}" removido da agenda.`;
     case "registrarDespesaFixa":
       return `Despesa "${result.description}" (${brl(result.amount)}/mês) registrada.`;
     case "registrarDespesasEmLote":
@@ -150,6 +162,8 @@ function formatWriteConfirmation(name, result) {
       return `"${result.title}" (${typeLabel(result.type)}) criado para ${result.startDate}.`;
     case "editarDataImportante":
       return `"${result.title}" atualizado (${importantDateChangeSummary(result.changes)}).`;
+    case "excluirCompromissoImportante":
+      return `"${result.title}" excluído.`;
     case "criarRefeicao":
       return `Refeição "${result.title}" criada.`;
     case "adicionarItemRefeicao":
@@ -185,8 +199,12 @@ function formatConfirmationPrompt(name, args, result) {
       return `Confirma marcar "${result.title}" como concluída?`;
     case "reagendarTarefa":
       return `Confirma atualizar "${result.title}" (${changeSummary(result.changes)})?`;
+    case "excluirTarefa":
+      return `Confirma excluir a tarefa "${result.title}"? Essa ação não pode ser desfeita.`;
     case "criarHabito":
       return `Confirma criar o hábito "${result.name}"${result.weeklyTarget < 7 ? ` (${result.weeklyTarget}x por semana)` : ""}?`;
+    case "excluirHabito":
+      return `Confirma excluir o hábito "${result.name}"? O histórico de sequência dele se perde.`;
     case "marcarHabito":
       return `Confirma registrar "${result.name}" como cumprido${result.date ? ` em ${result.date}` : ""}?`;
     case "desmarcarHabito":
@@ -203,18 +221,26 @@ function formatConfirmationPrompt(name, args, result) {
       return `Confirma criar a nota "${result.title}"${result.notebook ? ` em ${result.notebook}` : ""}?`;
     case "editarNota":
       return `Confirma atualizar a nota "${result.title}"${result.notebook ? ` (mover para ${result.notebook})` : ""}?`;
+    case "excluirNota":
+      return `Confirma excluir a nota "${result.title}"? Essa ação não pode ser desfeita.`;
     case "criarCaderno":
       return `Confirma criar o caderno "${result.name}"?`;
+    case "excluirCaderno":
+      return `Confirma excluir o caderno "${result.name}"? As notas dentro dele não são apagadas, só ficam sem caderno.`;
     case "criarMeta":
       return `Confirma criar a meta "${result.title}"?`;
     case "atualizarProgressoMeta":
       return `Confirma atualizar "${result.title}" para ${result.progress}%?`;
     case "editarMeta":
       return `Confirma atualizar "${result.title}" (${goalChangeSummary(result.changes)})?`;
+    case "excluirMeta":
+      return `Confirma excluir a meta "${result.title}"? Essa ação não pode ser desfeita.`;
     case "criarItemAgenda":
-      return `Confirma adicionar "${result.name}" à agenda de ${result.day}${args.horarioInicio ? ` às ${args.horarioInicio}` : ""}?`;
+      return `Confirma adicionar "${result.name}" à agenda de ${result.day}${args.horarioInicio ? ` às ${args.horarioInicio}` : ""}${args.semana === "proxima" ? " (semana que vem)" : ""}?`;
     case "editarItemAgenda":
       return `Confirma atualizar "${result.name}" (${agendaChangeSummary(result.changes)})?`;
+    case "excluirItemAgenda":
+      return `Confirma remover "${result.name}" da agenda? Essa ação não pode ser desfeita.`;
     case "registrarDespesaFixa":
       return `Confirma registrar a despesa "${result.description}" de ${brl(result.amount)}/mês?`;
     case "registrarDespesasEmLote": {
@@ -237,6 +263,8 @@ function formatConfirmationPrompt(name, args, result) {
       return `Confirma criar "${result.title}" (${typeLabel(result.type)}) em ${result.startDate}?`;
     case "editarDataImportante":
       return `Confirma atualizar "${result.title}" (${importantDateChangeSummary(result.changes)})?`;
+    case "excluirCompromissoImportante":
+      return `Confirma excluir "${result.title}"? Essa ação não pode ser desfeita.`;
     case "criarRefeicao":
       return `Confirma criar a refeição "${result.title}"${result.time ? ` às ${result.time}` : ""}?`;
     case "adicionarItemRefeicao":

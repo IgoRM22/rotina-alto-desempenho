@@ -12,6 +12,18 @@ const weekMetaFor = (clientDate) => {
   return { planKey: `SW-${key}` };
 };
 
+// "semana": "atual" (padrão) ou "proxima" — desloca 7 dias antes de calcular
+// o planKey, pra ferramentas de agenda conseguirem ler/escrever/apagar um
+// compromisso da semana que vem (ex: "cancela o cinema semana que vem"),
+// não só da semana corrente.
+const weekMetaForArg = (clientDate, semana) => {
+  if (semana !== "proxima") return weekMetaFor(clientDate);
+  const d = new Date(`${clientDate}T00:00:00`);
+  d.setDate(d.getDate() + 7);
+  const nextClientDate = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  return weekMetaFor(nextClientDate);
+};
+
 const getISOWeek = (date) => {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
@@ -130,6 +142,15 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       return {ok: true, title: found.match.title, changes};
     }
 
+    case "excluirTarefa": {
+      const snap = await base(db, uid, "todos").get();
+      const todos = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(todos, "title", args.titulo);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      if (!dryRun) await base(db, uid, "todos").doc(found.match.id).delete();
+      return {ok: true, title: found.match.title};
+    }
+
     case "criarHabito": {
       const name = String(args.nome || "").trim();
       if (!name) return {ok: false, error: "nome vazio"};
@@ -171,6 +192,15 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
         );
       }
       return {ok: true, name: found.match.name, date};
+    }
+
+    case "excluirHabito": {
+      const snap = await base(db, uid, "habits").get();
+      const habits = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(habits, "name", args.nome);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      if (!dryRun) await base(db, uid, "habits").doc(found.match.id).delete();
+      return {ok: true, name: found.match.name};
     }
 
     case "registrarLogDiario": {
@@ -295,6 +325,15 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       return {ok: true, title: found.match.title, notebook: notebookName};
     }
 
+    case "excluirNota": {
+      const snap = await base(db, uid, "notes").get();
+      const notes = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(notes, "title", args.titulo);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      if (!dryRun) await base(db, uid, "notes").doc(found.match.id).delete();
+      return {ok: true, title: found.match.title};
+    }
+
     case "criarCaderno": {
       const name = String(args.nome || "").trim();
       if (!name) return {ok: false, error: "nome vazio"};
@@ -302,6 +341,15 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
 
       const ref = await base(db, uid, "notebooks").add({name, createdAt: FieldValue.serverTimestamp()});
       return {ok: true, id: ref.id, name};
+    }
+
+    case "excluirCaderno": {
+      const snap = await base(db, uid, "notebooks").get();
+      const notebooks = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(notebooks, "name", args.nome);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      if (!dryRun) await base(db, uid, "notebooks").doc(found.match.id).delete();
+      return {ok: true, name: found.match.name};
     }
 
     case "criarMeta": {
@@ -369,13 +417,22 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       return {ok: true, title: changes.title || found.match.title, changes};
     }
 
+    case "excluirMeta": {
+      const snap = await base(db, uid, "goals").get();
+      const goals = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(goals, "title", args.titulo);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      if (!dryRun) await base(db, uid, "goals").doc(found.match.id).delete();
+      return {ok: true, title: found.match.title};
+    }
+
     case "criarItemAgenda": {
       const name = String(args.nome || "").trim();
       if (!name) return {ok: false, error: "nome vazio"};
       const day = DAYS.includes(args.dia) ? args.dia : DAYS[new Date(`${clientDate}T00:00:00`).getDay()];
       if (dryRun) return {ok: true, name, day};
 
-      const {planKey} = weekMetaFor(clientDate);
+      const {planKey} = weekMetaForArg(clientDate, args.semana);
       const data = {
         name,
         day,
@@ -394,7 +451,7 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
     }
 
     case "editarItemAgenda": {
-      const {planKey} = weekMetaFor(clientDate);
+      const {planKey} = weekMetaForArg(clientDate, args.semana);
       const snap = await base(db, uid, "schedule").get();
       const items = snap.docs
           .map((d) => ({id: d.id, ...d.data()}))
@@ -413,6 +470,18 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       if (dryRun) return {ok: true, name: found.match.name, changes};
       await base(db, uid, "schedule").doc(found.match.id).update(changes);
       return {ok: true, name: changes.name || found.match.name, changes};
+    }
+
+    case "excluirItemAgenda": {
+      const {planKey} = weekMetaForArg(clientDate, args.semana);
+      const snap = await base(db, uid, "schedule").get();
+      const items = snap.docs
+          .map((d) => ({id: d.id, ...d.data()}))
+          .filter((item) => (!item.planScope || item.planScope === "week") && (!item.planKey || item.planKey === planKey));
+      const found = findBestMatch(items, "name", args.nome);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      if (!dryRun) await base(db, uid, "schedule").doc(found.match.id).delete();
+      return {ok: true, name: found.match.name};
     }
 
     case "consultarResumoDoDia": {
@@ -481,7 +550,7 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
     }
 
     case "consultarAgendaSemana": {
-      const {planKey} = weekMetaFor(clientDate);
+      const {planKey} = weekMetaForArg(clientDate, args.semana);
       const snap = await base(db, uid, "schedule").get();
       const items = snap.docs
           .map((d) => d.data())
@@ -704,6 +773,15 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       if (dryRun) return {ok: true, title: found.match.title, changes};
       await base(db, uid, "importantDates").doc(found.match.id).update(changes);
       return {ok: true, title: changes.title || found.match.title, changes};
+    }
+
+    case "excluirCompromissoImportante": {
+      const snap = await base(db, uid, "importantDates").get();
+      const dates = snap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const found = findBestMatch(dates, "title", args.titulo);
+      if (!found.match) return {ok: false, error: found.reason, candidates: found.candidates};
+      if (!dryRun) await base(db, uid, "importantDates").doc(found.match.id).delete();
+      return {ok: true, title: found.match.title};
     }
 
     case "consultarCompromissosImportantes": {

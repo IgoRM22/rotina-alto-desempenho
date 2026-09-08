@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   RiAddLine,
   RiCheckboxBlankLine,
+  RiCloseLine,
   RiDeleteBinLine,
   RiInboxLine,
   RiPencilLine,
@@ -32,6 +34,13 @@ const EMPTY_FORM = { title: '', note: '', priority: 'media', category: 'projeto'
 const EMPTY_FOLDER_FORM = { name: '' }
 
 export default function Tarefas() {
+  // Vinda de um link tipo "3 tarefas vencidas" (Home) — mostra só essas,
+  // cruzando todas as pastas, em vez de depender da pessoa adivinhar em
+  // qual pasta cada tarefa vencida caiu.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const showOverdueOnly = searchParams.get('vencidas') === '1'
+  const clearOverdueOnly = () => setSearchParams({})
+
   const [todos, setTodos] = useState([])
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
   const [folders, setFolders] = useState([])
@@ -60,8 +69,12 @@ export default function Tarefas() {
   const parkingPendingCount = todos.filter(t => !t.folderId && !t.done).length
   const folderPendingCount = (id) => todos.filter(t => t.folderId === id && !t.done).length
 
+  // Vencida = tem data limite e ela já passou, e a tarefa ainda não foi
+  // concluída — mesma regra usada no aviso da Home.
+  const overdueTodos = todos.filter(t => !t.done && t.dueDate && t.dueDate < dateKey)
+
   const folderFiltered = todos.filter(t => activeFolder === 'parking' ? !t.folderId : t.folderId === activeFolder)
-  const filtered = folderFiltered.filter(t => {
+  const filtered = showOverdueOnly ? overdueTodos : folderFiltered.filter(t => {
     if (filter === 'pendentes') return !t.done
     if (filter === 'concluídos') return t.done
     return true
@@ -69,7 +82,7 @@ export default function Tarefas() {
   // Pendentes sobem por prioridade — sem isso, uma tarefa "alta" podia ficar
   // enterrada no meio de várias "média" só por ordem de criação.
   const PRIORITY_RANK = { alta: 0, media: 1, baixa: 2 }
-  if (filter === 'pendentes') {
+  if (showOverdueOnly || filter === 'pendentes') {
     filtered.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3))
   }
 
@@ -180,35 +193,51 @@ export default function Tarefas() {
         </button>
       </div>
 
-      <div className="notebooks-bar">
-        <button
-          className={`notebook-tab ${activeFolder === 'parking' ? 'active' : ''}`}
-          onClick={() => setActiveFolder('parking')}
-        >
-          <RiInboxLine size={13} /> Parking Lot <span className="nb-count">{parkingPendingCount}</span>
-        </button>
-        {folders.map(folder => (
-          <button
-            key={folder.id}
-            className={`notebook-tab ${activeFolder === folder.id ? 'active' : ''}`}
-            onClick={() => setActiveFolder(folder.id)}
-            onContextMenu={e => { e.preventDefault(); openEditFolder(folder) }}
-            title="Clique com o botão direito para editar"
-          >
-            {folder.name}
-            <span className="nb-count">{folderPendingCount(folder.id)}</span>
+      {showOverdueOnly ? (
+        <div className="hoje-signal is-coral" style={{ marginBottom: 16 }}>
+          <div>
+            <p>
+              Mostrando só as <strong>tarefas vencidas</strong> ({overdueTodos.length}) — as que têm uma
+              data limite já passada e ainda não foram concluídas, de todas as pastas.
+            </p>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={clearOverdueOnly}>
+            <RiCloseLine size={13} /> ver todas as pastas
           </button>
-        ))}
-        <button className="notebook-tab-add" onClick={openAddFolder}>
-          <RiAddLine size={13} /> Pasta
-        </button>
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className="notebooks-bar">
+            <button
+              className={`notebook-tab ${activeFolder === 'parking' ? 'active' : ''}`}
+              onClick={() => setActiveFolder('parking')}
+            >
+              <RiInboxLine size={13} /> Parking Lot <span className="nb-count">{parkingPendingCount}</span>
+            </button>
+            {folders.map(folder => (
+              <button
+                key={folder.id}
+                className={`notebook-tab ${activeFolder === folder.id ? 'active' : ''}`}
+                onClick={() => setActiveFolder(folder.id)}
+                onContextMenu={e => { e.preventDefault(); openEditFolder(folder) }}
+                title="Clique com o botão direito para editar"
+              >
+                {folder.name}
+                <span className="nb-count">{folderPendingCount(folder.id)}</span>
+              </button>
+            ))}
+            <button className="notebook-tab-add" onClick={openAddFolder}>
+              <RiAddLine size={13} /> Pasta
+            </button>
+          </div>
 
-      <Tabs
-        items={['pendentes', 'concluídos', 'todos'].map(f => ({ key: f, label: f.charAt(0).toUpperCase() + f.slice(1) }))}
-        active={filter}
-        onChange={setFilter}
-      />
+          <Tabs
+            items={['pendentes', 'concluídos', 'todos'].map(f => ({ key: f, label: f.charAt(0).toUpperCase() + f.slice(1) }))}
+            active={filter}
+            onChange={setFilter}
+          />
+        </>
+      )}
 
       <div>
         {filtered.map(todo => {

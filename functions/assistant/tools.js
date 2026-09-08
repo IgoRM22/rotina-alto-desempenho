@@ -1,8 +1,10 @@
 const { Type } = require("@google/genai");
 
 // Cada ferramenta mapeia 1:1 para uma ação que já existe na UI do Raio.
-// Nada destrutivo (excluir, resetar streak) fica de fora por design —
-// a superfície de risco de um comando mal-interpretado apagar algo fica fechada.
+// Ferramentas "excluir*" também existem — a rede de segurança contra um
+// comando mal-interpretado apagar algo não é "não oferecer a ferramenta",
+// é a confirmação explícita que toda escrita (inclusive exclusão) já passa
+// antes de gravar de verdade (ver "Regra central" no SYSTEM_PROMPT).
 const TOOLS = [
   {
     name: "criarTarefa",
@@ -45,6 +47,17 @@ const TOOLS = [
     },
   },
   {
+    name: "excluirTarefa",
+    description: "Exclui (apaga de vez) uma tarefa existente, pendente ou concluída, buscando pelo título.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) da tarefa a excluir." },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
     name: "criarHabito",
     description: "Cria um novo hábito para acompanhar. Por padrão é diário, mas pode ter uma meta semanal (ex: ir à academia 3x por semana, sem precisar ser todo dia).",
     parameters: {
@@ -79,6 +92,17 @@ const TOOLS = [
       properties: {
         nome: { type: Type.STRING, description: "Nome (ou parte dele) do hábito." },
         data: { type: Type.STRING, description: "Data YYYY-MM-DD; se omitida, usa hoje." },
+      },
+      required: ["nome"],
+    },
+  },
+  {
+    name: "excluirHabito",
+    description: "Exclui (apaga de vez, com todo o histórico de sequência) um hábito existente, buscando pelo nome.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        nome: { type: Type.STRING, description: "Nome (ou parte dele) do hábito a excluir." },
       },
       required: ["nome"],
     },
@@ -160,12 +184,34 @@ const TOOLS = [
     },
   },
   {
+    name: "excluirNota",
+    description: "Exclui (apaga de vez) uma nota existente, buscando pelo título.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) da nota a excluir." },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
     name: "criarCaderno",
     description: "Cria um novo caderno (notebook) para organizar notas.",
     parameters: {
       type: Type.OBJECT,
       properties: {
         nome: { type: Type.STRING },
+      },
+      required: ["nome"],
+    },
+  },
+  {
+    name: "excluirCaderno",
+    description: "Exclui um caderno (notebook) existente, buscando pelo nome. As notas dentro dele NÃO são apagadas — voltam a ficar sem caderno.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        nome: { type: Type.STRING, description: "Nome (ou parte dele) do caderno a excluir." },
       },
       required: ["nome"],
     },
@@ -214,6 +260,17 @@ const TOOLS = [
     },
   },
   {
+    name: "excluirMeta",
+    description: "Exclui (apaga de vez) uma meta de vida existente, buscando pelo título.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) da meta a excluir." },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
     name: "criarItemAgenda",
     description: "Cria um item no cronograma semanal (agenda) do usuário.",
     parameters: {
@@ -233,13 +290,18 @@ const TOOLS = [
           enum: ["daily", "weekdays", "weekend"],
           description: "Omitir se o item não se repete (dia específico apenas).",
         },
+        semana: {
+          type: Type.STRING,
+          enum: ["atual", "proxima"],
+          description: "Em qual semana criar o item. Omitir para a semana atual.",
+        },
       },
       required: ["nome"],
     },
   },
   {
     name: "editarItemAgenda",
-    description: "Edita nome, dia, horário ou categoria de um item da agenda já existente NESTA semana, buscando pelo nome.",
+    description: "Edita nome, dia, horário ou categoria de um item da agenda já existente, buscando pelo nome.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -252,6 +314,27 @@ const TOOLS = [
         novoHorarioInicio: { type: Type.STRING, description: "Formato HH:MM." },
         novoHorarioFim: { type: Type.STRING, description: "Formato HH:MM." },
         novaCategoria: { type: Type.STRING },
+        semana: {
+          type: Type.STRING,
+          enum: ["atual", "proxima"],
+          description: "Em qual semana buscar o item a editar. Omitir para a semana atual.",
+        },
+      },
+      required: ["nome"],
+    },
+  },
+  {
+    name: "excluirItemAgenda",
+    description: "Exclui (remove de vez) um item do cronograma semanal (agenda), buscando pelo nome.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        nome: { type: Type.STRING, description: "Nome (ou parte dele) do item a excluir." },
+        semana: {
+          type: Type.STRING,
+          enum: ["atual", "proxima"],
+          description: "Em qual semana buscar o item. Omitir para a semana atual.",
+        },
       },
       required: ["nome"],
     },
@@ -278,8 +361,17 @@ const TOOLS = [
   },
   {
     name: "consultarAgendaSemana",
-    description: "Leitura — retorna os compromissos da semana atual na agenda. Use por conta própria quando a pergunta envolver tempo disponível, horários ou o que já está agendado.",
-    parameters: { type: Type.OBJECT, properties: {} },
+    description: "Leitura — retorna os compromissos da agenda (cronograma semanal) da semana atual ou da próxima. Use por conta própria quando a pergunta envolver tempo disponível, horários, o que já está agendado, ou quando o usuário mencionar cancelar/mudar um plano — para achar o item antes de dizer que não entendeu.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        semana: {
+          type: Type.STRING,
+          enum: ["atual", "proxima"],
+          description: "Qual semana consultar. Omitir para a semana atual.",
+        },
+      },
+    },
   },
   {
     name: "registrarDespesaFixa",
@@ -437,8 +529,19 @@ const TOOLS = [
     },
   },
   {
+    name: "excluirCompromissoImportante",
+    description: "Exclui (apaga de vez) uma data importante/compromisso já cadastrado, buscando pelo título.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        titulo: { type: Type.STRING, description: "Título (ou parte dele) do compromisso a excluir." },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
     name: "consultarCompromissosImportantes",
-    description: "Leitura — retorna as próximas datas importantes cadastradas (feriados, aniversários, férias, eventos). Use por conta própria quando a pergunta envolver datas, prazos ou eventos futuros.",
+    description: "Leitura — retorna as próximas datas importantes cadastradas (feriados, aniversários, férias, eventos). Use por conta própria quando a pergunta envolver datas, prazos ou eventos futuros, ou quando o usuário mencionar cancelar/mudar um plano — para achar o compromisso antes de dizer que não entendeu.",
     parameters: { type: Type.OBJECT, properties: {} },
   },
   {
