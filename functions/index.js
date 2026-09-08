@@ -403,9 +403,17 @@ exports.assistantCommand = onRequest(
             }],
           });
           response = await ai.models.generateContent({model: GEMINI_MODEL, contents, config});
-          message = response.text || "Feito.";
+          // "Feito." aqui seria mentira — a leitura aconteceu, mas se o
+          // modelo não devolveu texto pra descrevê-la, não fingir sucesso.
+          message = response.text?.trim() || "Consultei, mas não consegui montar uma resposta a partir disso — tenta perguntar de novo?";
         } else {
-          message = response.text || "Feito.";
+          // NENHUMA ferramenta foi chamada aqui — nem escrita, nem leitura.
+          // Um "Feito." fixo faria parecer que algo foi feito quando nada
+          // aconteceu (foi exatamente esse bug que fez o assistente dizer
+          // "Feito." pra "não quero mais ir no ortopedista" sem apagar nada
+          // e sem nem pedir confirmação). Nunca inventar sucesso aqui.
+          message = response.text?.trim() ||
+            "Não tenho certeza do que fazer com isso — pode dar mais detalhes ou reformular?";
         }
         const tTool = Date.now();
 
