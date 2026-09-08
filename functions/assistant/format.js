@@ -174,6 +174,8 @@ function formatWriteConfirmation(name, result) {
       return `"${result.itemName}" removido de "${result.mealTitle}".`;
     case "registrarSessaoFoco":
       return `Sessão de ${result.minutes} min registrada${result.goalTitle ? ` em "${result.goalTitle}"` : ""}.`;
+    case "iniciarFoco":
+      return `Foco iniciado${result.goalTitle ? ` — vinculado a "${result.goalTitle}"` : ""}.`;
     case "fecharMes":
       return `Mês ${result.month} fechado (saldo ${brl(result.monthlyBalance)}).`;
     case "excluirFechamentoMensal":
@@ -275,6 +277,8 @@ function formatConfirmationPrompt(name, args, result) {
       return `Confirma remover "${result.itemName}" de "${result.mealTitle}"?`;
     case "registrarSessaoFoco":
       return `Confirma registrar ${result.minutes} min de foco${result.goalTitle ? ` em "${result.goalTitle}"` : " (sem meta vinculada)"}?`;
+    case "iniciarFoco":
+      return `Confirma iniciar uma sessão de foco agora${result.goalTitle ? ` vinculada a "${result.goalTitle}"` : ""}?`;
     case "fecharMes":
       return `Confirma fechar o mês ${result.month} (saldo ${brl(result.monthlyBalance)})?`;
     case "excluirFechamentoMensal":

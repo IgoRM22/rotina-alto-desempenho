@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { RiCloseLine, RiDeleteBin6Line, RiImageAddLine, RiMicLine, RiSendPlaneFill } from '@remixicon/react'
 import { runAssistantCommand, confirmAssistantActions } from '../services/assistant'
 import { todayKey } from '../utils/date'
 import { resizeImageFile } from '../utils/imageResize'
+import { startLocalFocusSession } from '../utils/focusSession'
 import SparkleIcon from './SparkleIcon'
 
 // O backend já manda mensagens específicas em português (limite de uso,
@@ -78,6 +80,7 @@ const storeMessages = (messages) => {
 // Function. Ações de escrita nunca acontecem direto — o assistente propõe,
 // e só executa de verdade depois que você confirma no chat.
 export default function AssistantModal({ onClose }) {
+  const navigate = useNavigate()
   // { role: 'user' | 'assistant' | 'error', text, pending?: { tool, args } | 'done' | 'cancelled' }
   // Persistido no localStorage do navegador — sobrevive a fechar o modal e a
   // recarregar a página (é por dispositivo, não sincroniza entre aparelhos).
@@ -336,6 +339,17 @@ export default function AssistantModal({ onClose }) {
       const data = await confirmAssistantActions(actions, todayKey())
       setMessages((prev) => [...prev, { role: 'assistant', text: data.message }])
       setActiveImage(null)
+
+      // iniciarFoco não escreve nada no Firestore — o servidor só resolve a
+      // meta (se citada); quem cria a sessão de verdade é o cliente, porque
+      // ela mora no localStorage do aparelho, não no banco. Confirmado, já
+      // manda a pessoa pra página com o cronômetro rodando.
+      const focoAction = (data.actions || []).find((a) => a.tool === 'iniciarFoco')
+      if (focoAction) {
+        startLocalFocusSession(focoAction.toolResult?.goalId || null)
+        onClose()
+        navigate('/planejar/foco')
+      }
     } catch (err) {
       setMessages((prev) => [...prev, { role: 'error', text: displayError(err) }])
     } finally {

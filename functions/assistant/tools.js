@@ -622,6 +622,16 @@ const TOOLS = [
     },
   },
   {
+    name: "iniciarFoco",
+    description: "Inicia AGORA uma sessão de foco livre (o cronômetro real, não um registro retroativo) — abre a página Foco com o timer já rodando. Use quando o usuário disser que vai focar/se concentrar em algo agora, não para registrar algo já feito.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        meta: { type: Type.STRING, description: "Título (ou parte dele) de uma meta existente para vincular a sessão, se fizer sentido." },
+      },
+    },
+  },
+  {
     name: "consultarResumoFoco",
     description: "Leitura — retorna minutos de foco de hoje e o total por meta na última semana. Use por conta própria quando a pergunta envolver foco, concentração ou tempo dedicado a metas.",
     parameters: { type: Type.OBJECT, properties: {} },

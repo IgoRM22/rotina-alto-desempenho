@@ -6,11 +6,11 @@ import {
 } from '../../services/firestore'
 import { todayKey, dateKeyFromDate, addDays } from '../../utils/date'
 import { playChime, vibrateDevice, notifyPhaseEnd, updateLiveFocusNotification, closeLiveFocusNotification } from '../../utils/focusAlerts'
+import { loadStoredFocusSession, storeFocusSession, listenLocalFocusSession } from '../../utils/focusSession'
 import BoltIcon from '../../components/BoltIcon'
 import Toast from '../../components/Toast'
 import Modal from '../../components/Modal'
 
-const STORAGE_KEY = 'raio-foco-session'
 const TARGET_OPTIONS = [30, 45, 60, 90, 120]
 const WORK_OPTIONS = [15, 20, 25, 30, 45, 50]
 const BREAK_OPTIONS = [5, 10, 15, 20]
@@ -18,21 +18,8 @@ const BREAK_OPTIONS = [5, 10, 15, 20]
 // intenção (o quê) desde o início e fecha com uma reflexão (o que descobri),
 // pra atenção virar compreensão em vez de só minutos acumulados.
 
-const loadStored = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-const store = (session) => {
-  try {
-    if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
-    else localStorage.removeItem(STORAGE_KEY)
-  } catch { /* storage indisponível — timer segue só em memória */ }
-}
+const loadStored = loadStoredFocusSession
+const store = storeFocusSession
 
 const heatmapLevel = (ratio) => {
   if (ratio <= 0) return 0
@@ -74,7 +61,11 @@ export default function Foco() {
     const u2 = listenFocusSessions(setSessions, 300)
     const u3 = listenPrefs(setPrefs)
     const u4 = listenNotebooks(setNotebooks)
-    return () => { u1(); u2(); u3(); u4() }
+    // Pega uma sessão iniciada por fora (ex: o assistente, pelo chat)
+    // enquanto esta página já estava montada — sem isso só apareceria
+    // depois de sair e voltar pra rota.
+    const u5 = listenLocalFocusSession(setSession)
+    return () => { u1(); u2(); u3(); u4(); u5() }
   }, [])
 
   useEffect(() => {

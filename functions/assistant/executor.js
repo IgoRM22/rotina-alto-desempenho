@@ -785,13 +785,23 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
     }
 
     case "consultarCompromissosImportantes": {
-      const snap = await base(db, uid, "importantDates").orderBy("startDate", "asc").limit(30).get();
-      const items = snap.docs.map((d) => ({
-        title: d.data().title,
-        type: d.data().type,
-        startDate: d.data().startDate,
-        endDate: d.data().endDate || null,
-        recurrence: d.data().recurrence || null,
+      // Sem filtro de data, um compromisso de um ano atrás (não recorrente)
+      // ocupava vaga no limit(30) ordenado por startDate crescente e podia
+      // enterrar um compromisso próximo — invisível pro modelo apesar de
+      // existir. Compromissos recorrentes sempre valem (se repetem pra
+      // frente); não recorrentes só entram se ainda não passaram (ou ainda
+      // não terminaram, no caso de um período como férias).
+      const snap = await base(db, uid, "importantDates").orderBy("startDate", "asc").get();
+      const relevant = snap.docs
+          .map((d) => d.data())
+          .filter((item) => item.recurrence || (item.endDate || item.startDate) >= clientDate)
+          .slice(0, 30);
+      const items = relevant.map((data) => ({
+        title: data.title,
+        type: data.type,
+        startDate: data.startDate,
+        endDate: data.endDate || null,
+        recurrence: data.recurrence || null,
       }));
       return {ok: true, items};
     }
@@ -912,6 +922,25 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
         createdAt: FieldValue.serverTimestamp(),
       });
       return {ok: true, minutes, goalTitle};
+    }
+
+    // Não grava nada no Firestore — a sessão em andamento vive no
+    // localStorage do aparelho (ver app/src/utils/focusSession.js), que o
+    // servidor não tem como tocar. Só resolve a meta (se citada) pro
+    // cliente usar ao criar a sessão local depois da confirmação.
+    case "iniciarFoco": {
+      let goalId = null;
+      let goalTitle = null;
+      if (args.meta) {
+        const goalsSnap = await base(db, uid, "goals").where("done", "==", false).get();
+        const goals = goalsSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+        const found = findBestMatch(goals, "title", args.meta);
+        if (found.match) {
+          goalId = found.match.id;
+          goalTitle = found.match.title;
+        }
+      }
+      return {ok: true, goalId, goalTitle};
     }
 
     case "consultarResumoFoco": {
