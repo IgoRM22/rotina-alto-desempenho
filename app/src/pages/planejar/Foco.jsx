@@ -3,10 +3,12 @@ import { RiDeleteBinLine, RiPauseLine, RiPlayLine, RiStopLine } from '@remixicon
 import {
   listenGoals, listenFocusSessions, addFocusSession, deleteFocusSession,
   listenPrefs, savePrefs, listenNotebooks, addNote, addTodo,
+  listenHabits, setHabitChecked,
 } from '../../services/firestore'
 import { todayKey, dateKeyFromDate, addDays } from '../../utils/date'
 import { playChime, vibrateDevice, notifyPhaseEnd, updateLiveFocusNotification, closeLiveFocusNotification } from '../../utils/focusAlerts'
 import { loadStoredFocusSession, storeFocusSession, listenLocalFocusSession } from '../../utils/focusSession'
+import { XP_PER_FOCUS_MINUTE } from '../../utils/gamification'
 import BoltIcon from '../../components/BoltIcon'
 import Toast from '../../components/Toast'
 import Modal from '../../components/Modal'
@@ -37,6 +39,7 @@ const fmtClock = (totalSec) => {
 
 export default function Foco() {
   const [goals, setGoals] = useState([])
+  const [habits, setHabits] = useState([])
   const [sessions, setSessions] = useState([])
   const [prefs, setPrefs] = useState({})
   // Livre: { mode: 'livre', startedAt: ms | null (pausado), accumulatedSec, goalId }
@@ -65,7 +68,8 @@ export default function Foco() {
     // enquanto esta página já estava montada — sem isso só apareceria
     // depois de sair e voltar pra rota.
     const u5 = listenLocalFocusSession(setSession)
-    return () => { u1(); u2(); u3(); u4(); u5() }
+    const u6 = listenHabits(setHabits)
+    return () => { u1(); u2(); u3(); u4(); u5(); u6() }
   }, [])
 
   useEffect(() => {
@@ -181,7 +185,7 @@ export default function Foco() {
     }
   }
 
-  const start = (goalId) => {
+  const start = (goalId, habitId) => {
     if (pendingMode === 'pomodoro') {
       setAndStore({
         mode: 'pomodoro',
@@ -190,9 +194,10 @@ export default function Foco() {
         phaseAccumulatedSec: 0,
         cyclesCompleted: 0,
         goalId: goalId || null,
+        habitId: habitId || null,
       })
     } else {
-      setAndStore({ mode: 'livre', startedAt: Date.now(), accumulatedSec: 0, goalId: goalId || null })
+      setAndStore({ mode: 'livre', startedAt: Date.now(), accumulatedSec: 0, goalId: goalId || null, habitId: habitId || null })
     }
   }
 
@@ -232,7 +237,7 @@ export default function Foco() {
     // Não grava ainda — primeiro pergunta o que saiu da sessão. A sessão
     // "acabou" na tela (some o timer), mas o registro só vira dado quando
     // a reflexão é respondida ou pulada, logo abaixo.
-    setPendingFinish({ minutes, goalId: session.goalId || null, category: session.category || null, objective: session.objective || null })
+    setPendingFinish({ minutes, goalId: session.goalId || null, habitId: session.habitId || null, category: session.category || null, objective: session.objective || null })
     setResultDraft('')
     setNextStepDraft('')
     setReflectionTopicId('')
@@ -246,6 +251,10 @@ export default function Foco() {
     await addFocusSession({ date: today, ...pendingFinish, result, nextStep })
 
     let extra = ''
+    if (pendingFinish.habitId) {
+      await setHabitChecked(today, pendingFinish.habitId, true)
+      extra += ' Hábito vinculado marcado.'
+    }
     if (!skip && result && reflectionTopicId) {
       await addNote({
         title: pendingFinish.objective || `Sessão de foco — ${today}`,
@@ -256,11 +265,12 @@ export default function Foco() {
       extra += ' Nota criada no tema.'
     }
     if (!skip && nextStep) {
-      await addTodo({ title: nextStep, category: 'projeto' })
+      await addTodo({ title: nextStep, category: 'projeto', goalId: pendingFinish.goalId || null })
       extra += ' Próximo passo virou tarefa.'
     }
 
-    showToast(`Sessão de ${pendingFinish.minutes} min registrada.${extra}`)
+    const xpGained = Math.round(pendingFinish.minutes * XP_PER_FOCUS_MINUTE)
+    showToast(`Sessão de ${pendingFinish.minutes} min registrada. +${xpGained} XP${extra}`)
     setPendingFinish(null)
     // traço de conexão foco → meta (único momento de celebração do app)
     celebrate()
@@ -287,10 +297,11 @@ export default function Foco() {
 
     if (session.phase === 'work') {
       const minutes = workMin
-      addFocusSession({ date: today, minutes, goalId: session.goalId || null }).then(() => {
+      addFocusSession({ date: today, minutes, goalId: session.goalId || null, habitId: session.habitId || null }).then(async () => {
+        if (session.habitId) await setHabitChecked(today, session.habitId, true)
         celebrate()
       })
-      showToast(`Ciclo de ${minutes} min concluído — hora da pausa.`)
+      showToast(`Ciclo de ${minutes} min concluído — hora da pausa. +${Math.round(minutes * XP_PER_FOCUS_MINUTE)} XP`)
       notifyPhaseEnd('Foco concluído', `${minutes} min registrados. Hora da pausa de ${breakMin} min.`)
       setAndStore({
         ...session,
@@ -319,6 +330,10 @@ export default function Foco() {
 
   const changeGoal = (goalId) => {
     if (session) setAndStore({ ...session, goalId: goalId || null })
+  }
+
+  const changeHabit = (habitId) => {
+    if (session) setAndStore({ ...session, habitId: habitId || null })
   }
 
   const phaseLabel = isPomodoro ? (session.phase === 'work' ? 'foco' : 'pausa') : null
@@ -387,9 +402,21 @@ export default function Foco() {
                 <option value="">Sem meta</option>
                 {activeGoals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
               </select>
+              <select
+                className="calendar-select"
+                style={{ height: 30, minHeight: 30 }}
+                defaultValue=""
+                id="foco-habit-select"
+              >
+                <option value="">Sem hábito</option>
+                {habits.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+              </select>
               <button
                 className="btn btn-primary"
-                onClick={() => start(document.getElementById('foco-goal-select')?.value)}
+                onClick={() => start(
+                  document.getElementById('foco-goal-select')?.value,
+                  document.getElementById('foco-habit-select')?.value,
+                )}
               >
                 <RiPlayLine size={14} /> Iniciar sessão
               </button>
@@ -406,6 +433,15 @@ export default function Foco() {
               >
                 <option value="">Sem meta</option>
                 {activeGoals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+              </select>
+              <select
+                className="calendar-select"
+                style={{ height: 30, minHeight: 30 }}
+                value={session.habitId || ''}
+                onChange={e => changeHabit(e.target.value)}
+              >
+                <option value="">Sem hábito</option>
+                {habits.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
               </select>
               {running ? (
                 <button className="btn btn-ghost" onClick={pause}><RiPauseLine size={14} /> Pausar</button>

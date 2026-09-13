@@ -430,9 +430,10 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       const name = String(args.nome || "").trim();
       if (!name) return {ok: false, error: "nome vazio"};
       const day = DAYS.includes(args.dia) ? args.dia : DAYS[new Date(`${clientDate}T00:00:00`).getDay()];
-      if (dryRun) return {ok: true, name, day};
+      if (dryRun) return {ok: true, name, day, vincularHabito: !!args.vincularHabito};
 
       const {planKey} = weekMetaForArg(clientDate, args.semana);
+      const repeat = ["daily", "weekdays", "weekend"].includes(args.recorrencia) ? args.recorrencia : "";
       const data = {
         name,
         day,
@@ -440,14 +441,37 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
         timeEnd: args.horarioFim || "",
         category: args.categoria ? String(args.categoria).trim().toLowerCase() : "projeto",
         description: "",
-        repeat: ["daily", "weekdays", "weekend"].includes(args.recorrencia) ? args.recorrencia : "",
+        repeat,
         repeatDays: [],
         planScope: "week",
         planKey,
         createdAt: FieldValue.serverTimestamp(),
       };
+
+      let weeklyTarget = 1;
+      if (repeat === "daily") weeklyTarget = 7;
+      else if (repeat === "weekdays") weeklyTarget = 5;
+      else if (repeat === "weekend") weeklyTarget = 2;
+
       const ref = await base(db, uid, "schedule").add(data);
-      return {ok: true, id: ref.id, name, day};
+      let habitId = null;
+      if (args.vincularHabito) {
+        const habitsSnap = await base(db, uid, "habits").get();
+        const habits = habitsSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+        const existing = findBestMatch(habits, "name", name);
+        if (existing.match) {
+          habitId = existing.match.id;
+          await base(db, uid, "habits").doc(habitId).update({weeklyTarget, scheduleItemId: ref.id});
+        } else {
+          const habitRef = await base(db, uid, "habits").add({
+            name, weeklyTarget, active: true, scheduleItemId: ref.id,
+            createdAt: FieldValue.serverTimestamp(), order: Date.now(),
+          });
+          habitId = habitRef.id;
+        }
+        await base(db, uid, "schedule").doc(ref.id).update({habitId});
+      }
+      return {ok: true, id: ref.id, name, day, habitId};
     }
 
     case "editarItemAgenda": {
@@ -913,21 +937,41 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
         }
       }
 
-      if (dryRun) return {ok: true, minutes, goalTitle};
+      let habitId = null;
+      let habitName = null;
+      if (args.habito) {
+        const habitsSnap = await base(db, uid, "habits").get();
+        const habits = habitsSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+        const found = findBestMatch(habits, "name", args.habito);
+        if (found.match) {
+          habitId = found.match.id;
+          habitName = found.match.name;
+        }
+      }
+
+      if (dryRun) return {ok: true, minutes, goalTitle, habitName};
 
       await base(db, uid, "focusSessions").add({
         date: clientDate,
         minutes,
         goalId,
+        habitId,
         createdAt: FieldValue.serverTimestamp(),
       });
-      return {ok: true, minutes, goalTitle};
+      if (habitId) {
+        await base(db, uid, "habitLogs").doc(clientDate).set(
+            {date: clientDate, checked: {[habitId]: true}, updatedAt: FieldValue.serverTimestamp()},
+            {merge: true},
+        );
+      }
+      return {ok: true, minutes, goalTitle, habitName};
     }
 
-    // Não grava nada no Firestore — a sessão em andamento vive no
-    // localStorage do aparelho (ver app/src/utils/focusSession.js), que o
-    // servidor não tem como tocar. Só resolve a meta (se citada) pro
-    // cliente usar ao criar a sessão local depois da confirmação.
+    // Não grava nada no Firestore (exceto o hábito vinculado, se houver) — a
+    // sessão em andamento vive no localStorage do aparelho (ver
+    // app/src/utils/focusSession.js), que o servidor não tem como tocar. Só
+    // resolve meta/hábito (se citados) pro cliente usar ao criar a sessão
+    // local depois da confirmação.
     case "iniciarFoco": {
       let goalId = null;
       let goalTitle = null;
@@ -940,7 +984,36 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
           goalTitle = found.match.title;
         }
       }
-      return {ok: true, goalId, goalTitle};
+
+      let habitId = null;
+      let habitName = null;
+      if (args.habito) {
+        const habitsSnap = await base(db, uid, "habits").get();
+        const habits = habitsSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+        const found = findBestMatch(habits, "name", args.habito);
+        if (found.match) {
+          habitId = found.match.id;
+          habitName = found.match.name;
+        }
+      }
+      return {ok: true, goalId, goalTitle, habitId, habitName};
+    }
+
+    case "vincularTarefaMeta": {
+      const [todosSnap, goalsSnap] = await Promise.all([
+        base(db, uid, "todos").where("done", "==", false).get(),
+        base(db, uid, "goals").where("done", "==", false).get(),
+      ]);
+      const todos = todosSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const goals = goalsSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const foundTodo = findBestMatch(todos, "title", args.tituloTarefa);
+      if (!foundTodo.match) return {ok: false, error: foundTodo.reason, candidates: foundTodo.candidates};
+      const foundGoal = findBestMatch(goals, "title", args.tituloMeta);
+      if (!foundGoal.match) return {ok: false, error: foundGoal.reason, candidates: foundGoal.candidates};
+
+      if (dryRun) return {ok: true, tarefa: foundTodo.match.title, meta: foundGoal.match.title};
+      await base(db, uid, "todos").doc(foundTodo.match.id).update({goalId: foundGoal.match.id});
+      return {ok: true, tarefa: foundTodo.match.title, meta: foundGoal.match.title};
     }
 
     case "consultarResumoFoco": {

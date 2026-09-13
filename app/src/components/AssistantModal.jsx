@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RiCloseLine, RiDeleteBin6Line, RiImageAddLine, RiMicLine, RiSendPlaneFill } from '@remixicon/react'
+import { RiCloseLine, RiDeleteBin6Line, RiImageAddLine, RiMicLine, RiPencilLine, RiSendPlaneFill } from '@remixicon/react'
 import { runAssistantCommand, confirmAssistantActions } from '../services/assistant'
 import { todayKey } from '../utils/date'
 import { resizeImageFile } from '../utils/imageResize'
 import { startLocalFocusSession } from '../utils/focusSession'
-import SparkleIcon from './SparkleIcon'
+import PixelCharacter from './PixelCharacter'
 
 // O backend já manda mensagens específicas em português (limite de uso,
 // sobrecarga, etc.) — só cai no texto genérico quando o erro é técnico
@@ -79,7 +79,7 @@ const storeMessages = (messages) => {
 // Chat com o assistente: cada mensagem sua vira um comando enviado à Cloud
 // Function. Ações de escrita nunca acontecem direto — o assistente propõe,
 // e só executa de verdade depois que você confirma no chat.
-export default function AssistantModal({ onClose }) {
+export default function AssistantModal({ onClose, character, level, onEditCharacter }) {
   const navigate = useNavigate()
   // { role: 'user' | 'assistant' | 'error', text, pending?: { tool, args } | 'done' | 'cancelled' }
   // Persistido no localStorage do navegador — sobrevive a fechar o modal e a
@@ -346,7 +346,7 @@ export default function AssistantModal({ onClose }) {
       // manda a pessoa pra página com o cronômetro rodando.
       const focoAction = (data.actions || []).find((a) => a.tool === 'iniciarFoco')
       if (focoAction) {
-        startLocalFocusSession(focoAction.toolResult?.goalId || null)
+        startLocalFocusSession(focoAction.toolResult?.goalId || null, focoAction.toolResult?.habitId || null)
         onClose()
         navigate('/planejar/foco')
       }
@@ -361,11 +361,19 @@ export default function AssistantModal({ onClose }) {
     <div className="assistant-modal-overlay">
       <div className="assistant-modal">
         <div className="assistant-modal-header">
-          <div>
-            <span className="assistant-modal-title"><SparkleIcon size={19} /> Assistente</span>
-            <p className="assistant-modal-subtitle">peça para criar, marcar ou atualizar algo</p>
+          <div className="assistant-modal-header-identity">
+            {character && <PixelCharacter character={character} level={level} size={32} />}
+            <div>
+              <span className="assistant-modal-title">{character?.name || 'Assistente'}</span>
+              <p className="assistant-modal-subtitle">peça para criar, marcar ou atualizar algo</p>
+            </div>
           </div>
           <div className="assistant-modal-header-actions">
+            {onEditCharacter && (
+              <button className="btn-icon assistant-modal-clear" onClick={onEditCharacter} aria-label="Editar personagem" title="Editar personagem">
+                <RiPencilLine size={16} />
+              </button>
+            )}
             {messages.length > 0 && (
               <button className="btn-icon assistant-modal-clear" onClick={() => { setMessages([]); setActiveImage(null) }} aria-label="Limpar conversa" title="Limpar conversa">
                 <RiDeleteBin6Line size={17} />
@@ -380,7 +388,7 @@ export default function AssistantModal({ onClose }) {
         <div className="assistant-modal-body" ref={bodyRef}>
           {messages.length === 0 && (
             <div className="assistant-modal-empty">
-              <SparkleIcon size={30} />
+              {character && <PixelCharacter character={character} level={level} size={52} />}
               <p>Comece com um comando ou toque em uma sugestão.</p>
               <div className="assistant-suggestions">
                 {SUGGESTIONS.map((s) => (
@@ -395,7 +403,9 @@ export default function AssistantModal({ onClose }) {
           {messages.map((m, i) => (
             <div key={i} className={`assistant-row assistant-row--${m.role}`}>
               {m.role !== 'user' && (
-                <span className="assistant-avatar"><SparkleIcon size={15} /></span>
+                <span className="assistant-avatar">
+                  {character ? <PixelCharacter character={character} level={level} size={26} /> : null}
+                </span>
               )}
               <div
                 className={`assistant-msg assistant-msg--${m.role}`}
@@ -421,7 +431,9 @@ export default function AssistantModal({ onClose }) {
 
           {loading && (
             <div className="assistant-row assistant-row--assistant">
-              <span className="assistant-avatar"><SparkleIcon size={15} /></span>
+              <span className="assistant-avatar">
+                {character ? <PixelCharacter character={character} level={level} size={26} /> : null}
+              </span>
               <div className="assistant-msg assistant-msg--assistant assistant-typing">
                 <span /><span /><span />
               </div>

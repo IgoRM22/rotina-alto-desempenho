@@ -17,3 +17,8 @@ functions/.env.*
 # OS
 .DS_Store
 Thumbs.db
+
+# Ad-hoc UX screenshot tooling (local only, not part of the app)
+app/.playwright-profile/
+app/.playwright-profile-edge/
+screenshots/

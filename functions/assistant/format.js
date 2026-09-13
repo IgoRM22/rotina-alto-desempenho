@@ -92,6 +92,9 @@ function formatWriteConfirmation(name, result) {
     if (result.reason === "not_found") {
       return "Não encontrei nada parecido com isso. Confere o nome e tenta de novo?";
     }
+    if (result.reason === "empty") {
+      return "Não peguei o nome do item — qual é, exatamente?";
+    }
     return "Não consegui completar isso — tenta reformular o comando?";
   }
 
@@ -139,7 +142,9 @@ function formatWriteConfirmation(name, result) {
     case "excluirMeta":
       return `Meta "${result.title}" excluída.`;
     case "criarItemAgenda":
-      return `"${result.name}" adicionado à agenda de ${result.day}.`;
+      return `"${result.name}" adicionado à agenda de ${result.day}${result.habitId ? " e vinculado a um hábito" : ""}.`;
+    case "vincularTarefaMeta":
+      return `"${result.tarefa}" vinculada à meta "${result.meta}".`;
     case "editarItemAgenda":
       return `"${result.name}" atualizado (${agendaChangeSummary(result.changes)}).`;
     case "excluirItemAgenda":
@@ -173,9 +178,9 @@ function formatWriteConfirmation(name, result) {
     case "removerItemRefeicao":
       return `"${result.itemName}" removido de "${result.mealTitle}".`;
     case "registrarSessaoFoco":
-      return `Sessão de ${result.minutes} min registrada${result.goalTitle ? ` em "${result.goalTitle}"` : ""}.`;
+      return `Sessão de ${result.minutes} min registrada${result.goalTitle ? ` em "${result.goalTitle}"` : ""}${result.habitName ? ` (hábito "${result.habitName}" marcado)` : ""}.`;
     case "iniciarFoco":
-      return `Foco iniciado${result.goalTitle ? ` — vinculado a "${result.goalTitle}"` : ""}.`;
+      return `Foco iniciado${result.goalTitle ? ` — vinculado a "${result.goalTitle}"` : ""}${result.habitName ? ` e ao hábito "${result.habitName}"` : ""}.`;
     case "fecharMes":
       return `Mês ${result.month} fechado (saldo ${brl(result.monthlyBalance)}).`;
     case "excluirFechamentoMensal":
@@ -238,7 +243,9 @@ function formatConfirmationPrompt(name, args, result) {
     case "excluirMeta":
       return `Confirma excluir a meta "${result.title}"? Essa ação não pode ser desfeita.`;
     case "criarItemAgenda":
-      return `Confirma adicionar "${result.name}" à agenda de ${result.day}${args.horarioInicio ? ` às ${args.horarioInicio}` : ""}${args.semana === "proxima" ? " (semana que vem)" : ""}?`;
+      return `Confirma adicionar "${result.name}" à agenda de ${result.day}${args.horarioInicio ? ` às ${args.horarioInicio}` : ""}${args.semana === "proxima" ? " (semana que vem)" : ""}${args.vincularHabito ? " e criar/atualizar o hábito vinculado" : ""}?`;
+    case "vincularTarefaMeta":
+      return `Confirma vincular "${result.tarefa}" à meta "${result.meta}"?`;
     case "editarItemAgenda":
       return `Confirma atualizar "${result.name}" (${agendaChangeSummary(result.changes)})?`;
     case "excluirItemAgenda":
@@ -276,9 +283,9 @@ function formatConfirmationPrompt(name, args, result) {
     case "removerItemRefeicao":
       return `Confirma remover "${result.itemName}" de "${result.mealTitle}"?`;
     case "registrarSessaoFoco":
-      return `Confirma registrar ${result.minutes} min de foco${result.goalTitle ? ` em "${result.goalTitle}"` : " (sem meta vinculada)"}?`;
+      return `Confirma registrar ${result.minutes} min de foco${result.goalTitle ? ` em "${result.goalTitle}"` : " (sem meta vinculada)"}${result.habitName ? ` e marcar o hábito "${result.habitName}"` : ""}?`;
     case "iniciarFoco":
-      return `Confirma iniciar uma sessão de foco agora${result.goalTitle ? ` vinculada a "${result.goalTitle}"` : ""}?`;
+      return `Confirma iniciar uma sessão de foco agora${result.goalTitle ? ` vinculada a "${result.goalTitle}"` : ""}${result.habitName ? ` e ao hábito "${result.habitName}"` : ""}?`;
     case "fecharMes":
       return `Confirma fechar o mês ${result.month} (saldo ${brl(result.monthlyBalance)})?`;
     case "excluirFechamentoMensal":

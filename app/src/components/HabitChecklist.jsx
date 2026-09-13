@@ -18,6 +18,8 @@ import {
 } from '../services/firestore'
 import { todayKey, dateKeyFromDate } from '../utils/date'
 import { computeStreak, computeWeeklyStreak, weekProgress, isDailyHabit } from '../utils/streak'
+import { habitCelebration } from '../utils/celebration'
+import { XP_PER_HABIT_CHECK } from '../utils/gamification'
 import Toast from './Toast'
 
 const MILESTONES = [7, 30, 100, 365]
@@ -44,6 +46,7 @@ export default function HabitChecklist() {
   const [newFrequency, setNewFrequency] = useState(7)
   const [expanded, setExpanded] = useState(() => new Set())
   const [toast, setToast] = useState(null)
+  const [poppedId, setPoppedId] = useState(null)
 
   useEffect(() => {
     const u1 = listenHabits(setHabits)
@@ -75,6 +78,11 @@ export default function HabitChecklist() {
     await setHabitChecked(today, habit.id, nextChecked)
     if (!nextChecked) return
 
+    // Pop rápido no momento da marcação — o reforço visual conta mais aqui
+    // do que no resumo depois (ver pesquisa de habit loops no plano).
+    setPoppedId(habit.id)
+    setTimeout(() => setPoppedId(id => (id === habit.id ? null : id)), 260)
+
     const simulated = new Map(logsByDate)
     simulated.set(today, { ...(simulated.get(today) || {}), [habit.id]: true })
 
@@ -83,7 +91,9 @@ export default function HabitChecklist() {
       const best = habit.bestStreak || 0
       if (newStreak > best) updateHabit(habit.id, { bestStreak: newStreak })
       if (MILESTONES.includes(newStreak)) {
-        showToast(`🔥 ${newStreak} dias seguidos em "${habit.name}"!`)
+        showToast(`🔥 ${newStreak} dias seguidos em "${habit.name}"! +${XP_PER_HABIT_CHECK} XP`)
+      } else {
+        showToast(`${habitCelebration()} +${XP_PER_HABIT_CHECK} XP`)
       }
       return
     }
@@ -93,7 +103,9 @@ export default function HabitChecklist() {
     if (newWeeklyStreak > bestWeekly) updateHabit(habit.id, { bestWeeklyStreak: newWeeklyStreak })
     const doneThisWeek = weekProgress(habit.id, simulated, today)
     if (doneThisWeek === habit.weeklyTarget) {
-      showToast(`✅ Meta da semana batida em "${habit.name}"!`)
+      showToast(`✅ Meta da semana batida em "${habit.name}"! +${XP_PER_HABIT_CHECK} XP`)
+    } else {
+      showToast(`${habitCelebration()} +${XP_PER_HABIT_CHECK} XP`)
     }
   }
 
@@ -120,7 +132,7 @@ export default function HabitChecklist() {
 
         return (
           <div key={habit.id} className="habit-row">
-            <div className="habit-row-main">
+            <div className={`habit-row-main ${poppedId === habit.id ? 'pop-in' : ''}`}>
               <button
                 type="button"
                 className="todo-check"

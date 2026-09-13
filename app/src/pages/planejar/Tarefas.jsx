@@ -13,10 +13,13 @@ import {
 import {
   listenTodos, addTodo, updateTodo, deleteTodo, listenTodoCategories,
   listenFolders, addFolder, updateFolder, deleteFolder,
+  listenGoals,
 } from '../../services/firestore'
 import { deadlineBadge } from '../../utils/deadline'
 import { useDeadlineNotifications } from '../../hooks/useDeadlineNotifications'
 import { todayKey, MAX_TODAY_TASKS } from '../../utils/date'
+import { taskCelebration } from '../../utils/celebration'
+import { XP_PER_TASK } from '../../utils/gamification'
 import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
@@ -30,7 +33,7 @@ const PRIORITIES = [
 
 const DEFAULT_CATEGORIES = ['trabalho', 'projeto', 'pessoal', 'saude', 'familia', 'estudo']
 
-const EMPTY_FORM = { title: '', note: '', priority: 'media', category: 'projeto', dueDate: '', folderId: null }
+const EMPTY_FORM = { title: '', note: '', priority: 'media', category: 'projeto', dueDate: '', folderId: null, goalId: null }
 const EMPTY_FOLDER_FORM = { name: '' }
 
 export default function Tarefas() {
@@ -44,6 +47,7 @@ export default function Tarefas() {
   const [todos, setTodos] = useState([])
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
   const [folders, setFolders] = useState([])
+  const [goals, setGoals] = useState([])
   const [activeFolder, setActiveFolder] = useState('parking')
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -53,12 +57,14 @@ export default function Tarefas() {
   const [folderForm, setFolderForm] = useState(EMPTY_FOLDER_FORM)
   const [toast, setToast] = useState(null)
   const [filter, setFilter] = useState('pendentes')
+  const [poppedId, setPoppedId] = useState(null)
 
   useEffect(() => {
     const u1 = listenTodos(setTodos)
     const u2 = listenTodoCategories(setCategories)
     const u3 = listenFolders(setFolders)
-    return () => { u1(); u2(); u3() }
+    const u4 = listenGoals(setGoals)
+    return () => { u1(); u2(); u3(); u4() }
   }, [])
 
   useDeadlineNotifications(todos)
@@ -87,7 +93,13 @@ export default function Tarefas() {
   }
 
   const toggle = async (todo) => {
-    await updateTodo(todo.id, { done: !todo.done })
+    const nextDone = !todo.done
+    await updateTodo(todo.id, { done: nextDone })
+    if (nextDone) {
+      setPoppedId(todo.id)
+      setTimeout(() => setPoppedId(id => (id === todo.id ? null : id)), 260)
+      showToast(`${taskCelebration()} +${XP_PER_TASK} XP`)
+    }
   }
 
   const toggleToday = async (todo) => {
@@ -115,6 +127,7 @@ export default function Tarefas() {
       category: item.category || 'projeto',
       dueDate: item.dueDate || '',
       folderId: item.folderId || null,
+      goalId: item.goalId || null,
     })
     setShowModal(true)
   }
@@ -244,7 +257,7 @@ export default function Tarefas() {
           const badge = deadlineBadge(todo.dueDate)
           const isToday = todo.todayDate === dateKey
           return (
-            <div key={todo.id} className="todo-item">
+            <div key={todo.id} className={`todo-item ${poppedId === todo.id ? 'pop-in' : ''}`}>
               <input
                 type="checkbox"
                 className="todo-check"
@@ -343,6 +356,13 @@ export default function Tarefas() {
               <label>Data limite (opcional)</label>
               <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
             </div>
+          </div>
+          <div className="field">
+            <label>Vincular a meta (opcional)</label>
+            <select value={form.goalId || ''} onChange={e => setForm(f => ({ ...f, goalId: e.target.value || null }))}>
+              <option value="">Nenhuma</option>
+              {goals.filter(g => !g.done).map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+            </select>
           </div>
         </Modal>
       )}

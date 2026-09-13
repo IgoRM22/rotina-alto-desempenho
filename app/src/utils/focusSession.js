@@ -28,8 +28,8 @@ export const storeFocusSession = (session) => {
 }
 
 // Sessão livre nova, substituindo qualquer sessão em andamento.
-export const startLocalFocusSession = (goalId = null) => {
-  const session = { mode: 'livre', startedAt: Date.now(), accumulatedSec: 0, goalId: goalId || null }
+export const startLocalFocusSession = (goalId = null, habitId = null) => {
+  const session = { mode: 'livre', startedAt: Date.now(), accumulatedSec: 0, goalId: goalId || null, habitId: habitId || null }
   storeFocusSession(session)
   return session
 }

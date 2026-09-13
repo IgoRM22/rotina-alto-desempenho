@@ -5,10 +5,13 @@ import {
 } from '@remixicon/react'
 import {
   listenTodos, updateTodo, deleteTodo, addTodo, listenWeekFocus, listenHabits, listenHabitLogs,
-  listenImportantDates, listenGoals, listenPrefs,
+  listenImportantDates, listenGoals, listenPrefs, listenFocusSessions, listenCharacter,
   listenDailyLog, saveDailyLog, saveDailyAnnotations,
 } from '../services/firestore'
 import HabitChecklist from '../components/HabitChecklist'
+import GamificationCard from '../components/GamificationCard'
+import { computeXp, computeBadges } from '../utils/gamification'
+import { UNLOCKS, nextUnlock } from '../utils/character'
 import DailyLogCard from '../components/DailyLogCard'
 import RevisaoSemanal from '../components/RevisaoSemanal'
 import CommitmentList from '../components/CommitmentList'
@@ -71,6 +74,9 @@ export default function Home() {
   const [importantDates, setImportantDates] = useState([])
   const [goals, setGoals] = useState([])
   const [prefs, setPrefs] = useState({})
+  const [focusSessions, setFocusSessions] = useState([])
+  const [character, setCharacter] = useState(null)
+  const prevLevelRef = React.useRef(null)
   const [viewingTodo, setViewingTodo] = useState(null)
   // Intenção do dia: renovada toda manhã (ou plantada pelo Noturno da noite
   // anterior). "O que merece atenção hoje" — não é sobre tarefas, é sobre
@@ -101,8 +107,30 @@ export default function Home() {
     const u5 = listenGoals(setGoals)
     const u6 = listenPrefs(setPrefs)
     const u7 = listenDailyLog(todayKey(), setDailyLog)
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7() }
+    const u8 = listenFocusSessions(setFocusSessions, 500)
+    const u9 = listenCharacter(setCharacter)
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9() }
   }, [])
+
+  const gami = useMemo(
+    () => computeXp({ todos, habitLogs, focusSessions, goals, habits }),
+    [todos, habitLogs, focusSessions, goals, habits],
+  )
+  const badges = useMemo(
+    () => computeBadges({ todos, habits, focusSessions, goals }),
+    [todos, habits, focusSessions, goals],
+  )
+
+  // Toast só quando o nível sobe de verdade (não no primeiro cálculo da
+  // sessão) — evita disparar em todo carregamento de página.
+  useEffect(() => {
+    if (prevLevelRef.current !== null && gami.level > prevLevelRef.current) {
+      const unlocked = UNLOCKS.find((u) => u.level === gami.level)
+      showToast(unlocked ? `🎉 Nível ${gami.level}! Você desbloqueou: ${unlocked.label}.` : `🎉 Nível ${gami.level}! Continue assim.`)
+    }
+    prevLevelRef.current = gami.level
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gami.level])
 
   useEffect(() => { setIntentionDraft(dailyLog?.intention || '') }, [dailyLog])
 
@@ -349,6 +377,15 @@ export default function Home() {
         </>
       ) : (
         <>
+          <GamificationCard
+            level={gami.level}
+            xp={gami.xp}
+            xpToNext={gami.xpToNext}
+            pct={gami.pct}
+            badges={badges}
+            character={character}
+            nextUnlock={nextUnlock(gami.level)}
+          />
           <div className="hero">
             <div className="hero-date reveal" style={{ '--d': 0 }}>
               <div className="hero-greeting"><span className="hero-greeting-word">{greeting}</span><span className="hero-greeting-time">{timeLabel}</span></div>

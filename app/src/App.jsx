@@ -12,6 +12,7 @@ import PlanejarMetas from './pages/planejar/Metas'
 import Habitos from './pages/planejar/Habitos'
 import Alimentacao from './pages/planejar/Alimentacao'
 import Foco from './pages/planejar/Foco'
+import Acompanhamento from './pages/planejar/Acompanhamento'
 import Settings from './pages/Settings'
 import Notes from './pages/Notes'
 import Finances from './pages/Finances'
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="metas" element={<PlanejarMetas />} />
           <Route path="habitos" element={<Habitos />} />
           <Route path="foco" element={<Foco />} />
+          <Route path="acompanhamento" element={<Acompanhamento />} />
           <Route path="alimentacao" element={<Alimentacao />} />
         </Route>
 

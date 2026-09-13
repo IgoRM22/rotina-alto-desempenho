@@ -9,7 +9,8 @@ import {
   RiPencilLine,
   RiRefreshLine,
 } from '@remixicon/react'
-import { listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories, listenHabits, listenHabitLogs } from '../../services/firestore'
+import { listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories, listenHabits, listenHabitLogs, listenTodos } from '../../services/firestore'
+import { XP_PER_GOAL_DONE } from '../../utils/gamification'
 import { getWeekDates, dateKeyFromDate, todayKey } from '../../utils/date'
 import { deadlineBadge } from '../../utils/deadline'
 import { useDeadlineNotifications } from '../../hooks/useDeadlineNotifications'
@@ -87,6 +88,7 @@ export default function Metas() {
   const [goals, setGoals] = useState([])
   const [habits, setHabits] = useState([])
   const [habitLogs, setHabitLogs] = useState([])
+  const [todos, setTodos] = useState([])
   const [categories, setCategories] = useState(['projeto', 'saude', 'corp', 'estudo', 'familia', 'pessoal'])
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -104,8 +106,23 @@ export default function Metas() {
     const u2 = listenGoalCategories(setCategories)
     const u3 = listenHabits(setHabits)
     const u4 = listenHabitLogs(setHabitLogs, 10)
-    return () => { u1(); u2(); u3(); u4() }
+    const u5 = listenTodos(setTodos)
+    return () => { u1(); u2(); u3(); u4(); u5() }
   }, [])
+
+  // Progresso derivado das tarefas vinculadas — mostrado como sugestão, não
+  // aplicado automaticamente, pra não sobrescrever um progresso que a pessoa
+  // já vem ajustando manualmente no slider.
+  const linkedTodosProgress = useMemo(() => {
+    const byGoal = new Map()
+    goals.forEach(g => {
+      const linked = todos.filter(t => t.goalId === g.id)
+      if (linked.length === 0) return
+      const doneCount = linked.filter(t => t.done).length
+      byGoal.set(g.id, { total: linked.length, done: doneCount, pct: Math.round((doneCount / linked.length) * 100) })
+    })
+    return byGoal
+  }, [goals, todos])
 
   // Conta quantas vezes cada hábito vinculado foi cumprido na semana atual —
   // o elo automático entre o que se faz hoje e o que se prometeu na meta.
@@ -207,11 +224,14 @@ export default function Metas() {
       return
     }
     await updateGoal(goal.id, { done: true, progress: 100 })
+    showToast(`🚀 Meta batida! +${XP_PER_GOAL_DONE} XP`)
   }
 
   const updateProgress = async (goal, value) => {
     const safe = clampProgress(value)
+    const justCompleted = safe >= 100 && !goal.done
     await updateGoal(goal.id, { progress: safe, done: safe >= 100 })
+    if (justCompleted) showToast(`🚀 Meta batida! +${XP_PER_GOAL_DONE} XP`)
   }
 
   const showToast = (msg, type = 'success') => {
@@ -355,6 +375,24 @@ export default function Metas() {
                       </span>
                     )
                   })}
+                </div>
+              )}
+
+              {linkedTodosProgress.get(goal.id) && (
+                <div className="goal-linked-habits">
+                  <span>tarefas vinculadas:</span>
+                  <span className="goal-linked-habit">
+                    {linkedTodosProgress.get(goal.id).done}/{linkedTodosProgress.get(goal.id).total} concluídas
+                  </span>
+                  {linkedTodosProgress.get(goal.id).pct !== clampProgress(goal.progress) && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => updateProgress(goal, linkedTodosProgress.get(goal.id).pct)}
+                    >
+                      usar {linkedTodosProgress.get(goal.id).pct}% das tarefas
+                    </button>
+                  )}
                 </div>
               )}
 

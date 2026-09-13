@@ -350,16 +350,12 @@ exports.assistantCommand = onRequest(
         let needsConfirmation = false;
         let pendingActions = null;
 
-        const calls = response.functionCalls || [];
         // Uma imagem (ex: extrato) ou pedido composto pode implicar várias
         // atualizações distintas ao mesmo tempo (reserva + meta + saldo de
         // banco) — o modelo pode devolver mais de uma function call num só
         // turno, e todas viram UMA proposta combinada de confirmação, ainda
         // numa chamada só ao Gemini.
-        const writeCalls = calls.filter((c) => !isReadTool(c.name));
-        const readCalls = calls.filter((c) => isReadTool(c.name));
-
-        if (writeCalls.length > 0) {
+        const runWriteCalls = async (writeCalls) => {
           const previews = [];
           for (const call of writeCalls) {
             const args = call.args || {};
@@ -371,6 +367,15 @@ exports.assistantCommand = onRequest(
           const failedPreviews = previews.filter((p) => !p.preview.ok);
           toolName = previews[0].tool;
           toolResult = previews[0].preview;
+          if (failedPreviews.length > 0) {
+            // Preview de escrita que falha (nome vazio, item não achado,
+            // ambíguo...) é justamente o tipo de coisa que só aparece pro
+            // dev via print do usuário hoje — logar dá rastro sem precisar
+            // disso.
+            logger.info("assistantCommand write preview failed", {
+              uid, failed: failedPreviews.map((p) => ({tool: p.tool, args: p.args, reason: p.preview.error})),
+            });
+          }
 
           if (okPreviews.length === 0) {
             message = failedPreviews.map((p) => formatWriteConfirmation(p.tool, p.preview)).join(" ");
@@ -388,32 +393,73 @@ exports.assistantCommand = onRequest(
                 failedPreviews.map((p) => formatWriteConfirmation(p.tool, p.preview)).join(" ")})`;
             }
           }
-        } else if (readCalls.length > 0) {
-          // Leitura: sem risco, executa direto; só o modelo sabe transformar
-          // os dados brutos em prosa, por isso a segunda chamada.
-          const call = readCalls[0];
-          toolName = call.name;
-          const args = call.args || {};
-          toolResult = await executeTool(db, uid, clientDate, call.name, args);
+        };
+
+        // Loop tipo ReAct: leitura pode encadear várias rodadas (ex: não
+        // achou na agenda semanal, tenta compromissos importantes, tenta
+        // tarefas) antes de decidir se pergunta, responde ou propõe uma
+        // escrita. Escrita sempre encerra o loop — nunca executa direto,
+        // só vira preview + confirmação (ação destrutiva/irreversível é a
+        // última coisa que acontece, nunca no meio de um raciocínio).
+        const MAX_READ_STEPS = 4;
+        let readSteps = 0;
+
+        for (;;) {
+          const calls = response.functionCalls || [];
+          const writeCalls = calls.filter((c) => !isReadTool(c.name));
+          const readCalls = calls.filter((c) => isReadTool(c.name));
+
+          if (writeCalls.length > 0) {
+            await runWriteCalls(writeCalls);
+            break;
+          }
+
+          if (readCalls.length === 0) {
+            // NENHUMA ferramenta foi chamada aqui. Um "Feito." fixo faria
+            // parecer que algo foi feito quando nada aconteceu (foi
+            // exatamente esse bug que fez o assistente dizer "Feito." pra
+            // "não quero mais ir no ortopedista" sem apagar nada e sem nem
+            // pedir confirmação). Nunca inventar sucesso aqui.
+            message = response.text?.trim() || (readSteps === 0
+              ? "Não tenho certeza do que fazer com isso — pode dar mais detalhes ou reformular?"
+              // "Feito." aqui também seria mentira: leitura(s) aconteceram,
+              // mas se o modelo não devolveu texto pra descrevê-las, não
+              // fingir sucesso.
+              : "Consultei, mas não consegui montar uma resposta a partir disso — tenta perguntar de novo?");
+            break;
+          }
+
+          if (readSteps >= MAX_READ_STEPS) {
+            // Deu muitas voltas sem se decidir — corta aqui em vez de
+            // deixar o custo (e a latência) crescer sem teto.
+            message = "Procurei em alguns lugares mas não cheguei numa resposta certa — pode ser mais específico?";
+            break;
+          }
+          readSteps += 1;
+
+          // Leitura é sem risco, executa direto; só o modelo sabe
+          // transformar os dados brutos em prosa (ou decidir a próxima
+          // ferramenta), por isso a chamada seguinte ao Gemini. Um pedido
+          // de cancelamento costuma exigir checar mais de uma fonte (agenda
+          // semanal E compromissos importantes) — por isso TODAS as read
+          // calls do turno são executadas, não só a primeira.
+          const readResults = await Promise.all(readCalls.map(async (call) => ({
+            call, result: await executeTool(db, uid, clientDate, call.name, call.args || {}),
+          })));
+          toolName = readResults[0].call.name;
+          toolResult = readResults[0].result;
+          logger.info("assistantCommand read step", {
+            uid, step: readSteps, tools: readCalls.map((c) => c.name),
+          });
+
           contents.push({role: "model", parts: response.candidates[0].content.parts});
           contents.push({
             role: "user",
-            parts: [{
-              functionResponse: {id: call.id, name: call.name, response: {result: toolResult}},
-            }],
+            parts: readResults.map(({call, result}) => ({
+              functionResponse: {id: call.id, name: call.name, response: {result}},
+            })),
           });
           response = await ai.models.generateContent({model: GEMINI_MODEL, contents, config});
-          // "Feito." aqui seria mentira — a leitura aconteceu, mas se o
-          // modelo não devolveu texto pra descrevê-la, não fingir sucesso.
-          message = response.text?.trim() || "Consultei, mas não consegui montar uma resposta a partir disso — tenta perguntar de novo?";
-        } else {
-          // NENHUMA ferramenta foi chamada aqui — nem escrita, nem leitura.
-          // Um "Feito." fixo faria parecer que algo foi feito quando nada
-          // aconteceu (foi exatamente esse bug que fez o assistente dizer
-          // "Feito." pra "não quero mais ir no ortopedista" sem apagar nada
-          // e sem nem pedir confirmação). Nunca inventar sucesso aqui.
-          message = response.text?.trim() ||
-            "Não tenho certeza do que fazer com isso — pode dar mais detalhes ou reformular?";
         }
         const tTool = Date.now();
 

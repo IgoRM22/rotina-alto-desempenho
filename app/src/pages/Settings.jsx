@@ -639,6 +639,17 @@ export default function Settings() {
             <p>1.0.0 — Rotina</p>
           </div>
         </div>
+        <div className="settings-row">
+          <div className="settings-row-info">
+            <h4>Créditos</h4>
+            <p>
+              O personagem que acompanha o app usa sprites do projeto{' '}
+              <a href="https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator" target="_blank" rel="noreferrer">
+                Liberated Pixel Cup (LPC)
+              </a>, licenciados sob CC-BY-SA 3.0 / GPL 3.0 pelos artistas originais do projeto.
+            </p>
+          </div>
+        </div>
       </div>
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}

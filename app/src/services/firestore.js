@@ -201,6 +201,16 @@ export const listenPrefs = (cb) =>
 export const savePrefs = (data) =>
   setDoc(userDoc('settings', 'prefs'), data, { merge: true })
 
+// ── Personagem (substitui o ícone do assistente) ────────────────────────────
+// null enquanto carrega (evita abrir o criador de personagem num flash antes
+// do Firestore responder); {} explícito (doc não existe) é o sinal real de
+// "ainda não criou" que dispara o criador.
+export const listenCharacter = (cb) =>
+  onSnapshot(userDoc('settings', 'character'), snap => cb(snap.exists() ? snap.data() : {}))
+
+export const saveCharacter = (data) =>
+  setDoc(userDoc('settings', 'character'), { ...data, updatedAt: serverTimestamp() }, { merge: true })
+
 // ── Schedule / Cronograma ────────────────────────────────────────────────────
 export const listenSchedule = (cb) =>
   onSnapshot(base('schedule'), snap =>

@@ -272,7 +272,11 @@ const TOOLS = [
   },
   {
     name: "criarItemAgenda",
-    description: "Cria um item no cronograma semanal (agenda) do usuário.",
+    description: "Cria um item no cronograma semanal (agenda) do usuário — organizado por dia DA SEMANA " +
+      "(Segunda, Terça...), não por data do calendário. Não use isto para um compromisso de data " +
+      "específica (ex: 'dia 15', 'próximo dia 3') — nesses casos use criarCompromissoImportante com " +
+      "dataInicio. Use criarItemAgenda só quando o usuário falar de um dia da semana (hoje, quinta, " +
+      "toda segunda) dentro do cronograma semanal.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -280,7 +284,8 @@ const TOOLS = [
         dia: {
           type: Type.STRING,
           enum: ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"],
-          description: "Dia da semana; se omitido, usa o dia de hoje.",
+          description: "Dia da semana (nunca calcule de cabeça a partir de uma data do calendário; " +
+            "use context.diaDaSemanaDeHoje como referência). Se omitido, usa o dia de hoje.",
         },
         horarioInicio: { type: Type.STRING, description: "Formato HH:MM." },
         horarioFim: { type: Type.STRING, description: "Formato HH:MM, opcional." },
@@ -294,6 +299,12 @@ const TOOLS = [
           type: Type.STRING,
           enum: ["atual", "proxima"],
           description: "Em qual semana criar o item. Omitir para a semana atual.",
+        },
+        vincularHabito: {
+          type: Type.BOOLEAN,
+          description: "Se true, cria (ou atualiza, se já existir um com o mesmo nome) um hábito " +
+            "vinculado a este item — a frequência semanal do hábito passa a vir automaticamente dos " +
+            "dias marcados aqui. Use quando o item também soar como um hábito recorrente.",
         },
       },
       required: ["nome"],
@@ -617,6 +628,7 @@ const TOOLS = [
       properties: {
         minutos: { type: Type.NUMBER, description: "Duração da sessão em minutos." },
         meta: { type: Type.STRING, description: "Título (ou parte dele) da meta vinculada, se houver." },
+        habito: { type: Type.STRING, description: "Nome (ou parte dele) do hábito vinculado, se houver — marca esse hábito como cumprido hoje." },
       },
       required: ["minutos"],
     },
@@ -628,7 +640,20 @@ const TOOLS = [
       type: Type.OBJECT,
       properties: {
         meta: { type: Type.STRING, description: "Título (ou parte dele) de uma meta existente para vincular a sessão, se fizer sentido." },
+        habito: { type: Type.STRING, description: "Nome (ou parte dele) de um hábito existente para vincular — ao concluir a sessão, o hábito é marcado como feito hoje." },
       },
+    },
+  },
+  {
+    name: "vincularTarefaMeta",
+    description: "Vincula uma tarefa existente a uma meta existente, buscando ambas pelo título/nome.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        tituloTarefa: { type: Type.STRING, description: "Título (ou parte dele) da tarefa pendente." },
+        tituloMeta: { type: Type.STRING, description: "Título (ou parte dele) da meta." },
+      },
+      required: ["tituloTarefa", "tituloMeta"],
     },
   },
   {

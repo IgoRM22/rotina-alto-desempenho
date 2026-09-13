@@ -8,6 +8,13 @@ import {
   RiStickyNoteLine,
   RiMoneyDollarCircleLine,
 } from '@remixicon/react'
+
+const NAV_ITEMS = [
+  { to: '/', end: true, icon: RiHome5Line, label: 'Hoje' },
+  { to: '/planejar', end: false, icon: RiCalendarScheduleLine, label: 'Planejar' },
+  { to: '/notes', end: false, icon: RiStickyNoteLine, label: 'Notas' },
+  { to: '/financas', end: false, icon: RiMoneyDollarCircleLine, label: 'Finanças' },
+]
 import { useAuth } from '../context/AuthContext'
 import BoltIcon from './BoltIcon'
 import AssistantFab from './AssistantFab'
@@ -47,6 +54,36 @@ export default function Layout({ children }) {
           </NavLink>
           <button className="btn-logout btn-icon" onClick={handleLogout} aria-label="Sair">
             <RiLogoutBoxRLine size={16} />
+          </button>
+        </div>
+      </nav>
+
+      {/* Sidebar só existe (visualmente) a partir de 1024px — em telas
+          estreitas o topo + a nav inferior já resolvem bem, então a sidebar
+          fica escondida via CSS em vez de duplicar lógica de navegação. */}
+      <nav className="sidebar">
+        <NavLink to="/" className="sidebar-brand">
+          <BoltIcon size={19} /> <span>RaioDesk</span>
+        </NavLink>
+
+        <ul className="sidebar-links">
+          {NAV_ITEMS.map(({ to, end, icon: Icon, label }) => (
+            <li key={to}>
+              <NavLink to={to} end={end} className={({ isActive }) => isActive ? 'active' : ''}>
+                <Icon size={18} aria-hidden="true" />
+                <span>{label}</span>
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+
+        <div className="sidebar-footer">
+          <span className="sidebar-user" title={user?.email}>{user?.email}</span>
+          <NavLink to="/config" className={({ isActive }) => `sidebar-footer-btn ${isActive ? 'active' : ''}`}>
+            <RiSettings3Line size={16} aria-hidden="true" /> <span>Ajustes</span>
+          </NavLink>
+          <button className="sidebar-footer-btn" onClick={handleLogout}>
+            <RiLogoutBoxRLine size={16} aria-hidden="true" /> <span>Sair</span>
           </button>
         </div>
       </nav>

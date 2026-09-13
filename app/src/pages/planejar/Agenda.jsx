@@ -23,8 +23,12 @@ import {
   updateImportantDate,
   deleteImportantDate,
   listenScheduleCategories,
+  listenHabits,
+  addHabit,
+  updateHabit,
 } from '../../services/firestore'
 import { IMPORTANT_TYPES, RECURRENCE_OPTIONS, expandImportantDatesForRange } from '../../utils/importantDates'
+import { DEFAULT_CATEGORIES } from '../../utils/categoryColors'
 import { addDays } from '../../utils/date'
 import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
@@ -38,16 +42,7 @@ const MONTH_LABELS = Array.from(
   (_, month) => new Date(2024, month, 1).toLocaleDateString('pt-BR', { month: 'long' }),
 )
 
-const CATEGORIES = [
-  { value: 'saude', color: '#8FAE83' },
-  { value: 'corp', color: '#6C93B8' },
-  { value: 'projeto', color: '#E06445' },
-  { value: 'mente', color: '#9084C9' },
-  { value: 'estudo', color: '#C97B93' },
-  { value: 'familia', color: '#D6A54C' },
-  { value: 'trem', color: '#7A7570' },
-  { value: 'pessoal', color: '#9084C9' },
-]
+const CATEGORIES = DEFAULT_CATEGORIES
 
 const REPEAT_OPTIONS = [
   { value: '', label: 'Dia especifico' },
@@ -66,7 +61,10 @@ const EMPTY_FORM = {
   category: 'projeto',
   repeat: '',
   repeatDays: [],
+  habitId: '',
 }
+
+const NEW_HABIT_OPTION = '__new__'
 
 const EMPTY_IMPORTANT_FORM = {
   title: '',
@@ -367,6 +365,7 @@ const importantTypeLabel = (type) => IMPORTANT_TYPES.find((entry) => entry.value
 
 export default function Cronograma() {
   const [items, setItems] = useState([])
+  const [habits, setHabits] = useState([])
   const [importantDates, setImportantDates] = useState([])
   const [categories, setCategories] = useState(CATEGORIES)
   const [loading, setLoading] = useState(true)
@@ -401,6 +400,13 @@ export default function Cronograma() {
   useEffect(() => {
     const unsub = listenImportantDates((data) => {
       setImportantDates(data)
+    })
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    const unsub = listenHabits((data) => {
+      setHabits(data)
     })
     return unsub
   }, [])
@@ -643,6 +649,7 @@ export default function Cronograma() {
       category: item.category || 'projeto',
       repeat: item.repeat || '',
       repeatDays: item.repeatDays || [],
+      habitId: item.habitId || '',
     })
     setShowModal(true)
   }
@@ -709,14 +716,32 @@ export default function Cronograma() {
 
       if (data.repeat !== 'custom') data.repeatDays = []
 
-      if (editing) {
-        await updateScheduleItem(editing.id, data)
-        showToast('Atualizado!')
-      } else {
-        await addScheduleItem(data)
-        showToast('Adicionado!')
+      const weeklyTarget = Math.max(1, Math.min(7, getItemDays(data).length))
+      const previousHabitId = editing?.habitId || ''
+
+      let habitId = data.habitId || ''
+      if (habitId === NEW_HABIT_OPTION) {
+        const created = await addHabit({ name: form.name.trim(), weeklyTarget })
+        habitId = created?.id || ''
+        data.habitId = habitId
       }
 
+      let itemId = editing?.id
+      if (editing) {
+        await updateScheduleItem(editing.id, data)
+      } else {
+        const created = await addScheduleItem(data)
+        itemId = created?.id
+      }
+
+      if (habitId && habitId !== NEW_HABIT_OPTION) {
+        await updateHabit(habitId, { weeklyTarget, scheduleItemId: itemId })
+      }
+      if (previousHabitId && previousHabitId !== habitId) {
+        await updateHabit(previousHabitId, { scheduleItemId: null })
+      }
+
+      showToast(editing ? 'Atualizado!' : 'Adicionado!')
       setShowModal(false)
     } catch {
       showToast('Erro ao salvar.', 'error')
@@ -1433,6 +1458,20 @@ export default function Cronograma() {
           <div className="field">
             <label>Descricao (opcional)</label>
             <textarea rows={2} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
+          </div>
+
+          <div className="field">
+            <label>Vincular a habito (opcional)</label>
+            <select value={form.habitId} onChange={(e) => setForm((prev) => ({ ...prev, habitId: e.target.value }))}>
+              <option value="">Nenhum</option>
+              <option value={NEW_HABIT_OPTION}>+ Criar habito "{form.name.trim() || 'novo'}"</option>
+              {habits.map((habit) => (
+                <option key={habit.id} value={habit.id}>{habit.name}</option>
+              ))}
+            </select>
+            {form.habitId && form.habitId !== NEW_HABIT_OPTION && (
+              <span className="field-hint">A frequencia semanal do habito sera ajustada para os dias deste item.</span>
+            )}
           </div>
 
           {editing && (

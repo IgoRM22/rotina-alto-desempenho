@@ -206,7 +206,11 @@ export default function Habitos() {
 
   const saveRename = async () => {
     const name = editingName.trim()
-    if (name) await updateHabit(editingId, { name, weeklyTarget: editingFrequency })
+    const habit = habits.find(h => h.id === editingId)
+    if (name) {
+      const data = habit?.scheduleItemId ? { name } : { name, weeklyTarget: editingFrequency }
+      await updateHabit(editingId, data)
+    }
     setEditingId(null)
   }
 
@@ -351,14 +355,18 @@ export default function Habitos() {
                       onChange={e => setEditingName(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && saveRename()}
                     />
-                    <select
-                      className="calendar-select"
-                      value={editingFrequency}
-                      onChange={e => setEditingFrequency(Number(e.target.value))}
-                      aria-label="Frequência"
-                    >
-                      {FREQUENCY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                    </select>
+                    {habit.scheduleItemId ? (
+                      <span className="subpage-controls-note" style={{ marginRight: 0 }}>frequência vem da agenda</span>
+                    ) : (
+                      <select
+                        className="calendar-select"
+                        value={editingFrequency}
+                        onChange={e => setEditingFrequency(Number(e.target.value))}
+                        aria-label="Frequência"
+                      >
+                        {FREQUENCY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                      </select>
+                    )}
                     <button className="btn btn-primary btn-sm btn-icon" onClick={saveRename} aria-label="Salvar"><RiCheckLine size={13} /></button>
                     <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setEditingId(null)} aria-label="Cancelar"><RiCloseLine size={13} /></button>
                   </>
@@ -367,6 +375,9 @@ export default function Habitos() {
                     <button type="button" className="habit-manage-name" onClick={() => setSelectedId(habit.id)}>
                       {habit.name}
                     </button>
+                    {habit.scheduleItemId && (
+                      <span className="habit-linked-badge" title="Frequência vinculada a um item da agenda semanal">na agenda</span>
+                    )}
                     {!daily && (
                       <span className={`habit-week-progress ${weekDone >= habit.weeklyTarget ? 'is-met' : ''}`}>
                         {weekDone}/{habit.weeklyTarget} semana
