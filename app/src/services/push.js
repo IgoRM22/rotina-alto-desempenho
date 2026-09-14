@@ -11,6 +11,17 @@ const urlBase64ToUint8Array = (base64String) => {
 export const isPushSupported = () =>
   typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window
 
+// No iPhone o Safari só expõe a Push API quando o site já foi adicionado à
+// Tela de Início (modo standalone) — fora disso `PushManager` nem existe, e
+// isso é fácil de confundir com "navegador não suporta" quando na verdade só
+// falta instalar. Detecta esse caso pra dar a dica certa em vez da genérica.
+export const isIosNotInstalled = () => {
+  if (typeof navigator === 'undefined') return false
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone === true
+  return isIos && !isStandalone
+}
+
 export const getPushPermission = () => (isPushSupported() ? Notification.permission : 'unsupported')
 
 // Pede permissão (precisa ser chamado a partir de um clique do usuário —

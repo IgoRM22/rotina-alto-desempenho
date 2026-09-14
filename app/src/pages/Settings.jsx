@@ -22,7 +22,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { OWNER_UID } from '../config'
 import Toast from '../components/Toast'
-import { isPushSupported, getPushPermission, isPushEnabled, enablePushNotifications, disablePushNotifications } from '../services/push'
+import { isPushSupported, getPushPermission, isPushEnabled, enablePushNotifications, disablePushNotifications, isIosNotInstalled } from '../services/push'
 
 export default function Settings() {
   const { user, logout } = useAuth()
@@ -585,6 +585,11 @@ export default function Settings() {
             <button className={`btn ${pushEnabled ? 'btn-ghost' : 'btn-primary'}`} onClick={togglePush} disabled={pushLoading}>
               {pushLoading ? '...' : pushEnabled ? 'Desativar' : 'Ativar'}
             </button>
+          ) : isIosNotInstalled() ? (
+            <span style={{ fontSize: 12, color: 'var(--text3)', maxWidth: 220, textAlign: 'right' }}>
+              No iPhone, o Safari só permite notificações depois de adicionar este app à Tela de Início
+              (Compartilhar → Adicionar à Tela de Início).
+            </span>
           ) : (
             <span style={{ fontSize: 12, color: 'var(--text3)' }}>Não suportado neste navegador.</span>
           )}

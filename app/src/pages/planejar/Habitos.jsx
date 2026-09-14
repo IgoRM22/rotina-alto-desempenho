@@ -11,6 +11,7 @@ import { dateKeyFromDate, getWeekStart, addDays, todayKey } from '../../utils/da
 import { isDailyHabit, computeStreak, computeWeeklyStreak, weekProgress } from '../../utils/streak'
 import Toast from '../../components/Toast'
 import Modal from '../../components/Modal'
+import Dropdown from '../../components/Dropdown'
 
 const WEEKDAY_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 const MONTH_ABBR = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
@@ -256,14 +257,13 @@ export default function Habitos() {
                   </p>
                 )}
               </div>
-              <select
+              <Dropdown
                 className="calendar-select"
                 value={periodWeeks}
-                onChange={e => { setPeriodWeeks(Number(e.target.value)); setSelectedDayKey(null) }}
-                aria-label="Período"
-              >
-                {PERIOD_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-              </select>
+                options={PERIOD_OPTIONS}
+                onChange={v => { setPeriodWeeks(v); setSelectedDayKey(null) }}
+                ariaLabel="Período"
+              />
             </div>
 
             <div className="habit-heatmap-center">
@@ -358,14 +358,13 @@ export default function Habitos() {
                     {habit.scheduleItemId ? (
                       <span className="subpage-controls-note" style={{ marginRight: 0 }}>frequência vem da agenda</span>
                     ) : (
-                      <select
+                      <Dropdown
                         className="calendar-select"
                         value={editingFrequency}
-                        onChange={e => setEditingFrequency(Number(e.target.value))}
-                        aria-label="Frequência"
-                      >
-                        {FREQUENCY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                      </select>
+                        options={FREQUENCY_OPTIONS}
+                        onChange={setEditingFrequency}
+                        ariaLabel="Frequência"
+                      />
                     )}
                     <button className="btn btn-primary btn-sm btn-icon" onClick={saveRename} aria-label="Salvar"><RiCheckLine size={13} /></button>
                     <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setEditingId(null)} aria-label="Cancelar"><RiCloseLine size={13} /></button>
@@ -407,14 +406,13 @@ export default function Habitos() {
                 onKeyDown={e => e.key === 'Enter' && handleAdd()}
                 placeholder="Nome do hábito"
               />
-              <select
+              <Dropdown
                 className="calendar-select"
                 value={newFrequency}
-                onChange={e => setNewFrequency(Number(e.target.value))}
-                aria-label="Frequência"
-              >
-                {FREQUENCY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-              </select>
+                options={FREQUENCY_OPTIONS}
+                onChange={setNewFrequency}
+                ariaLabel="Frequência"
+              />
               <button className="btn btn-primary btn-sm btn-icon" onClick={handleAdd} aria-label="Salvar"><RiCheckLine size={14} /></button>
               <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setAdding(false); setNewName(''); setNewFrequency(7) }} aria-label="Cancelar"><RiCloseLine size={14} /></button>
             </div>

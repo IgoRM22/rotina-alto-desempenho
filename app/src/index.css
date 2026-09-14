@@ -444,22 +444,15 @@ body::after {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10,9,8,.72);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  /* Acima do modal do assistente (1400) — abrir o criador de personagem a
-     partir do chat (editar) tem que aparecer NA FRENTE dele, não atrás. */
+  background: rgba(10,9,8,.82);
+  /* Sem backdrop-filter animado por trás de outro elemento com blur (a nav)
+     — essa combinação pisca em várias GPUs de celular. Um fundo mais escuro
+     e sólido já separa o modal do conteúdo sem precisar de blur. */
   z-index: 1500;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  animation: modal-overlay-in .18s ease;
-}
-
-@keyframes modal-overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .modal {
@@ -566,6 +559,69 @@ body::after {
   box-shadow: 0 0 0 2px var(--s1), 0 0 0 3px var(--border2);
 }
 
+/* Botão "qualquer cor" — mostra o disco arco-íris; o <input type=color> de
+   verdade fica em cima, invisível, só capturando o clique. */
+.character-swatch-custom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  overflow: hidden;
+}
+
+.character-swatch-custom input[type="color"] {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+/* ── OPÇÕES COM PREVIEW (tipo, cabelo, equipamento) ── */
+.character-option-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.character-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 64px;
+  padding: 8px 4px 6px;
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+
+.character-option:hover { border-color: rgba(224,100,69,.35); }
+
+.character-option.active {
+  border-color: var(--coral);
+  background: rgba(224,100,69,.1);
+}
+
+.character-option span {
+  font-size: 10px;
+  color: var(--text3);
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.character-option.active span { color: var(--text2); }
+
 .character-toggle-row {
   display: flex;
   gap: 20px;
@@ -579,6 +635,79 @@ body::after {
   font-size: 13px;
   color: var(--text2);
   cursor: pointer;
+}
+
+/* ── PROGRESSÃO (estilo passe de batalha) ── */
+.battlepass-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border2);
+  padding: 6px;
+}
+
+.battlepass-row {
+  display: grid;
+  grid-template-columns: 28px 40px 1fr 20px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  opacity: .55;
+}
+
+.battlepass-row.is-earned {
+  opacity: 1;
+  background: rgba(214,165,76,.08);
+}
+
+.battlepass-level {
+  font-family: var(--ff-s);
+  font-size: 15px;
+  color: var(--text3);
+  text-align: center;
+}
+
+.battlepass-row.is-earned .battlepass-level {
+  color: var(--gold);
+}
+
+.battlepass-preview {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.battlepass-row:not(.is-earned) .battlepass-preview {
+  filter: grayscale(1);
+}
+
+.battlepass-label {
+  font-size: 12.5px;
+  color: var(--text2);
+}
+
+.battlepass-row.is-earned .battlepass-label {
+  color: var(--text);
+}
+
+.battlepass-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text3);
+}
+
+.battlepass-row.is-earned .battlepass-icon {
+  color: var(--sage);
 }
 
 /* ── TAGS / PILLS ── */
@@ -1609,6 +1738,74 @@ body::after {
   background-size: 8px 6px;
 }
 
+/* ── DROPDOWN CUSTOMIZADO (substitui <select> nativo onde o popup do SO
+   ignorava o tema escuro — Métricas, frequência de hábito etc.) ── */
+.dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-family: var(--ff-b);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  height: 24px;
+  min-height: 24px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+
+.dropdown-trigger:hover { border-color: rgba(224,100,69,.35); color: var(--text); }
+.dropdown-trigger[aria-expanded="true"] { border-color: var(--coral); color: var(--text); }
+.dropdown-trigger svg { flex-shrink: 0; opacity: .7; }
+.dropdown-trigger span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 26vw;
+}
+
+@media (max-width: 720px) {
+  .dropdown-trigger span { max-width: 34vw; }
+}
+
+.dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+.dropdown-panel {
+  z-index: 2001;
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  box-shadow: 0 12px 28px rgba(0,0,0,.55);
+  padding: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.dropdown-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-family: var(--ff-b);
+  font-size: 12.5px;
+  padding: 8px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dropdown-option:hover { background: var(--s2); color: var(--text); }
+.dropdown-option.active { color: var(--coral); }
+
 .calendar-select:hover {
   border-color: rgba(224,100,69,.35);
   color: var(--text);
@@ -2302,7 +2499,9 @@ body::after {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 1300;
+  /* Acima de qualquer modal (1500) — um erro ao salvar precisa aparecer por
+     cima do formulário que ainda está aberto, não atrás dele. */
+  z-index: 1600;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2319,6 +2518,89 @@ body::after {
 
 .toast.success { border-left: 3px solid var(--sage); }
 .toast.error { border-left: 3px solid var(--coral); }
+
+/* ── LEVEL-UP TOAST ── */
+/* Marco (subir de nível) merece mais presença que um toast de texto solto,
+   mas ainda precisa sumir sozinho — usa o mesmo canto que o toast comum pra
+   não competir com ele por espaço, só que com o próprio cartão. */
+.levelup-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1650;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 340px;
+  padding: 12px 16px 12px 12px;
+  background: linear-gradient(160deg, var(--s2), var(--s1));
+  border: 1px solid rgba(224,100,69,.4);
+  box-shadow: 0 10px 28px rgba(0,0,0,.4), 0 0 0 1px rgba(224,100,69,.08);
+  cursor: pointer;
+  animation: levelup-in .38s cubic-bezier(.16,.84,.44,1) both;
+}
+
+.levelup-toast-avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 35% 30%, #2a2521, #17140f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.levelup-toast-badge {
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--ff-b);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  background: linear-gradient(180deg, #ea7a5c, var(--coral));
+  border-radius: 999px;
+  padding: 2px 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}
+
+.levelup-toast-body { min-width: 0; }
+
+.levelup-toast-title {
+  font-family: var(--ff-b);
+  font-size: 13px;
+  color: var(--text);
+  margin: 0 0 2px;
+  letter-spacing: 0.02em;
+}
+
+.levelup-toast-detail {
+  font-size: 12px;
+  color: var(--text2);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.levelup-toast-detail strong { color: var(--coral); }
+
+@keyframes levelup-in {
+  from { opacity: 0; transform: translateY(14px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 720px) {
+  .levelup-toast {
+    right: 12px;
+    left: 12px;
+    bottom: calc(90px + env(safe-area-inset-bottom));
+    max-width: none;
+  }
+}
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(10px); }
@@ -3268,18 +3550,19 @@ details > summary::marker {
 
 .plan-more-menu {
   position: relative;
+  isolation: isolate;
 }
 
+/* position/top/right vêm inline (coordenadas reais do botão, calculadas em
+   JS) — o painel é desenhado num portal direto no body, então não tem
+   ancestral aqui que possa recortar ou empilhar por cima dele. */
 .plan-more-menu-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 60;
+  z-index: 9999;
   background: var(--s1);
   border: 1px solid var(--border2);
   padding: 4px;
   min-width: 180px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  box-shadow: 0 8px 24px rgba(0,0,0,.6);
 }
 
 .plan-more-menu-item {
@@ -3773,6 +4056,19 @@ details > summary::marker {
 .habit-heatmap-cell.level-3 { background: rgba(143,174,131,.74); }
 .habit-heatmap-cell.level-4 { background: var(--sage); }
 
+/* No mobile os quadradinhos de 12px viravam praticamente ilegíveis/difíceis
+   de tocar — aumenta célula, espaçamento e rótulos dos meses proporcionalmente. */
+@media (max-width: 720px) {
+  .habit-heatmap-weekdays { grid-template-rows: repeat(7, 16px); font-size: 10px; }
+  .habit-heatmap-grid { grid-template-rows: repeat(7, 16px); grid-auto-columns: 16px; gap: 4px; }
+  .habit-heatmap-cell { width: 16px; height: 16px; border-radius: 4px; }
+  .habit-heatmap-months-grid { grid-auto-rows: 16px; font-size: 10px; }
+  .habit-heatmap-row { gap: 8px; }
+  .habit-heatmap-wrap { padding: 14px 10px; }
+  .habit-heatmap-legend .habit-heatmap-cell { width: 13px; height: 13px; }
+  .habit-heatmap-legend { font-size: 12px; }
+}
+
 .habit-manage-list {
   display: flex;
   flex-direction: column;
@@ -3803,6 +4099,29 @@ details > summary::marker {
   font-size: 14px;
   cursor: pointer;
   padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* No mobile a linha não tem largura pra nome + selos + nota + 2 botões lado
+   a lado — isso forçava o nome a quebrar palavra por palavra. Em vez disso,
+   o nome vira sua própria linha (largura cheia) e o resto flui embaixo. */
+@media (max-width: 720px) {
+  .habit-manage-row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .habit-manage-name {
+    flex: 1 1 100%;
+    white-space: normal;
+    font-size: 15px;
+  }
+
+  .habit-manage-row .subpage-controls-note {
+    margin-right: auto;
+  }
 }
 
 .habit-month-cell {
@@ -4418,7 +4737,6 @@ details > summary::marker {
 
 @media (max-width: 720px) {
   .subpage-controls { justify-content: flex-start; }
-  .plan-more-menu-panel,
   .month-calendar-picker-panel { right: auto; left: 0; transform: none; }
   .calendar-bar-overflow-panel { left: auto; right: 0; }
 }
@@ -5150,27 +5468,33 @@ details > summary::marker {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  border: 1px solid rgba(224,100,69,.4);
-  background: var(--s1);
+  /* Anel duplo (borda escura + halo coral por fora) em vez de uma linha
+     fina só — dá profundidade em vez de parecer um adesivo colado. */
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1.5px rgba(224,100,69,.55), 0 8px 20px rgba(0,0,0,.45);
+  background: radial-gradient(120% 120% at 30% 20%, var(--s2), var(--s1) 70%);
   color: var(--coral);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  /* Corta o retrato (quadrado) na forma do círculo — sem isso, os cantos
+     do quadro do rosto vazavam pra fora da bolinha, ficando com uma
+     silhueta quadrada colada num fundo redondo. */
+  overflow: hidden;
   /* Fica semi-transparente em repouso — em telas com listas/tabelas, a
      posição fixa cai em cima de botões de verdade (editar, excluir,
      "adicionar"); nunca esconder o que está atrás por completo evita que
      ela vire um bloqueio permanente de clique visual. */
-  opacity: .9;
-  transition: opacity .2s, border-color .2s, transform .15s;
+  opacity: .92;
+  transition: opacity .2s, box-shadow .2s, transform .15s;
   animation: star-float 3.4s ease-in-out infinite;
 }
 
 .assistant-fab:hover,
 .assistant-fab:focus-visible {
   opacity: 1;
-  border-color: var(--coral);
+  box-shadow: 0 0 0 1.5px var(--coral), 0 8px 22px rgba(0,0,0,.5);
   transform: scale(1.06);
 }
 
@@ -5186,30 +5510,9 @@ details > summary::marker {
    atraso "elástico" atrás do cursor) e flutuação pausada. */
 .assistant-fab.is-dragging {
   opacity: 1;
-  transform: scale(1.1);
   transition: none;
   cursor: grabbing;
   animation-play-state: paused;
-}
-
-/* No instante em que solta, se debate um instante antes de acomodar —
-   depois volta sozinho pro star-float de sempre (a classe só dura 480ms). */
-.assistant-fab.is-escaping {
-  animation: escape-wiggle .48s ease;
-}
-
-@keyframes escape-wiggle {
-  0%   { transform: rotate(0deg) scale(1.1); }
-  15%  { transform: rotate(-20deg) scale(1.1); }
-  32%  { transform: rotate(16deg) scale(1.04); }
-  48%  { transform: rotate(-12deg) scale(1); }
-  64%  { transform: rotate(8deg); }
-  80%  { transform: rotate(-4deg); }
-  100% { transform: rotate(0deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .assistant-fab.is-escaping { animation: none; }
 }
 
 @media (max-width: 720px) {
@@ -6016,23 +6319,28 @@ body.has-modal-open .assistant-fab { display: none; }
   color: var(--text);
 }
 
+/* Pílula na base do anel em vez de um segundo círculo colado — dois círculos
+   sobrepostos (o anel + um selo redondo) competiam visualmente; a pílula
+   completa o anel como uma "etiqueta pendurada" em vez de duplicar a forma. */
 .gami-ring-badge {
   position: absolute;
-  bottom: -4px;
-  right: -4px;
-  min-width: 34px;
-  height: 34px;
-  padding: 0 6px;
-  border-radius: 50%;
-  background: var(--coral);
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ea7a5c, var(--coral));
   color: #fff;
   font-family: var(--ff-s);
-  font-size: 19px;
+  font-size: 13px;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid var(--s1);
+  line-height: 1;
+  border: 2px solid var(--s1);
+  box-shadow: 0 3px 8px rgba(224,100,69,.45);
 }
 
 .gami-next-unlock {

@@ -1,5 +1,6 @@
 import React from 'react'
 import PixelCharacter from './PixelCharacter'
+import BoltIcon from './BoltIcon'
 
 const RADIUS = 46
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
@@ -31,7 +32,10 @@ export default function GamificationCard({ level, xp, xpToNext, pct, badges, cha
             <span className="gami-ring-level">{level}</span>
           )}
         </div>
-        <span className="gami-ring-badge">{level}</span>
+        <span className="gami-ring-badge">
+          <BoltIcon size={11} color="#fff" />
+          {level}
+        </span>
       </div>
 
       <div className="gami-info">

@@ -20,11 +20,15 @@ export const FRAME_ROW = 2 // linha 2 da folha "walk" = de frente (0=costas,1=es
 export const FACE_CROP = { x: 14, y: 9, w: 34, h: 34 }
 export const BODY_CROP = { x: 6, y: 4, w: 52, h: 56 }
 
+// Cada tipo de corpo tem sua própria silhueta — usar a calça "macho" (mais
+// larga nos ombros, mais estreita no quadril) em cima de um corpo diferente
+// é exatamente o que fazia ela "vazar pra fora" nos tipos Guerreira/Colosso/
+// Aprendiz. Cada um usa a calça/bota desenhada pra sua própria silhueta.
 export const BODY_TYPES = [
-  { value: 'male', label: 'Guerreiro', head: 'male' },
-  { value: 'female', label: 'Guerreira', head: 'female' },
-  { value: 'muscular', label: 'Colosso', head: 'male' },
-  { value: 'teen', label: 'Aprendiz', head: 'male' },
+  { value: 'male', label: 'Guerreiro', head: 'male', legs: 'pants', feet: 'boots' },
+  { value: 'female', label: 'Guerreira', head: 'female', legs: 'pants_thin', feet: 'boots_thin' },
+  { value: 'muscular', label: 'Colosso', head: 'male', legs: 'pants_muscular', feet: 'boots' },
+  { value: 'teen', label: 'Aprendiz', head: 'male', legs: 'pants_thin', feet: 'boots_thin' },
 ]
 
 export const HAIR_STYLES = [
@@ -35,10 +39,35 @@ export const HAIR_STYLES = [
   { value: 'bedhead', label: 'Bagunçado' },
 ]
 
+// Tons de pele reais (não recolorem o sprite pra qualquer cor arbitrária —
+// ficam dentro da faixa de tom de pele humano, senão o multiply distorce a
+// sombra/luz já desenhada no sprite e fica estranho).
+export const SKIN_TONES = [
+  '#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#5a3825',
+]
+
+// O cabelo usa uma técnica diferente da pele/roupa (colorize — troca de
+// matiz preservando a luz/sombra original, ver getColorized em
+// PixelCharacter.jsx) porque o sprite nasce ruivo e um simples multiply não
+// consegue virar azul/verde/rosa a partir disso (só escurece o laranja).
+// Com colorize, QUALQUER cor funciona — a paleta abaixo é só sugestão de
+// atalho, mas o seletor de cor livre aceita qualquer hex.
+export const HAIR_COLORS = [
+  '#0d0906', '#5b3a1e', '#d4a017', '#E06445', '#6C93B8',
+]
+
+// Branco puro multiplicado por qualquer cor não muda nada (255*x/255 = x) —
+// é o sentinela "sem tinta", pra quem já tinha um personagem ANTES dessa
+// funcionalidade existir continuar exatamente igual até escolher uma cor de
+// propósito, em vez de ver a cor mudar sozinha na próxima vez que abrir o app.
+const NO_TINT = '#ffffff'
+
 export const DEFAULT_CHARACTER = {
   name: '',
   body: 'male',
   hair: 'plain',
+  skinColor: NO_TINT,
+  hairColor: NO_TINT,
 }
 
 // Cada item pertence a um "slot" (uma peça do corpo) e desbloqueia num
@@ -47,16 +76,17 @@ export const DEFAULT_CHARACTER = {
 // forte), então subir de nível troca a peça de cada slot em separado, sem
 // dois itens do mesmo nível competindo entre si.
 export const UNLOCKS = [
-  { level: 2, slot: 'torso', item: 'vest', label: 'Colete de pano' },
+  { level: 2, slot: 'torso', item: 'leather', label: 'Armadura de couro' },
   { level: 3, slot: 'hat', item: 'hood', label: 'Capuz' },
   { level: 4, slot: 'weapon', item: 'longsword', label: 'Espada longa' },
-  { level: 5, slot: 'torso', item: 'leather', label: 'Armadura de couro' },
+  { level: 5, slot: 'hat', item: 'bascinet', label: 'Bacinete' },
   { level: 6, slot: 'hat', item: 'norman', label: 'Elmo normando' },
   { level: 7, slot: 'shield', item: 'round', label: 'Escudo redondo' },
   { level: 8, slot: 'hat', item: 'horned', label: 'Elmo com chifres' },
   { level: 9, slot: 'torso', item: 'legion', label: 'Armadura de legionário' },
   { level: 10, slot: 'weapon', item: 'katana', label: 'Katana' },
   { level: 11, slot: 'hat', item: 'barbarian', label: 'Elmo bárbaro' },
+  { level: 12, slot: 'hat', item: 'kettle', label: 'Elmo de aba' },
   { level: 13, slot: 'torso', item: 'plate', label: 'Armadura de placas' },
   { level: 15, slot: 'hat', item: 'wizard', label: 'Chapéu de mago' },
 ]
@@ -77,6 +107,21 @@ const ASSET_PATH = {
   weapon: (v) => `${LPC_BASE}/weapon/${v}.png`,
   shield: (v) => `${LPC_BASE}/shield/${v}.png`,
 }
+
+// A armadura também é desenhada pra uma silhueta de corpo específica — mesmo
+// problema da calça. "male" e "muscular" tomam emprestado o corte macho
+// (não existe variante própria pra colosso na fonte); female/teen usam o
+// arquivo próprio, baixado à parte.
+const TORSO_BODY_SUFFIX = { male: '', muscular: '', female: '_female', teen: '_teen' }
+const torsoFile = (item, bodyValue) => `${item}${TORSO_BODY_SUFFIX[bodyValue] ?? ''}`
+
+// Roupa básica (camiseta) que todo personagem já nasce vestindo, antes de
+// desbloquear a primeira armadura no nível 2 — sem isso o boneco ficava sem
+// camisa até subir de nível, o que lia como "sem roupa" mesmo sendo só um
+// espaço vazio na progressão. Some só se a pessoa escolher "ver sem
+// equipamento" no editor (sentinela "bare", ver buildLayers) ou tiver uma
+// armadura de verdade equipada por cima.
+const BASE_TORSO_ITEM = 'shirt'
 
 export const SLOTS = ['torso', 'hat', 'weapon', 'shield']
 
@@ -112,7 +157,7 @@ export function resolveEquipped(character, level) {
   const result = {}
   SLOTS.forEach((slot) => {
     const pick = chosen[slot]
-    if (pick === 'none') { result[slot] = null; return }
+    if (pick === 'none' || pick === 'bare') { result[slot] = null; return }
     if (pick) {
       const match = UNLOCKS.find((u) => u.slot === slot && u.item === pick && u.level <= level)
       if (match) { result[slot] = match; return }
@@ -141,7 +186,6 @@ const TINTS = {
 // só as colunas de x onde a calça realmente tem pixel (em qualquer altura do
 // quadro, o que já exclui as colunas do braço) — esticadas pra baixo até a
 // bota. Ver getLegTinted em PixelCharacter.jsx.
-export const LEG_MASK_SRC_KEY = 'pants'
 export const LEG_TINT_Y = 44 // onde a calça começa no quadro de 64px
 export const LEG_TINT_COLOR = TINTS.legs
 
@@ -157,12 +201,21 @@ export function buildLayers(character, level) {
   const bodyDef = BODY_TYPES.find((b) => b.value === cfg.body) || BODY_TYPES[0]
   const equipped = resolveEquipped(character, level)
   const layers = [
-    { src: ASSET_PATH.body(cfg.body), legTint: LEG_TINT_COLOR, legMaskSrc: ASSET_PATH.legs(LEG_MASK_SRC_KEY) },
-    { src: ASSET_PATH.legs('pants'), tint: TINTS.legs },
-    { src: ASSET_PATH.feet('boots'), tint: TINTS.feet },
-    ...(equipped.torso ? [{ src: ASSET_PATH.torso(equipped.torso.item) }] : []),
-    { src: ASSET_PATH.head(bodyDef.head) },
-    { src: ASSET_PATH.hair(cfg.hair) },
+    {
+      src: ASSET_PATH.body(cfg.body),
+      skinTint: cfg.skinColor,
+      legTint: LEG_TINT_COLOR,
+      legMaskSrc: ASSET_PATH.legs(bodyDef.legs),
+    },
+    { src: ASSET_PATH.legs(bodyDef.legs), tint: TINTS.legs },
+    { src: ASSET_PATH.feet(bodyDef.feet), tint: TINTS.feet },
+    ...(equipped.torso
+      ? [{ src: ASSET_PATH.torso(torsoFile(equipped.torso.item, cfg.body)) }]
+      : character?.equipped?.torso === 'bare'
+        ? []
+        : [{ src: ASSET_PATH.torso(torsoFile(BASE_TORSO_ITEM, cfg.body)) }]),
+    { src: ASSET_PATH.head(bodyDef.head), tint: cfg.skinColor },
+    { src: ASSET_PATH.hair(cfg.hair), colorize: cfg.hairColor === NO_TINT ? null : cfg.hairColor },
     ...(equipped.hat ? [{ src: ASSET_PATH.hat(equipped.hat.item) }] : []),
     ...(equipped.shield ? [{ src: ASSET_PATH.shield(equipped.shield.item) }] : []),
     ...(equipped.weapon ? [{ src: ASSET_PATH.weapon(equipped.weapon.item) }] : []),

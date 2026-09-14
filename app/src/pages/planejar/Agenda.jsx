@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
@@ -381,6 +382,12 @@ export default function Cronograma() {
   const [now, setNow] = useState(new Date())
   const [planDate, setPlanDate] = useState(new Date())
   const [showHistory, setShowHistory] = useState(false)
+  // O menu "..." (Clonar semana) vazava por baixo do grid da semana em
+  // algumas telas — em vez de brigar com overflow/stacking do layout ao
+  // redor, ele agora é desenhado direto no body via portal, sempre por cima
+  // de tudo, posicionado pelas coordenadas reais do botão.
+  const [moreMenuPos, setMoreMenuPos] = useState(null)
+  const moreMenuBtnRef = useRef(null)
   const [calendarCursor, setCalendarCursor] = useState(() => {
     const current = new Date()
     return new Date(current.getFullYear(), current.getMonth(), 1)
@@ -597,6 +604,11 @@ export default function Cronograma() {
           ? (item.planKey === weekMeta.key || weekMeta.legacyKeys.includes(item.planKey))
           : (weekMeta.key === currentWeekMeta.key || weekMeta.legacyKeys.includes(legacyWeekKey))
         if (!matchesWeek) return false
+        // Rotina do dia a dia (diário, dias de semana, fim de semana) já vive
+        // na visão semanal — repeti-la em quase toda célula do mês era o que
+        // deixava o calendário poluído. Aqui só entram compromissos pontuais
+        // ou com poucos dias por semana (agenda "de exceção", não a rotina).
+        if (getItemDays(item).length > 3) return false
         return getItemDays(item).includes(dayName)
       })
       byDay[cell.key] = dayItems.sort((a, b) => sortKey(a) - sortKey(b))
@@ -664,6 +676,29 @@ export default function Cronograma() {
     const current = new Date()
     setCalendarCursor(new Date(current.getFullYear(), current.getMonth(), 1))
   }
+
+  const toggleMoreMenu = () => {
+    if (moreMenuPos) { setMoreMenuPos(null); return }
+    const rect = moreMenuBtnRef.current.getBoundingClientRect()
+    setMoreMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right })
+  }
+
+  useEffect(() => {
+    if (!moreMenuPos) return undefined
+    const close = () => setMoreMenuPos(null)
+    const onKeyDown = (e) => { if (e.key === 'Escape') close() }
+    // capture=true no scroll pra fechar mesmo quando quem rola é um
+    // container interno (não só a janela), evitando o menu "flutuar" fora
+    // do lugar do botão que abriu ele.
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [moreMenuPos])
 
   const handleCloneWeek = async () => {
     if (scopedItems.length === 0) {
@@ -938,16 +973,32 @@ export default function Cronograma() {
               <RiArrowRightSLine size={16} aria-hidden="true" />
             </button>
             <button className="btn btn-ghost btn-sm plan-nav-today" onClick={resetPlanToCurrent}>Hoje</button>
-            <details className="plan-more-menu">
-              <summary className="btn btn-ghost btn-sm btn-icon" aria-label="Mais ações">
+            <div className="plan-more-menu">
+              <button
+                ref={moreMenuBtnRef}
+                type="button"
+                className="btn btn-ghost btn-sm btn-icon"
+                aria-label="Mais ações"
+                onClick={toggleMoreMenu}
+              >
                 <RiMoreLine size={16} aria-hidden="true" />
-              </summary>
-              <div className="plan-more-menu-panel">
-                <button type="button" className="plan-more-menu-item" onClick={handleCloneWeek}>
-                  <RiFileCopyLine size={14} aria-hidden="true" /> Clonar semana
-                </button>
-              </div>
-            </details>
+              </button>
+              {moreMenuPos && createPortal(
+                <div
+                  className="plan-more-menu-panel"
+                  style={{ position: 'fixed', top: moreMenuPos.top, right: moreMenuPos.right }}
+                >
+                  <button
+                    type="button"
+                    className="plan-more-menu-item"
+                    onClick={() => { setMoreMenuPos(null); handleCloneWeek() }}
+                  >
+                    <RiFileCopyLine size={14} aria-hidden="true" /> Clonar semana
+                  </button>
+                </div>,
+                document.body,
+              )}
+            </div>
           </div>
         )}
 

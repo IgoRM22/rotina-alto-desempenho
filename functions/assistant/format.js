@@ -63,6 +63,16 @@ const agendaChangeSummary = (changes) => {
   if (changes.timeStart) parts.push(`início ${changes.timeStart}`);
   if (changes.timeEnd) parts.push(`fim ${changes.timeEnd}`);
   if (changes.category) parts.push(`categoria ${changes.category}`);
+  if (changes.repeat !== undefined) {
+    const repeatLabel = {
+      "": "sem repetição",
+      daily: "todo dia",
+      weekdays: "dias de semana",
+      weekend: "fim de semana",
+      custom: `dias específicos${changes.repeatDays?.length ? ` (${changes.repeatDays.join(", ")})` : ""}`,
+    }[changes.repeat] ?? changes.repeat;
+    parts.push(`recorrência: ${repeatLabel}`);
+  }
   return parts.join(", ");
 };
 

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react'
-import { FRAME_SIZE, FRAME_ROW, FACE_CROP, BODY_CROP, buildLayers } from '../utils/character'
+import { FRAME_SIZE, FRAME_ROW, FACE_CROP, BODY_CROP, LEG_TINT_Y, buildLayers } from '../utils/character'
+
+const ROWS_PER_SHEET = 4
 
 const imageCache = new Map()
 
@@ -34,6 +36,142 @@ const getTinted = (img, tint) => {
   octx.globalCompositeOperation = 'destination-in'
   octx.drawImage(img, 0, 0)
   tintCache.set(key, off)
+  return off
+}
+
+const hexToRgb = (hex) => {
+  const clean = hex.replace('#', '')
+  return [0, 2, 4].map((i) => parseInt(clean.slice(i, i + 2), 16))
+}
+
+const rgbToHsl = (r, g, b) => {
+  r /= 255; g /= 255; b /= 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  let h = 0
+  let s = 0
+  const l = (max + min) / 2
+  const d = max - min
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1))
+    if (max === r) h = ((g - b) / d) % 6
+    else if (max === g) h = (b - r) / d + 2
+    else h = (r - g) / d + 4
+    h *= 60
+    if (h < 0) h += 360
+  }
+  return [h, s, l]
+}
+
+const hslToRgb = (h, s, l) => {
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l - c / 2
+  let [r, g, b] = [0, 0, 0]
+  if (h < 60) [r, g, b] = [c, x, 0]
+  else if (h < 120) [r, g, b] = [x, c, 0]
+  else if (h < 180) [r, g, b] = [0, c, x]
+  else if (h < 240) [r, g, b] = [0, x, c]
+  else if (h < 300) [r, g, b] = [x, 0, c]
+  else [r, g, b] = [c, 0, x]
+  return [(r + m) * 255, (g + m) * 255, (b + m) * 255]
+}
+
+// Substitui matiz+saturação preservando a LUMINOSIDADE original de cada
+// pixel — é o que faz um recolorir de verdade pra qualquer cor (multiply só
+// escurece, não vira azul/verde/rosa a partir de um sprite ruivo). Cada
+// pixel vira "a cor alvo, mas com a mesma luz e sombra que o desenho já
+// tinha" — é a técnica de troca de paleta usada de verdade em pixel art.
+const colorizeCache = new Map()
+const getColorized = (img, hex) => {
+  const key = `${img.src}|colorize|${hex}`
+  if (colorizeCache.has(key)) return colorizeCache.get(key)
+
+  const [tr, tg, tb] = hexToRgb(hex)
+  const [targetH, targetS] = rgbToHsl(tr, tg, tb)
+
+  const off = document.createElement('canvas')
+  off.width = img.width
+  off.height = img.height
+  const octx = off.getContext('2d')
+  octx.drawImage(img, 0, 0)
+  const imageData = octx.getImageData(0, 0, off.width, off.height)
+  const { data } = imageData
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue
+    const [, , l] = rgbToHsl(data[i], data[i + 1], data[i + 2])
+    const [r, g, b] = hslToRgb(targetH, targetS, l)
+    data[i] = r
+    data[i + 1] = g
+    data[i + 2] = b
+  }
+  octx.putImageData(imageData, 0, 0)
+
+  colorizeCache.set(key, off)
+  return off
+}
+
+// Recolore só as COLUNAS de x onde a calça (o "molde") tem pixel em algum
+// ponto do quadro — isso naturalmente exclui o braço (a calça nunca tem
+// pixel lá), então esticar essas colunas até o fim do quadro cobre a perna
+// de verdade sem pintar a mão/braço junto.
+// underlyingImg é o que aparece fora da perna (já pode vir com a cor de pele
+// escolhida aplicada); tintSourceImg é sempre a imagem ORIGINAL, usada só
+// pra calcular a cor da perna — evita multiplicar a mesma imagem duas vezes
+// (pele + calça) e a perna sair escura demais.
+const legTintCache = new Map()
+// underlyingImg normalmente é um <canvas> (resultado de getTinted com a cor
+// de pele) — canvas não tem `.src`, então a chave caía sempre em "canvas"
+// pra QUALQUER tom de pele, e o cache devolvia pra sempre o resultado da
+// primeira cor escolhida na sessão, ignorando as trocas seguintes. underlyingKey
+// carrega o valor que realmente diferencia esse canvas (o tom de pele usado
+// pra gerá-lo) pra entrar na chave do cache.
+const getLegTinted = (underlyingImg, tintSourceImg, maskImg, tint, yStart, underlyingKey = 'canvas') => {
+  const key = `${underlyingImg.src || underlyingKey}|${tintSourceImg.src}|leg|${maskImg.src}|${tint}|${yStart}`
+  if (legTintCache.has(key)) return legTintCache.get(key)
+
+  const maskCanvas = document.createElement('canvas')
+  maskCanvas.width = maskImg.width
+  maskCanvas.height = maskImg.height
+  const mctx = maskCanvas.getContext('2d')
+  mctx.drawImage(maskImg, 0, 0)
+  const maskData = mctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height).data
+
+  const rows = Math.round(tintSourceImg.height / FRAME_SIZE)
+  const legColumnsByRow = []
+  for (let r = 0; r < rows; r++) {
+    const cols = new Array(tintSourceImg.width).fill(false)
+    for (let y = r * FRAME_SIZE; y < (r + 1) * FRAME_SIZE; y++) {
+      for (let x = 0; x < tintSourceImg.width; x++) {
+        if (maskData[(y * maskCanvas.width + x) * 4 + 3] > 40) cols[x] = true
+      }
+    }
+    legColumnsByRow.push(cols)
+  }
+
+  const tinted = getTinted(tintSourceImg, tint)
+
+  const off = document.createElement('canvas')
+  off.width = tintSourceImg.width
+  off.height = tintSourceImg.height
+  const octx = off.getContext('2d')
+  octx.drawImage(underlyingImg, 0, 0)
+  const legH = FRAME_SIZE - yStart
+  legColumnsByRow.forEach((cols, r) => {
+    const y = r * FRAME_SIZE + yStart
+    let runStart = -1
+    for (let x = 0; x <= tintSourceImg.width; x++) {
+      const isLeg = x < tintSourceImg.width && cols[x]
+      if (isLeg && runStart === -1) runStart = x
+      if (!isLeg && runStart !== -1) {
+        const w = x - runStart
+        octx.drawImage(tinted, runStart, y, w, legH, runStart, y, w, legH)
+        runStart = -1
+      }
+    }
+  })
+
+  legTintCache.set(key, off)
   return off
 }
 
@@ -89,13 +227,19 @@ export default function PixelCharacter({ character, level = 1, size = 40, animat
     let cancelled = false
     const layers = buildLayers(character, level)
 
-    Promise.all(layers.map((l) => loadImage(l.src).then((img) => ({ img, tint: l.tint, widen: l.widen }))))
+    Promise.all(layers.map((l) => Promise.all([
+      loadImage(l.src),
+      l.legMaskSrc ? loadImage(l.legMaskSrc) : Promise.resolve(null),
+    ]).then(([img, maskImg]) => ({ img, maskImg, ...l }))))
       .then((loaded) => {
         if (cancelled) return
-        imagesRef.current = loaded.map(({ img, tint, widen }) => {
+        imagesRef.current = loaded.map(({ img, maskImg, tint, colorize, widen, skinTint, legTint }) => {
           let out = img
           if (widen) out = getWidened(out, widen)
-          if (tint) out = getTinted(out, tint)
+          if (skinTint) out = getTinted(out, skinTint)
+          if (legTint && maskImg) out = getLegTinted(out, img, maskImg, legTint, LEG_TINT_Y, skinTint || 'none')
+          else if (colorize) out = getColorized(out, colorize)
+          else if (tint) out = getTinted(out, tint)
           return out
         })
         draw()

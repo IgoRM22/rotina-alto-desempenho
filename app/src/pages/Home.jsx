@@ -19,6 +19,7 @@ import Tabs from '../components/Tabs'
 import TaskDetailModal from '../components/TaskDetailModal'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
+import LevelUpToast from '../components/LevelUpToast'
 import BoltIcon from '../components/BoltIcon'
 import { todayKey, getWeekKey, dateKeyFromDate, addDays, MAX_TODAY_TASKS } from '../utils/date'
 import { bestCurrentStreak, isDailyHabit } from '../utils/streak'
@@ -76,7 +77,8 @@ export default function Home() {
   const [prefs, setPrefs] = useState({})
   const [focusSessions, setFocusSessions] = useState([])
   const [character, setCharacter] = useState(null)
-  const prevLevelRef = React.useRef(null)
+  const [levelUp, setLevelUp] = useState(null)
+  const levelCheckTimer = React.useRef(null)
   const [viewingTodo, setViewingTodo] = useState(null)
   // Intenção do dia: renovada toda manhã (ou plantada pelo Noturno da noite
   // anterior). "O que merece atenção hoje" — não é sobre tarefas, é sobre
@@ -121,15 +123,26 @@ export default function Home() {
     [todos, habits, focusSessions, goals],
   )
 
-  // Toast só quando o nível sobe de verdade (não no primeiro cálculo da
-  // sessão) — evita disparar em todo carregamento de página.
+  // Celebração só quando o nível sobe de verdade — nunca no carregamento da
+  // página. O nível calculado oscila nos primeiros instantes porque cada
+  // listener (tarefas, hábitos, foco, metas) chega em momento diferente do
+  // Firestore, então comparar "no ato" contra o valor anterior disparava um
+  // falso "subiu de nível" toda vez que a Home montava, ainda no meio do
+  // carregamento. Em vez disso: espera os dados assentarem (debounce) e
+  // compara contra o maior nível já visto, guardado no aparelho — assim só
+  // dispara uma vez por nível de verdade, mesmo trocando de aba ou recarregando.
   useEffect(() => {
-    if (prevLevelRef.current !== null && gami.level > prevLevelRef.current) {
-      const unlocked = UNLOCKS.find((u) => u.level === gami.level)
-      showToast(unlocked ? `🎉 Nível ${gami.level}! Você desbloqueou: ${unlocked.label}.` : `🎉 Nível ${gami.level}! Continue assim.`)
-    }
-    prevLevelRef.current = gami.level
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    clearTimeout(levelCheckTimer.current)
+    levelCheckTimer.current = setTimeout(() => {
+      let lastLevel = 0
+      try { lastLevel = Number(localStorage.getItem('raiodesk-last-level')) || 0 } catch { /* ignore */ }
+      if (lastLevel > 0 && gami.level > lastLevel) {
+        const unlocked = UNLOCKS.find((u) => u.level === gami.level)
+        setLevelUp({ level: gami.level, unlocked: unlocked || null })
+      }
+      try { localStorage.setItem('raiodesk-last-level', String(gami.level)) } catch { /* ignore */ }
+    }, 1200)
+    return () => clearTimeout(levelCheckTimer.current)
   }, [gami.level])
 
   useEffect(() => { setIntentionDraft(dailyLog?.intention || '') }, [dailyLog])
@@ -745,6 +758,14 @@ export default function Home() {
 
       <TaskDetailModal todo={viewingTodo} onClose={() => setViewingTodo(null)} />
       {toast && <Toast msg={toast.msg} type={toast.type} />}
+      {levelUp && (
+        <LevelUpToast
+          level={levelUp.level}
+          unlocked={levelUp.unlocked}
+          character={character}
+          onClose={() => setLevelUp(null)}
+        />
+      )}
     </div>
   )
 }

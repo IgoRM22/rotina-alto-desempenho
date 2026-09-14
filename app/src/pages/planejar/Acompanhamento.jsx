@@ -5,6 +5,7 @@ import {
 } from '../../services/firestore'
 import { dateKeyFromDate, getWeekDates, todayKey } from '../../utils/date'
 import { isDailyHabit, computeStreak, computeWeeklyStreak, weekProgress } from '../../utils/streak'
+import Dropdown from '../../components/Dropdown'
 
 const PERIOD_OPTIONS = [
   { value: '7', label: 'Últimos 7 dias' },
@@ -196,14 +197,13 @@ export default function Acompanhamento() {
     <div className="acompanhamento-page">
       <div className="hoje-section-head">
         <h2 className="hoje-section-title">Foco no período</h2>
-        <select
+        <Dropdown
           className="calendar-select"
           value={period}
-          onChange={e => setPeriod(e.target.value)}
-          aria-label="Período"
-        >
-          {PERIOD_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
+          options={PERIOD_OPTIONS}
+          onChange={setPeriod}
+          ariaLabel="Período"
+        />
       </div>
 
       <div className="metric-grid">

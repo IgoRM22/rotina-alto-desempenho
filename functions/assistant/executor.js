@@ -1,6 +1,23 @@
 const { FieldValue } = require("firebase-admin/firestore");
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+// Mesma lógica de app/src/pages/planejar/Agenda.jsx (getItemDays) — sem essa
+// expansão, consultarAgendaSemana devolvia só o campo bruto "day" (o dia em
+// que o item foi criado) junto do "repeat" separado, e o modelo tinha que
+// adivinhar quais dias um item de repetição realmente cai. Isso já causou o
+// modelo achar que um item "dias úteis" estava só no dia salvo (às vezes um
+// fim de semana, resquício de quando o item foi criado) — expandir aqui
+// tira essa adivinhação do meio.
+const expandItemDays = (item) => {
+  if (!item.repeat) return item.day ? [item.day] : [];
+  if (item.repeat === "daily") return DAYS;
+  if (item.repeat === "weekdays") return ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
+  if (item.repeat === "weekend") return ["Domingo", "Sábado"];
+  if (item.repeat === "custom" && item.repeatDays?.length) return item.repeatDays;
+  return item.day ? [item.day] : [];
+};
+
 const pad2 = (v) => String(v).padStart(2, "0");
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -433,7 +450,8 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       if (dryRun) return {ok: true, name, day, vincularHabito: !!args.vincularHabito};
 
       const {planKey} = weekMetaForArg(clientDate, args.semana);
-      const repeat = ["daily", "weekdays", "weekend"].includes(args.recorrencia) ? args.recorrencia : "";
+      const repeat = ["daily", "weekdays", "weekend", "custom"].includes(args.recorrencia) ? args.recorrencia : "";
+      const repeatDays = repeat === "custom" ? (Array.isArray(args.dias) ? args.dias.filter((d) => DAYS.includes(d)) : []) : [];
       const data = {
         name,
         day,
@@ -442,7 +460,7 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
         category: args.categoria ? String(args.categoria).trim().toLowerCase() : "projeto",
         description: "",
         repeat,
-        repeatDays: [],
+        repeatDays,
         planScope: "week",
         planKey,
         createdAt: FieldValue.serverTimestamp(),
@@ -452,6 +470,7 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       if (repeat === "daily") weeklyTarget = 7;
       else if (repeat === "weekdays") weeklyTarget = 5;
       else if (repeat === "weekend") weeklyTarget = 2;
+      else if (repeat === "custom") weeklyTarget = Math.max(1, Math.min(7, repeatDays.length || 1));
 
       const ref = await base(db, uid, "schedule").add(data);
       let habitId = null;
@@ -489,10 +508,25 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
       if (args.novoHorarioInicio) changes.timeStart = args.novoHorarioInicio;
       if (args.novoHorarioFim) changes.timeEnd = args.novoHorarioFim;
       if (args.novaCategoria) changes.category = String(args.novaCategoria).trim().toLowerCase();
+
+      let weeklyTarget = null;
+      if (["daily", "weekdays", "weekend", "custom", "nenhuma"].includes(args.novaRecorrencia)) {
+        const repeat = args.novaRecorrencia === "nenhuma" ? "" : args.novaRecorrencia;
+        changes.repeat = repeat;
+        changes.repeatDays = repeat === "custom" ? (Array.isArray(args.novosDias) ? args.novosDias.filter((d) => DAYS.includes(d)) : []) : [];
+        if (repeat === "daily") weeklyTarget = 7;
+        else if (repeat === "weekdays") weeklyTarget = 5;
+        else if (repeat === "weekend") weeklyTarget = 2;
+        else if (repeat === "custom") weeklyTarget = Math.max(1, Math.min(7, changes.repeatDays.length || 1));
+        else weeklyTarget = 1;
+      }
       if (Object.keys(changes).length === 0) return {ok: false, error: "dados inválidos"};
 
       if (dryRun) return {ok: true, name: found.match.name, changes};
       await base(db, uid, "schedule").doc(found.match.id).update(changes);
+      if (weeklyTarget !== null && found.match.habitId) {
+        await base(db, uid, "habits").doc(found.match.habitId).update({weeklyTarget});
+      }
       return {ok: true, name: changes.name || found.match.name, changes};
     }
 
@@ -581,11 +615,13 @@ async function executeTool(db, uid, clientDate, name, args, {dryRun = false} = {
           .filter((item) => (!item.planScope || item.planScope === "week") && (!item.planKey || item.planKey === planKey))
           .map((item) => ({
             name: item.name,
-            day: item.day || null,
+            // dias reais em que o item cai nesta semana, já expandidos a
+            // partir de repeat/repeatDays — evita o modelo ter que adivinhar
+            // (e errar) quais dias um item de repetição realmente ocupa.
+            dias: expandItemDays(item),
             timeStart: item.timeStart || null,
             timeEnd: item.timeEnd || null,
             category: item.category || null,
-            repeat: item.repeat || null,
           }));
       return {ok: true, items};
     }

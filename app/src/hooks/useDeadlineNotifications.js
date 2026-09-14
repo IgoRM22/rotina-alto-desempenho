@@ -41,12 +41,24 @@ export function useDeadlineNotifications(items) {
       }
       if (permission !== 'granted') return
 
+      // Navegadores mobile (Chrome/Android incluso) não suportam o construtor
+      // `new Notification(...)` — só o desktop aceita. Em qualquer lugar com
+      // service worker (PWA instalado ou não) é preciso passar pelo registro
+      // do worker (`showNotification`), senão a notificação simplesmente
+      // nunca aparece no celular, sem nem lançar erro visível pro usuário.
+      const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.ready.catch(() => null) : null
+
       for (const item of toNotify) {
-        new Notification('Prazo amanhã — Rotina', {
+        const options = {
           body: `"${item.title}" vence amanhã.`,
           icon: '/rotina-alto-desempenho/icons/icon-192.png',
           tag: `deadline-${item.id}`,
-        })
+        }
+        if (registration) {
+          registration.showNotification('Prazo amanhã — Rotina', options)
+        } else {
+          new Notification('Prazo amanhã — Rotina', options)
+        }
       }
       saveNotified(toNotify.map(i => i.id))
     }

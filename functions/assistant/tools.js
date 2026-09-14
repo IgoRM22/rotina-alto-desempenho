@@ -292,8 +292,20 @@ const TOOLS = [
         categoria: { type: Type.STRING },
         recorrencia: {
           type: Type.STRING,
-          enum: ["daily", "weekdays", "weekend"],
-          description: "Omitir se o item não se repete (dia específico apenas).",
+          enum: ["daily", "weekdays", "weekend", "custom"],
+          description: "Omitir se o item não se repete (dia específico apenas). Use \"custom\" pra um " +
+            "conjunto próprio de dias que não é nem todo dia, nem dias úteis, nem fim de semana (ex: " +
+            "\"terça e quinta\", \"nos dias que não tenho transporte\" quando isso não bater exatamente " +
+            "com um dos padrões prontos) — nesse caso preencha \"dias\" com a lista exata.",
+        },
+        dias: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING,
+            enum: ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"],
+          },
+          description: "Lista de dias da semana em que o item se repete — só usado (e obrigatório) " +
+            "quando recorrencia é \"custom\".",
         },
         semana: {
           type: Type.STRING,
@@ -312,7 +324,7 @@ const TOOLS = [
   },
   {
     name: "editarItemAgenda",
-    description: "Edita nome, dia, horário ou categoria de um item da agenda já existente, buscando pelo nome.",
+    description: "Edita nome, dia, horário, categoria ou recorrência de um item da agenda já existente, buscando pelo nome. Para mudar em quantos/quais dias o item se repete, use novaRecorrencia (e novosDias quando for \"custom\") — isso também atualiza o hábito vinculado, se houver.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -325,6 +337,16 @@ const TOOLS = [
         novoHorarioInicio: { type: Type.STRING, description: "Formato HH:MM." },
         novoHorarioFim: { type: Type.STRING, description: "Formato HH:MM." },
         novaCategoria: { type: Type.STRING },
+        novaRecorrencia: {
+          type: Type.STRING,
+          enum: ["nenhuma", "daily", "weekdays", "weekend", "custom"],
+          description: "Nova recorrência do item: \"nenhuma\" (só no dia único), \"daily\" (todo dia), \"weekdays\" (dias de semana), \"weekend\" (fim de semana) ou \"custom\" (dias específicos, ver novosDias).",
+        },
+        novosDias: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING, enum: ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"] },
+          description: "Dias da semana em que o item passa a ocorrer, quando novaRecorrencia é \"custom\".",
+        },
         semana: {
           type: Type.STRING,
           enum: ["atual", "proxima"],
@@ -372,7 +394,7 @@ const TOOLS = [
   },
   {
     name: "consultarAgendaSemana",
-    description: "Leitura — retorna os compromissos da agenda (cronograma semanal) da semana atual ou da próxima. Use por conta própria quando a pergunta envolver tempo disponível, horários, o que já está agendado, ou quando o usuário mencionar cancelar/mudar um plano — para achar o item antes de dizer que não entendeu.",
+    description: "Leitura — retorna os compromissos da agenda (cronograma semanal) da semana atual ou da próxima. Cada item já vem com \"dias\": a lista dos dias da semana em que ele realmente ocorre (repetição já expandida) — use SEMPRE esse campo pra saber em quais dias um item cai, nunca tente deduzir isso de outra forma. Use por conta própria quando a pergunta envolver tempo disponível, horários, o que já está agendado, ou quando o usuário mencionar cancelar/mudar um plano — para achar o item antes de dizer que não entendeu.",
     parameters: {
       type: Type.OBJECT,
       properties: {

@@ -43,7 +43,6 @@ export default function AssistantFab() {
   const [scrolling, setScrolling] = useState(false)
   const [pos, setPos] = useState(loadPos)
   const [dragging, setDragging] = useState(false)
-  const [escaping, setEscaping] = useState(false)
   const [character, setCharacter] = useState(null)
   const [editingCharacter, setEditingCharacter] = useState(false)
   const [todos, setTodos] = useState([])
@@ -52,7 +51,6 @@ export default function AssistantFab() {
   const [focusSessions, setFocusSessions] = useState([])
   const [goals, setGoals] = useState([])
   const idleTimer = useRef(null)
-  const escapeTimer = useRef(null)
   const btnRef = useRef(null)
   const dragRef = useRef(null)
 
@@ -77,8 +75,6 @@ export default function AssistantFab() {
     () => computeXp({ todos, habitLogs, focusSessions, goals, habits }).level,
     [todos, habitLogs, focusSessions, goals, habits],
   )
-
-  useEffect(() => () => clearTimeout(escapeTimer.current), [])
 
   useEffect(() => {
     const onScroll = () => {
@@ -140,11 +136,6 @@ export default function AssistantFab() {
         if (p) savePos(p)
         return p
       })
-      // Solta "se debatendo" por um instante antes de acomodar na flutuação
-      // de sempre — o gesto de largar precisa parecer vivo, não só "parou".
-      setEscaping(true)
-      clearTimeout(escapeTimer.current)
-      escapeTimer.current = setTimeout(() => setEscaping(false), 480)
     } else {
       setOpen(true)
     }
@@ -163,7 +154,7 @@ export default function AssistantFab() {
       <button
         ref={btnRef}
         type="button"
-        className={`assistant-fab ${scrolling ? 'is-scrolling' : ''} ${dragging ? 'is-dragging' : ''} ${escaping ? 'is-escaping' : ''}`}
+        className={`assistant-fab ${scrolling ? 'is-scrolling' : ''} ${dragging ? 'is-dragging' : ''}`}
         style={style}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -172,7 +163,7 @@ export default function AssistantFab() {
         onClick={(e) => { if (e.detail === 0) setOpen(true) }}
         aria-label={`Abrir ${character.name || 'assistente'} (segure e arraste para mover)`}
       >
-        <PixelCharacter character={character} level={level} size={48} variant="face" />
+        <PixelCharacter character={character} level={level} size={62} variant="face" />
       </button>
       {open && (
         <AssistantModal
