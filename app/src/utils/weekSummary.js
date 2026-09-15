@@ -10,25 +10,6 @@ export function buildHabitWeekTable(habits, habitLogs, weekDates) {
   }))
 }
 
-export function collectAnnotations(dailyLogsOfWeek, tag) {
-  return dailyLogsOfWeek
-    .filter(log => Array.isArray(log.annotations) && log.annotations.length)
-    .flatMap(log => log.annotations
-      .filter(a => a.tag === tag)
-      .map(a => ({ date: log.date, text: a.text })))
-    .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-}
-
-export function buildDailyLogSeries(dailyLogs, weekDates) {
-  const logsByDate = new Map(dailyLogs.map(l => [l.date, l]))
-  const dateKeys = weekDates.map(dateKeyFromDate)
-
-  return {
-    sleepQuality: dateKeys.map(key => logsByDate.get(key)?.sleepQuality ?? null),
-    energy: dateKeys.map(key => logsByDate.get(key)?.energy ?? null),
-  }
-}
-
 export function computeWeekCompletionPct(habitWeekTable, daysElapsed) {
   if (!habitWeekTable.length || !daysElapsed) return 0
   const total = habitWeekTable.length * daysElapsed
@@ -38,7 +19,7 @@ export function computeWeekCompletionPct(habitWeekTable, daysElapsed) {
   return Math.round((done / total) * 100)
 }
 
-export function formatWeekSummaryText(weekLabel, habitWeekTable, funcionou, ajustar, rabiscos) {
+export function formatWeekSummaryText(weekLabel, habitWeekTable) {
   const lines = [`${weekLabel}`, '']
 
   lines.push('Hábitos da semana:')
@@ -50,18 +31,6 @@ export function formatWeekSummaryText(weekLabel, habitWeekTable, funcionou, ajus
       lines.push(`- ${habit.name}: ${done}/7 dias`)
     })
   }
-  lines.push('')
-
-  lines.push('O que funcionou:')
-  lines.push(...(funcionou.length ? funcionou.map(a => `- ${a.text}`) : ['- (nada registrado)']))
-  lines.push('')
-
-  lines.push('O que ajustar:')
-  lines.push(...(ajustar.length ? ajustar.map(a => `- ${a.text}`) : ['- (nada registrado)']))
-  lines.push('')
-
-  lines.push('Rabiscos:')
-  lines.push(...(rabiscos.length ? rabiscos.map(a => `- ${a.text}`) : ['- (nada registrado)']))
 
   return lines.join('\n')
 }

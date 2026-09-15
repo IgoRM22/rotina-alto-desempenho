@@ -4317,35 +4317,6 @@ details > summary::marker {
   color: var(--sage);
 }
 
-/* ── DAILY ANNOTATIONS (Noturno) ── */
-.annotation-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.annotation-row:last-child { border-bottom: none; }
-
-.annotation-tag {
-  font-size: 10px;
-  white-space: nowrap;
-  padding: 2px 8px;
-  border-radius: 20px;
-}
-
-.annotation-tag--funcionou { background: rgba(143,174,131,.14); color: var(--sage); }
-.annotation-tag--ajustar { background: rgba(214,165,76,.14); color: var(--gold); }
-.annotation-tag--rabisco { background: rgba(122,117,112,.14); color: var(--muted); }
-
-.annotation-text {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  color: var(--text2);
-}
-
 /* ── COMMITMENTS (datas importantes fora do Agenda) ── */
 .commitment-list {
   display: flex;

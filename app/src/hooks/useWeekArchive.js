@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import {
   getHabitsOnce,
   getHabitLogsOnce,
-  getDailyLogsForDates,
   getLastArchivedWeek,
   setLastArchivedWeek,
   listenNotebooks,
@@ -10,7 +9,7 @@ import {
   addNote,
 } from '../services/firestore'
 import { getWeekDates, getWeekLabel, getWeekKey, dateKeyFromDate, addDays } from '../utils/date'
-import { buildHabitWeekTable, collectAnnotations, formatWeekSummaryText } from '../utils/weekSummary'
+import { buildHabitWeekTable, formatWeekSummaryText } from '../utils/weekSummary'
 
 // Exportado — Notes.jsx filtra esse caderno da lista normal (não é uma nota
 // "de verdade", é um arquivo automático) e RevisaoSemanal.jsx o lê direto
@@ -43,25 +42,21 @@ export function useWeekArchive(enabled) {
       const weekDates = getWeekDates(lastWeekDate)
       const dateKeys = weekDates.map(dateKeyFromDate)
 
-      const [habits, habitLogs, dailyLogs] = await Promise.all([
+      const [habits, habitLogs] = await Promise.all([
         getHabitsOnce(),
         getHabitLogsOnce(dateKeys),
-        getDailyLogsForDates(dateKeys),
       ])
 
-      const hasData = habitLogs.length > 0 || dailyLogs.length > 0
-      if (!hasData) {
-        // Nothing happened that week — don't create an empty note, but don't retry every load either.
+      if (habitLogs.length === 0) {
+        // Nada marcado essa semana — não cria uma nota vazia, mas não tenta
+        // de novo a cada carregamento.
         await setLastArchivedWeek(lastWeekKey)
         return
       }
 
       const table = buildHabitWeekTable(habits, habitLogs, weekDates)
-      const funcionou = collectAnnotations(dailyLogs, 'funcionou')
-      const ajustar = collectAnnotations(dailyLogs, 'ajustar')
-      const rabiscos = collectAnnotations(dailyLogs, 'rabisco')
       const weekLabel = getWeekLabel(lastWeekDate)
-      const content = formatWeekSummaryText(weekLabel, table, funcionou, ajustar, rabiscos)
+      const content = formatWeekSummaryText(weekLabel, table)
 
       if (cancelled) return
       const notebookId = await ensureArchiveNotebook()

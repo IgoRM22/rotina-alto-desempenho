@@ -255,7 +255,7 @@ export const deleteMealTable = (id) => deleteDoc(userDoc('mealTables', id))
 // ── Full backup / restore ─────────────────────────────────────────────────────
 import { getDocs } from 'firebase/firestore'
 
-const BACKUP_COLLECTIONS = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes', 'habits', 'habitLogs', 'dailyLogs', 'weekFocus', 'folders', 'mealTables', 'focusSessions']
+const BACKUP_COLLECTIONS = ['inspirations', 'todos', 'goals', 'schedule', 'importantDates', 'notebooks', 'notes', 'habits', 'habitLogs', 'dailyLogs', 'folders', 'mealTables', 'focusSessions']
 
 export const exportAll = async () => {
   const result = {}
@@ -285,12 +285,6 @@ export const getHabitsOnce = async () => {
 export const getHabitLogsOnce = async (dateKeys) => {
   if (!dateKeys.length) return []
   const snap = await getDocs(query(base('habitLogs'), where(documentId(), 'in', dateKeys)))
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
-}
-
-export const getDailyLogsForDates = async (dateKeys) => {
-  if (!dateKeys.length) return []
-  const snap = await getDocs(query(base('dailyLogs'), where(documentId(), 'in', dateKeys)))
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
