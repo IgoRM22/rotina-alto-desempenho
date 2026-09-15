@@ -20,6 +20,7 @@ import { useDeadlineNotifications } from '../../hooks/useDeadlineNotifications'
 import { todayKey, MAX_TODAY_TASKS } from '../../utils/date'
 import { taskCelebration } from '../../utils/celebration'
 import { XP_PER_TASK } from '../../utils/gamification'
+import { useXp } from '../../components/XpBubble'
 import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
@@ -37,6 +38,7 @@ const EMPTY_FORM = { title: '', note: '', priority: 'media', category: 'projeto'
 const EMPTY_FOLDER_FORM = { name: '' }
 
 export default function Tarefas() {
+  const grantXp = useXp()
   // Vinda de um link tipo "3 tarefas vencidas" (Home) — mostra só essas,
   // cruzando todas as pastas, em vez de depender da pessoa adivinhar em
   // qual pasta cada tarefa vencida caiu.
@@ -98,7 +100,8 @@ export default function Tarefas() {
     if (nextDone) {
       setPoppedId(todo.id)
       setTimeout(() => setPoppedId(id => (id === todo.id ? null : id)), 260)
-      showToast(`${taskCelebration()} +${XP_PER_TASK} XP`)
+      showToast(taskCelebration())
+      grantXp(XP_PER_TASK, 'tarefa concluída')
     }
   }
 

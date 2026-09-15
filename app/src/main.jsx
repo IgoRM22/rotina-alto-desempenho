@@ -5,6 +5,7 @@ import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { ConfirmProvider } from './components/ConfirmDialog'
+import { XpProvider } from './components/XpBubble'
 import './index.css'
 
 // Sem isso, o service worker do build nunca era registrado de verdade — o
@@ -25,7 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter basename="/rotina-alto-desempenho" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <ConfirmProvider>
-          <App />
+          <XpProvider>
+            <App />
+          </XpProvider>
         </ConfirmProvider>
       </AuthProvider>
     </BrowserRouter>

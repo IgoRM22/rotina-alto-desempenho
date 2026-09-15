@@ -20,6 +20,7 @@ import { todayKey, dateKeyFromDate } from '../utils/date'
 import { computeStreak, computeWeeklyStreak, weekProgress, isDailyHabit } from '../utils/streak'
 import { habitCelebration } from '../utils/celebration'
 import { XP_PER_HABIT_CHECK } from '../utils/gamification'
+import { useXp } from './XpBubble'
 import Toast from './Toast'
 
 const MILESTONES = [7, 30, 100, 365]
@@ -39,6 +40,7 @@ const last14Days = () => Array.from({ length: 14 }, (_, i) => {
 })
 
 export default function HabitChecklist() {
+  const grantXp = useXp()
   const [habits, setHabits] = useState([])
   const [logs, setLogs] = useState([])
   const [adding, setAdding] = useState(false)
@@ -85,15 +87,16 @@ export default function HabitChecklist() {
 
     const simulated = new Map(logsByDate)
     simulated.set(today, { ...(simulated.get(today) || {}), [habit.id]: true })
+    grantXp(XP_PER_HABIT_CHECK, 'hábito marcado')
 
     if (isDailyHabit(habit)) {
       const newStreak = computeStreak(habit.id, simulated, today)
       const best = habit.bestStreak || 0
       if (newStreak > best) updateHabit(habit.id, { bestStreak: newStreak })
       if (MILESTONES.includes(newStreak)) {
-        showToast(`🔥 ${newStreak} dias seguidos em "${habit.name}"! +${XP_PER_HABIT_CHECK} XP`)
+        showToast(`🔥 ${newStreak} dias seguidos em "${habit.name}"!`)
       } else {
-        showToast(`${habitCelebration()} +${XP_PER_HABIT_CHECK} XP`)
+        showToast(habitCelebration())
       }
       return
     }
@@ -103,9 +106,9 @@ export default function HabitChecklist() {
     if (newWeeklyStreak > bestWeekly) updateHabit(habit.id, { bestWeeklyStreak: newWeeklyStreak })
     const doneThisWeek = weekProgress(habit.id, simulated, today)
     if (doneThisWeek === habit.weeklyTarget) {
-      showToast(`✅ Meta da semana batida em "${habit.name}"! +${XP_PER_HABIT_CHECK} XP`)
+      showToast(`✅ Meta da semana batida em "${habit.name}"!`)
     } else {
-      showToast(`${habitCelebration()} +${XP_PER_HABIT_CHECK} XP`)
+      showToast(habitCelebration())
     }
   }
 

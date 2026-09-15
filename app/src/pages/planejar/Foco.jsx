@@ -10,6 +10,7 @@ import { playChime, vibrateDevice, notifyPhaseEnd, updateLiveFocusNotification, 
 import { loadStoredFocusSession, storeFocusSession, listenLocalFocusSession } from '../../utils/focusSession'
 import { XP_PER_FOCUS_MINUTE, computeXp } from '../../utils/gamification'
 import { computeBehaviorStats } from '../../utils/character'
+import { useXp } from '../../components/XpBubble'
 import BoltIcon from '../../components/BoltIcon'
 import PixelCharacter from '../../components/PixelCharacter'
 import CharacterCreatorModal from '../../components/CharacterCreatorModal'
@@ -41,6 +42,7 @@ const fmtClock = (totalSec) => {
 }
 
 export default function Foco() {
+  const grantXp = useXp()
   const [goals, setGoals] = useState([])
   const [habits, setHabits] = useState([])
   const [sessions, setSessions] = useState([])
@@ -106,6 +108,17 @@ export default function Foco() {
     if (!running) return
     const timer = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(timer)
+  }, [running])
+
+  // "Pequenos XPs subindo" enquanto o foco tá ativo — o XP real de verdade
+  // só é gravado ao concluir a sessão (addFocusSession), isso aqui é só o
+  // popup ambiente a cada 2min (mesmo ritmo de XP_PER_FOCUS_MINUTE=0.5/min)
+  // pra sentir o progresso se acumulando durante a sessão, não só no final.
+  useEffect(() => {
+    if (!running) return
+    const timer = setInterval(() => grantXp(1, 'foco em andamento'), 120000)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running])
 
   // Notificação com o cronômetro contando em tempo real enquanto a sessão
@@ -291,7 +304,8 @@ export default function Foco() {
     }
 
     const xpGained = Math.round(pendingFinish.minutes * XP_PER_FOCUS_MINUTE)
-    showToast(`Sessão de ${pendingFinish.minutes} min registrada. +${xpGained} XP${extra}`)
+    showToast(`Sessão de ${pendingFinish.minutes} min registrada.${extra}`)
+    grantXp(xpGained, 'sessão de foco')
     setPendingFinish(null)
     // traço de conexão foco → meta (único momento de celebração do app)
     celebrate()
@@ -322,7 +336,8 @@ export default function Foco() {
         if (session.habitId) await setHabitChecked(today, session.habitId, true)
         celebrate()
       })
-      showToast(`Ciclo de ${minutes} min concluído — hora da pausa. +${Math.round(minutes * XP_PER_FOCUS_MINUTE)} XP`)
+      showToast(`Ciclo de ${minutes} min concluído — hora da pausa.`)
+      grantXp(Math.round(minutes * XP_PER_FOCUS_MINUTE), 'ciclo pomodoro')
       notifyPhaseEnd('Foco concluído', `${minutes} min registrados. Hora da pausa de ${breakMin} min.`)
       setAndStore({
         ...session,

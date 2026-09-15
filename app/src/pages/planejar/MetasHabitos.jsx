@@ -16,6 +16,7 @@ import {
   addHabit, updateHabit, deleteHabit,
 } from '../../services/firestore'
 import { XP_PER_GOAL_DONE } from '../../utils/gamification'
+import { useXp } from '../../components/XpBubble'
 import { getWeekDates, dateKeyFromDate, todayKey, getWeekStart, addDays } from '../../utils/date'
 import { deadlineBadge } from '../../utils/deadline'
 import { useDeadlineNotifications } from '../../hooks/useDeadlineNotifications'
@@ -180,6 +181,7 @@ export default function MetasHabitos() {
 }
 
 function MetasView({ goals, habits, habitLogs, todos, categories, showToast }) {
+  const grantXp = useXp()
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
@@ -299,14 +301,18 @@ function MetasView({ goals, habits, habitLogs, todos, categories, showToast }) {
       return
     }
     await updateGoal(goal.id, { done: true, progress: 100 })
-    showToast(`🚀 Meta batida! +${XP_PER_GOAL_DONE} XP`)
+    showToast('🚀 Meta batida!')
+    grantXp(XP_PER_GOAL_DONE, 'meta concluída')
   }
 
   const updateProgress = async (goal, value) => {
     const safe = clampProgress(value)
     const justCompleted = safe >= 100 && !goal.done
     await updateGoal(goal.id, { progress: safe, done: safe >= 100 })
-    if (justCompleted) showToast(`🚀 Meta batida! +${XP_PER_GOAL_DONE} XP`)
+    if (justCompleted) {
+      showToast('🚀 Meta batida!')
+      grantXp(XP_PER_GOAL_DONE, 'meta concluída')
+    }
   }
 
   const done = filtered.filter(g => g.done).length

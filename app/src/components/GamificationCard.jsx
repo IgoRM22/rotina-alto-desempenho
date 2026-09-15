@@ -2,6 +2,7 @@ import React from 'react'
 import { RiFireFill, RiSparklingFill } from '@remixicon/react'
 import PixelCharacter from './PixelCharacter'
 import BoltIcon from './BoltIcon'
+import CountUp from './CountUp'
 
 const RADIUS = 46
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
@@ -57,7 +58,7 @@ export default function GamificationCard({ level, xp, xpToNext, pct, character, 
 
       <div className="gami-info">
         <div className="gami-xp-row">
-          <span className="gami-xp-num">{xp.toLocaleString('pt-BR')} XP</span>
+          <span className="gami-xp-num"><CountUp value={xp} format={(v) => Math.round(v).toLocaleString('pt-BR')} /> XP</span>
           <span className="gami-xp-next">faltam {xpToNext} para o nível {level + 1}</span>
         </div>
       </div>

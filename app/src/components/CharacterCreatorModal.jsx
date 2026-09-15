@@ -5,6 +5,17 @@ import {
   BODY_TYPES, HAIR_STYLES, SKIN_TONES, HAIR_COLORS, DEFAULT_CHARACTER,
   SLOTS, UNLOCKS, BEHAVIOR_UNLOCKS, unlockedForSlot, resolveEquipped,
 } from '../utils/character'
+import { XP_PER_TASK, XP_PER_HABIT_CHECK, XP_PER_FOCUS_MINUTE, XP_PER_GOAL_DONE } from '../utils/gamification'
+
+// Fonte da verdade visível: os MESMOS números usados no cálculo real (ver
+// computeXp em utils/gamification.js) — nunca um valor solto digitado aqui
+// à parte, que poderia desalinhar se a taxa mudasse num lugar só.
+const XP_RATES = [
+  { label: 'Concluir uma tarefa', amount: XP_PER_TASK },
+  { label: 'Marcar um hábito', amount: XP_PER_HABIT_CHECK },
+  { label: 'Cada minuto de foco', amount: XP_PER_FOCUS_MINUTE },
+  { label: 'Concluir uma meta', amount: XP_PER_GOAL_DONE },
+]
 import PixelCharacter from './PixelCharacter'
 import Modal from './Modal'
 
@@ -196,6 +207,18 @@ export default function CharacterCreatorModal({ initial, level = 1, stats, onCre
               )
             })
           )}
+      </div>
+
+      <div className="field">
+        <label>Como ganhar XP</label>
+        <div className="xp-rate-list">
+          {XP_RATES.map((r) => (
+            <div key={r.label} className="xp-rate-row">
+              <span>{r.label}</span>
+              <strong>+{r.amount} XP</strong>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="field" style={{ marginBottom: 0 }}>

@@ -489,6 +489,31 @@ body::after {
   font-weight: 400;
 }
 
+.xp-rate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.xp-rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--s1);
+  font-size: 12.5px;
+  color: var(--text2);
+}
+
+.xp-rate-row strong {
+  color: var(--gold-text, var(--gold));
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .confirm-dialog-message {
   font-size: 13.5px;
   color: var(--text2);
@@ -2673,6 +2698,56 @@ body::after {
 }
 
 /* ── TOAST ── */
+/* ── XP BUBBLE (popup discreto de "+N XP") ── */
+@keyframes xp-bubble-rise {
+  0% { opacity: 0; transform: translateY(6px) scale(.92); }
+  12% { opacity: 1; transform: translateY(0) scale(1); }
+  78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-10px) scale(.96); }
+}
+
+.xp-bubble-stack {
+  position: fixed;
+  top: calc(64px + env(safe-area-inset-top));
+  right: 12px;
+  z-index: 1650;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.xp-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(214,165,76,.16);
+  border: 1px solid rgba(214,165,76,.45);
+  backdrop-filter: blur(6px);
+  animation: xp-bubble-rise 1.9s ease both;
+}
+
+.xp-bubble-amount {
+  font-family: var(--ff-s);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold-text, var(--gold));
+  white-space: nowrap;
+}
+
+.xp-bubble-label {
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-bubble { animation: none; }
+}
+
 .toast-container {
   position: fixed;
   bottom: 24px;
