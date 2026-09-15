@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  RiAddLine,
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiCalendar2Line,
@@ -8,7 +9,6 @@ import {
   RiFileCopyLine,
   RiMoreLine,
   RiRepeat2Line,
-  RiSubtractLine,
 } from '@remixicon/react'
 import {
   listenSchedule,
@@ -625,9 +625,17 @@ export default function Cronograma() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const openAdd = () => {
+  // Clicar num horário livre (ou num dia sem nada marcado) na visão Semanal
+  // já abre o formulário com dia/horário daquele ponto preenchidos — sem
+  // isso, adicionar algo era sempre "+ Adicionar" seguido de escolher tudo
+  // manualmente, mesmo quando o próprio clique já dizia onde encaixar.
+  const openAdd = (day, timeStart) => {
     setEditing(null)
-    setForm({ ...EMPTY_FORM, day: 'Domingo' })
+    setForm({
+      ...EMPTY_FORM,
+      day: day || 'Domingo',
+      timeStart: timeStart || '',
+    })
     setShowModal(true)
   }
 
@@ -923,7 +931,7 @@ export default function Cronograma() {
             active={view}
             onChange={changeView}
           />
-          <button className="btn btn-primary" onClick={view === 'calendario' ? openAddImportantForVisibleMonth : openAdd}>
+          <button className="btn btn-primary" onClick={() => (view === 'calendario' ? openAddImportantForVisibleMonth() : openAdd())}>
             {view === 'calendario' ? '+ Data importante' : '+ Adicionar'}
           </button>
         </div>
@@ -939,8 +947,19 @@ export default function Cronograma() {
             return (
               <section key={day} className={`calendar-bars-day ${isToday ? 'is-today' : ''}`} role="row">
                 <div className="calendar-bars-header" role="columnheader" aria-label={`${day} ${dateLabel}`}>
-                  <span className="calendar-bars-short">{DAYS_SHORT[dayIndex]}</span>
-                  <span className="calendar-bars-date">{dateLabel}</span>
+                  <span className="calendar-bars-header-label">
+                    <span className="calendar-bars-short">{DAYS_SHORT[dayIndex]}</span>
+                    <span className="calendar-bars-date">{dateLabel}</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="calendar-bars-header-add"
+                    onClick={() => openAdd(day)}
+                    aria-label={`Adicionar em ${day}`}
+                    title={`Adicionar em ${day}`}
+                  >
+                    <RiAddLine size={13} aria-hidden="true" />
+                  </button>
                 </div>
 
                 {(weekImportantByDay[day] || []).map((occ, idx) => (
@@ -972,10 +991,10 @@ export default function Cronograma() {
 
                 <div className="calendar-bars-track">
                   {segments.length === 0 && (untimedGrouped[day] || []).length === 0 && (
-                    <div className="calendar-empty-day">
-                      <RiSubtractLine size={16} aria-hidden="true" />
-                      <span>Sem tarefas</span>
-                    </div>
+                    <button type="button" className="calendar-empty-day" onClick={() => openAdd(day)}>
+                      <RiAddLine size={15} aria-hidden="true" />
+                      <span>Adicionar</span>
+                    </button>
                   )}
 
                   {segments.map((segment, idx) => {
@@ -1003,9 +1022,17 @@ export default function Cronograma() {
                     if (segment.type === 'gap') {
                       const gapHeight = Math.max(10, segment.duration * BAR_GAP_PX_PER_MINUTE)
                       return (
-                        <div key={`bar-gap-${day}-${idx}`} className="calendar-bars-gap" style={{ height: `${gapHeight}px`, marginBottom: spacing }}>
+                        <button
+                          key={`bar-gap-${day}-${idx}`}
+                          type="button"
+                          className="calendar-bars-gap"
+                          style={{ height: `${gapHeight}px`, marginBottom: spacing }}
+                          onClick={() => openAdd(day, formatMinuteClock(segment.start))}
+                          title={`Adicionar às ${formatMinuteClock(segment.start)}`}
+                        >
                           {segment.duration >= 45 && <span>{fmtDuration(segment.duration)}</span>}
-                        </div>
+                          <RiAddLine className="calendar-bars-gap-icon" size={13} aria-hidden="true" />
+                        </button>
                       )
                     }
 

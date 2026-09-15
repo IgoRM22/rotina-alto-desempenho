@@ -1487,12 +1487,54 @@ body::after {
 
 .calendar-bars-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 10px 9px;
+  padding: 10px 8px 9px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
+}
+
+.calendar-bars-header-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.calendar-bars-header-add {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity .15s ease, background .15s ease, color .15s ease;
+}
+
+.calendar-bars-day:hover .calendar-bars-header-add,
+.calendar-bars-header-add:focus-visible {
+  opacity: 1;
+}
+
+.calendar-bars-header-add:hover,
+.calendar-bars-header-add:focus-visible {
+  background: rgba(224,100,69,.14);
+  color: var(--coral);
+  outline: none;
+}
+
+/* Touch não tem :hover — sem isso o botão de adicionar do cabeçalho ficava
+   invisível pra sempre no celular (só aparecia com o mouse em cima). */
+@media (hover: none) {
+  .calendar-bars-header-add { opacity: 1; }
 }
 
 .calendar-bars-short {
@@ -1565,18 +1607,49 @@ body::after {
   line-height: 1.25;
 }
 
+/* Agora um <button>, não um <div> — reset dos estilos nativos antes do
+   resto (borda esquerda tracejada, layout) por cima. Clicável: abre o
+   formulário já com o dia e o horário daquele intervalo livre preenchidos
+   (ver openAdd em Agenda.jsx) — evita preencher tudo manualmente quando o
+   próprio clique já diz onde encaixar o item. */
 .calendar-bars-gap {
+  appearance: none;
+  width: 100%;
+  border: none;
   border-left: 2px dashed rgba(237,232,224,0.2);
+  background: transparent;
   margin-left: 8px;
   padding-left: 8px;
   display: flex;
   align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+  border-radius: 2px;
+}
+
+.calendar-bars-gap:hover,
+.calendar-bars-gap:focus-visible {
+  border-left-color: rgba(224,100,69,.55);
+  background: rgba(224,100,69,.06);
+  outline: none;
 }
 
 .calendar-bars-gap span {
   font-size: 10px;
   color: var(--text3);
   font-style: italic;
+}
+
+.calendar-bars-gap-icon {
+  color: var(--coral);
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.calendar-bars-gap:hover .calendar-bars-gap-icon,
+.calendar-bars-gap:focus-visible .calendar-bars-gap-icon {
+  opacity: 1;
 }
 
 .calendar-bars-now {
@@ -1604,6 +1677,10 @@ body::after {
 }
 
 .calendar-empty-day {
+  appearance: none;
+  width: 100%;
+  border: none;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1611,6 +1688,16 @@ body::after {
   color: var(--text3);
   font-size: 11px;
   min-height: 80px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color .15s ease, background .15s ease;
+}
+
+.calendar-empty-day:hover,
+.calendar-empty-day:focus-visible {
+  color: var(--coral);
+  background: rgba(224,100,69,.06);
+  outline: none;
 }
 
 /* Cal category colors */
