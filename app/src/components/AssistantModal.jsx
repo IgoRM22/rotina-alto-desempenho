@@ -226,7 +226,11 @@ export default function AssistantModal({ onClose, character, level, onEditCharac
     }
   }, [])
 
-  useEffect(() => { inputRef.current?.focus() }, [])
+  // Sem foco automático ao abrir de propósito — no celular isso já disparava
+  // o teclado assim que o chat aparecia, mesmo quem só queria ler a saudação
+  // proativa. Foco continua acontecendo nos outros momentos (depois de
+  // enviar, ao tocar numa mensagem própria ou numa sugestão) — só não mais
+  // no instante de abrir o modal.
 
   // Cresce a caixa de texto junto com o conteúdo (em vez de rolar escondendo
   // o começo do que foi digitado) — reage a qualquer mudança em `text`, não
