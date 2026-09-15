@@ -3868,6 +3868,17 @@ details > summary::marker {
   margin-bottom: 16px;
 }
 
+@media (max-width: 720px) {
+  /* Sem wrap, título (ex: "Semana 15/09 - 21/09") + nota ao lado (ex: "68%
+     dos hábitos concluídos até agora") não cabiam juntos numa linha só —
+     como flex-item por padrão não encolhe abaixo do próprio texto, a
+     linha estourava a largura da tela em vez de quebrar (é o que deixava
+     a Revisão Semanal "quebrada" no mobile). Empilha em vez de estourar. */
+  .hoje-section-head {
+    flex-wrap: wrap;
+  }
+}
+
 .hoje-section-title {
   font-family: var(--ff-s);
   font-size: 22px;
@@ -6476,7 +6487,15 @@ body.has-modal-open .assistant-fab { display: none; }
   font-size: 13px;
 }
 
+.rank-row-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .rank-row-value {
+  flex-shrink: 0;
   color: var(--text3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
