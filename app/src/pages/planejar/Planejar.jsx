@@ -7,7 +7,6 @@ const TABS = [
   { key: 'agenda', label: 'Agenda', to: 'agenda' },
   { key: 'tarefas', label: 'Tarefas', to: 'tarefas' },
   { key: 'metas', label: 'Metas & Hábitos', to: 'metas' },
-  { key: 'foco', label: 'Foco', to: 'foco' },
   { key: 'alimentacao', label: 'Alimentação', to: 'alimentacao' },
 ]
 

@@ -34,6 +34,23 @@ export const startLocalFocusSession = (goalId = null, habitId = null) => {
   return session
 }
 
+// Pomodoro novo (fase "foco"), usado pelo atalho de início rápido no menu —
+// a duração de cada fase não mora na sessão, é lida de prefs ao vivo pela
+// própria página Foco (ver Foco.jsx), então não precisa ser passada aqui.
+export const startLocalPomodoroSession = (goalId = null, habitId = null) => {
+  const session = {
+    mode: 'pomodoro',
+    phase: 'work',
+    phaseStartedAt: Date.now(),
+    phaseAccumulatedSec: 0,
+    cyclesCompleted: 0,
+    goalId: goalId || null,
+    habitId: habitId || null,
+  }
+  storeFocusSession(session)
+  return session
+}
+
 export const listenLocalFocusSession = (cb) => {
   const handler = () => cb(loadStoredFocusSession())
   window.addEventListener(FOCUS_SESSION_EVENT, handler)

@@ -239,6 +239,25 @@ body::after {
   background: var(--s2);
 }
 
+.nav-pomodoro-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text3);
+  padding: 6px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .2s, background .2s;
+}
+
+.nav-pomodoro-btn:hover {
+  color: var(--coral);
+  background: var(--s2);
+}
+
 .nav-right {
   display: flex;
   align-items: center;
@@ -2776,7 +2795,7 @@ body::after {
 
 .mobile-nav-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   list-style: none;
   padding: 6px;
   gap: 2px;
@@ -2786,7 +2805,12 @@ body::after {
   min-width: 0;
 }
 
-.mobile-nav-list a {
+.mobile-nav-list a,
+.mobile-nav-list button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2796,10 +2820,12 @@ body::after {
   border-radius: 18px;
   text-decoration: none;
   color: var(--text3);
+  cursor: pointer;
   transition: color .2s;
 }
 
-.mobile-nav-list a:hover {
+.mobile-nav-list a:hover,
+.mobile-nav-list button:hover {
   color: var(--text2);
 }
 
