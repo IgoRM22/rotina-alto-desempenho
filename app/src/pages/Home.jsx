@@ -342,13 +342,6 @@ export default function Home() {
       })
     }
 
-    if (!dailyLog?.intention?.trim()) {
-      candidates.push({
-        variant: '',
-        text: <>Você ainda não escreveu seu <strong>compromisso de hoje</strong> — uma frase já ajuda a direcionar o dia.</>,
-      })
-    }
-
     if (candidates.length > 0) {
       const [primary, ...rest] = candidates
       return { ...primary, otherCount: rest.length }
@@ -457,9 +450,6 @@ export default function Home() {
             <div className="hoje-pills reveal" style={{ '--d': 0.35 }}>
               {todayTodos.length > 0 && (
                 <span className="status-pill is-coral"><span className="dot" />{todayDone}/{todayTodos.length} tarefas hoje</span>
-              )}
-              {dailyHabits.length > 0 && (
-                <span className="status-pill is-sage"><span className="dot" />{habitsDone}/{dailyHabits.length} hábitos hoje</span>
               )}
               {focusItems.length > 0 && (
                 <span className="status-pill is-violet"><span className="dot" />{focusItems.length} priorida{focusItems.length > 1 ? 'des' : 'de'} da semana</span>

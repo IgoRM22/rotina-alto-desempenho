@@ -10,7 +10,10 @@ import Modal from './Modal'
 
 const randomOf = (list) => list[Math.floor(Math.random() * list.length)].value
 
-const SLOT_LABELS = { torso: 'Peito', hat: 'Cabeça', weapon: 'Arma', shield: 'Escudo' }
+const SLOT_LABELS = { torso: 'Peito', hat: 'Cabeça', feet: 'Pés', weapon: 'Arma', shield: 'Escudo' }
+// "feet" fica de fora — sem isso, isolar QUALQUER outro slot (ex: prévia do
+// chapéu) também zerava o sapato, virando pé descalço em toda prévia que
+// não fosse a do próprio slot "Pés".
 const EMPTY_EQUIPPED = { torso: 'none', hat: 'none', weapon: 'none', shield: 'none' }
 
 // Linha de opções com preview de verdade (o personagem inteiro com aquela
@@ -152,9 +155,8 @@ export default function CharacterCreatorModal({ initial, level = 1, onCreated, o
         </div>
       </div>
 
-      {isEditing && (
-        <div className="field">
-          <label>Equipamento</label>
+      <div className="field">
+        <label>Equipamento</label>
           {SLOTS.every((slot) => unlockedForSlot(slot, level).length === 0) ? (
             <p className="character-creator-intro" style={{ margin: 0 }}>
               Ainda nada desbloqueado — suba de nível pra ganhar a primeira peça.
@@ -164,7 +166,11 @@ export default function CharacterCreatorModal({ initial, level = 1, onCreated, o
               const options = unlockedForSlot(slot, level)
               if (!options.length) return null
               const resolved = resolveEquipped(form, level)[slot]
-              const current = form.equipped?.[slot] || resolved?.item || 'none'
+              // Pés não tem opção "Nenhum" (sempre calça alguma coisa) —
+              // sem escolha salva nem progressão, o boneco cai na bota por
+              // padrão (ver buildLayers em utils/character.js), então o
+              // seletor precisa começar marcado nela, não em "Nenhum".
+              const current = form.equipped?.[slot] || resolved?.item || (slot === 'feet' ? 'boots' : 'none')
               const selectOptions = [{ value: 'none', label: 'Nenhum' }, ...options.map((o) => ({ value: o.item, label: o.label }))]
               return (
                 <div key={slot} style={{ marginBottom: 12 }}>
@@ -182,8 +188,7 @@ export default function CharacterCreatorModal({ initial, level = 1, onCreated, o
               )
             })
           )}
-        </div>
-      )}
+      </div>
 
       <div className="field" style={{ marginBottom: 0 }}>
         <label>Progressão</label>

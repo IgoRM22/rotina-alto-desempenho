@@ -108,6 +108,21 @@ const ASSET_PATH = {
   shield: (v) => `${LPC_BASE}/shield/${v}.png`,
 }
 
+// Sapato também é desenhado pra uma silhueta específica — mas só existem
+// DUAS larguras de perna no LPC (não quatro como no corpo/calça): a "male"
+// (usada por Guerreiro/Colosso) e a "thin" (Guerreira/Aprendiz). Cada item
+// de pé listado em FEET_ITEMS guarda o nome do arquivo pra cada uma das
+// duas larguras.
+const FEET_BODY_GROUP = { male: 'male', muscular: 'male', teen: 'thin', female: 'thin' }
+const FEET_ITEMS = {
+  boots: { male: 'boots', thin: 'boots_thin' },
+  sandals: { male: 'sandals_male', thin: 'sandals_thin' },
+}
+const feetFile = (item, bodyValue) => {
+  const group = FEET_BODY_GROUP[bodyValue] || 'male'
+  return (FEET_ITEMS[item] || FEET_ITEMS.boots)[group]
+}
+
 // A armadura também é desenhada pra uma silhueta de corpo específica — mesmo
 // problema da calça. "male" e "muscular" tomam emprestado o corte macho
 // (não existe variante própria pra colosso na fonte); female/teen usam o
@@ -123,7 +138,17 @@ const torsoFile = (item, bodyValue) => `${item}${TORSO_BODY_SUFFIX[bodyValue] ??
 // armadura de verdade equipada por cima.
 const BASE_TORSO_ITEM = 'shirt'
 
-export const SLOTS = ['torso', 'hat', 'weapon', 'shield']
+export const SLOTS = ['torso', 'hat', 'feet', 'weapon', 'shield']
+
+// Ao contrário de UNLOCKS (recompensa por subir de nível), essas peças já
+// vêm disponíveis pra escolher desde o começo — são só estilos alternativos
+// ao visual padrão (camiseta lisa / sem chapéu / bota), não progressão.
+export const STARTER_ITEMS = [
+  { slot: 'torso', item: 'tshirt', label: 'Camiseta listrada' },
+  { slot: 'hat', item: 'bandana', label: 'Bandana' },
+  { slot: 'feet', item: 'boots', label: 'Bota' },
+  { slot: 'feet', item: 'sandals', label: 'Sandália' },
+]
 
 // A peça mais forte já desbloqueada em cada slot — null pra slot ainda sem
 // nada desbloqueado nesse nível. Usado como padrão até a pessoa escolher
@@ -137,9 +162,13 @@ export function equipmentForLevel(level) {
 }
 
 // Todas as peças de um slot já desbloqueadas nesse nível, da mais fraca pra
-// mais forte — é a lista que vira o seletor em "Equipamento".
+// mais forte — é a lista que vira o seletor em "Equipamento". Os estilos
+// iniciais (STARTER_ITEMS) sempre aparecem primeiro, disponíveis desde o
+// nível 1.
 export function unlockedForSlot(slot, level) {
-  return UNLOCKS.filter((u) => u.slot === slot && u.level <= level).sort((a, b) => a.level - b.level)
+  const starters = STARTER_ITEMS.filter((s) => s.slot === slot)
+  const progression = UNLOCKS.filter((u) => u.slot === slot && u.level <= level).sort((a, b) => a.level - b.level)
+  return [...starters, ...progression]
 }
 
 export function nextUnlock(level) {
@@ -160,6 +189,7 @@ export function resolveEquipped(character, level) {
     if (pick === 'none' || pick === 'bare') { result[slot] = null; return }
     if (pick) {
       const match = UNLOCKS.find((u) => u.slot === slot && u.item === pick && u.level <= level)
+        || STARTER_ITEMS.find((s) => s.slot === slot && s.item === pick)
       if (match) { result[slot] = match; return }
     }
     result[slot] = auto[slot] || null
@@ -208,7 +238,16 @@ export function buildLayers(character, level) {
       legMaskSrc: ASSET_PATH.legs(bodyDef.legs),
     },
     { src: ASSET_PATH.legs(bodyDef.legs), tint: TINTS.legs },
-    { src: ASSET_PATH.feet(bodyDef.feet), tint: TINTS.feet },
+    // "bota" é o padrão de sempre (com o tingimento de couro de sempre);
+    // "sandália" é um estilo novo com cor própria, sem tingir por cima.
+    ...(() => {
+      const feetItem = equipped.feet ? equipped.feet.item : (character?.equipped?.feet === 'none' ? null : 'boots')
+      if (!feetItem) return []
+      return [{
+        src: ASSET_PATH.feet(feetFile(feetItem, cfg.body)),
+        tint: feetItem === 'boots' ? TINTS.feet : undefined,
+      }]
+    })(),
     ...(equipped.torso
       ? [{ src: ASSET_PATH.torso(torsoFile(equipped.torso.item, cfg.body)) }]
       : character?.equipped?.torso === 'bare'

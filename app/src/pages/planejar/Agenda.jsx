@@ -4,15 +4,11 @@ import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiCalendar2Line,
-  RiCalendarScheduleLine,
   RiDeleteBinLine,
   RiFileCopyLine,
-  RiHistoryLine,
   RiMoreLine,
   RiRepeat2Line,
-  RiStackLine,
   RiSubtractLine,
-  RiTimeLine,
 } from '@remixicon/react'
 import {
   listenSchedule,
@@ -377,11 +373,9 @@ export default function Cronograma() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [importantForm, setImportantForm] = useState(EMPTY_IMPORTANT_FORM)
   const [toast, setToast] = useState(null)
-  const [activeDay, setActiveDay] = useState('Todos')
-  const [view, setView] = useState('lista')
+  const [view, setView] = useState('semanal')
   const [now, setNow] = useState(new Date())
   const [planDate, setPlanDate] = useState(new Date())
-  const [showHistory, setShowHistory] = useState(false)
   // O menu "..." (Clonar semana) vazava por baixo do grid da semana em
   // algumas telas — em vez de brigar com overflow/stacking do layout ao
   // redor, ele agora é desenhado direto no body via portal, sempre por cima
@@ -444,10 +438,6 @@ export default function Cronograma() {
       return day
     })
   }, [planDate])
-
-  const todayIndex = now.getDay()
-  const isPastDay = (day) => isCurrentWeek && DAYS.indexOf(day) < todayIndex
-  const orderedDays = isCurrentWeek ? [...DAYS.slice(todayIndex), ...DAYS.slice(0, todayIndex)] : DAYS
 
   const calendarYear = calendarCursor.getFullYear()
   const calendarMonth = calendarCursor.getMonth()
@@ -539,15 +529,6 @@ export default function Cronograma() {
     const key = String(value || '').trim().toLowerCase()
     return categoryColorMap[key] || '#E06445'
   }
-
-  const dayHasContent = (day) => grouped[day]?.length > 0 || pointGrouped[day]?.length > 0 || untimedGrouped[day]?.length > 0
-
-  const todosDaysWithContent = orderedDays.filter((day) => dayHasContent(day) || day === todayDay)
-  const hiddenPastDays = todosDaysWithContent.filter((day) => isPastDay(day))
-
-  const visibleDays = activeDay === 'Todos'
-    ? (showHistory ? todosDaysWithContent : todosDaysWithContent.filter((day) => !isPastDay(day)))
-    : (dayHasContent(activeDay) || activeDay === todayDay ? [activeDay] : [])
 
   const monthCells = useMemo(() => buildMonthCells(calendarYear, calendarMonth), [calendarYear, calendarMonth])
 
@@ -646,7 +627,7 @@ export default function Cronograma() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ ...EMPTY_FORM, day: activeDay !== 'Todos' ? activeDay : 'Domingo' })
+    setForm({ ...EMPTY_FORM, day: 'Domingo' })
     setShowModal(true)
   }
 
@@ -668,11 +649,9 @@ export default function Cronograma() {
 
   const movePlan = (dir) => {
     setPlanDate((prev) => shiftPlanDate(prev, dir))
-    setShowHistory(false)
   }
   const resetPlanToCurrent = () => {
     setPlanDate(new Date())
-    setShowHistory(false)
     const current = new Date()
     setCalendarCursor(new Date(current.getFullYear(), current.getMonth(), 1))
   }
@@ -891,71 +870,6 @@ export default function Cronograma() {
     }
   }
 
-  const renderItem = (item, options = {}) => {
-    const key = options.key || item.id
-    const categoryColor = getCategoryColor(item.category)
-    const categoryPillStyle = {
-      color: categoryColor,
-      background: colorWithAlpha(categoryColor, 0.14),
-      border: `1px solid ${colorWithAlpha(categoryColor, 0.42)}`,
-    }
-
-    return (
-      <div key={key} className={`schedule-item ${options.compact ? 'is-compact' : ''}`}>
-        <div className="schedule-time">{fmtTime(item)}</div>
-        <div className="schedule-bar" style={{ background: categoryColor }} />
-        <div className="schedule-body">
-          <div className="schedule-name">{item.name}</div>
-          {item.description && <div className="schedule-desc">{item.description}</div>}
-          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className="pill" style={categoryPillStyle}>
-              {formatCategoryValue(item.category) || 'Categoria'}
-            </span>
-            {item.repeat ? (
-              <span className="schedule-repeat">
-                <RiRepeat2Line size={13} aria-hidden="true" />
-                {REPEAT_OPTIONS.find((entry) => entry.value === item.repeat)?.label || ''}
-              </span>
-            ) : null}
-          </div>
-        </div>
-        <div className="schedule-actions">
-          <button className="btn btn-ghost btn-sm" onClick={() => openEdit(item)}>editar</button>
-          <button
-            className="btn btn-danger btn-sm btn-icon"
-            onClick={() => handleDelete(item.id)}
-            aria-label="Excluir item"
-            title="Excluir item"
-          >
-            <RiDeleteBinLine size={14} aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  const renderListCluster = (cluster, day, idx) => {
-    if (cluster.laneCount <= 1) {
-      return renderItem(cluster.events[0].item, { key: `${day}-single-${idx}` })
-    }
-
-    return (
-      <div key={`${day}-overlap-${idx}`} className="schedule-overlap-group">
-        <div className="schedule-overlap-head">
-          <span className="schedule-overlap-title">
-            <RiStackLine size={13} aria-hidden="true" />
-            Encavalados ({cluster.events.length})
-          </span>
-          <span className="schedule-overlap-range">
-            {formatMinuteClock(cluster.startMin)} - {formatMinuteClock(cluster.endMin)}
-          </span>
-        </div>
-        <div className="schedule-overlap-list">
-          {cluster.events.map((event) => renderItem(event.item, { key: `${event.item.id}-${event.lane}`, compact: true }))}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <>
@@ -1005,7 +919,7 @@ export default function Cronograma() {
         <div className="schedule-view-actions">
           <Tabs
             variant="segmented"
-            items={[{ key: 'lista', label: 'Lista' }, { key: 'semanal', label: 'Semanal' }, { key: 'calendario', label: 'Calendário' }]}
+            items={[{ key: 'semanal', label: 'Semanal' }, { key: 'calendario', label: 'Calendário' }]}
             active={view}
             onChange={changeView}
           />
@@ -1014,116 +928,6 @@ export default function Cronograma() {
           </button>
         </div>
       </div>
-
-      {view === 'lista' && (
-        <>
-          <Tabs
-            scroll
-            items={['Todos', ...DAYS].map((day) => ({ key: day, label: day }))}
-            active={activeDay}
-            onChange={setActiveDay}
-          />
-
-          {activeDay === 'Todos' && isCurrentWeek && hiddenPastDays.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm schedule-history-toggle"
-              onClick={() => setShowHistory((prev) => !prev)}
-            >
-              <RiHistoryLine size={14} aria-hidden="true" />
-              {showHistory ? 'Ocultar dias anteriores' : `Ver dias anteriores (${hiddenPastDays.length})`}
-            </button>
-          )}
-
-          {visibleDays.map((day) => {
-            const segments = dayFlows[day] || []
-            const isToday = isCurrentWeek && day === todayDay
-            const hasContent = (weekImportantByDay[day] || []).length > 0
-              || (untimedGrouped[day] || []).length > 0
-              || segments.some((entry) => entry.type !== 'now')
-            return (
-              <div key={day} className={`schedule-group ${isPastDay(day) ? 'is-past' : ''}`}>
-                <div className="schedule-day-label">
-                  {day}
-                  {isToday && <span className="schedule-today-badge">Hoje</span>}
-                </div>
-                {!hasContent && (
-                  <div className="schedule-day-empty">Nada marcado {isToday ? 'hoje' : `${day.toLowerCase()}`} ainda.</div>
-                )}
-                {(weekImportantByDay[day] || []).map((occ, idx) => (
-                  <button
-                    key={`imp-${occ.id}-${idx}`}
-                    type="button"
-                    className={`schedule-important-banner imp-${occ.type || 'importante'}`}
-                    onClick={() => openEditImportantDate(occ)}
-                  >
-                    {occ.recurrence && <RiRepeat2Line size={11} aria-hidden="true" />}
-                    <MarqueeText text={occ.title} />
-                  </button>
-                ))}
-                {(untimedGrouped[day] || []).map((item) => {
-                  const categoryColor = getCategoryColor(item.category)
-                  return (
-                    <button
-                      key={`untimed-${item.id}`}
-                      type="button"
-                      className="schedule-untimed-row"
-                      style={{ borderLeftColor: categoryColor, color: categoryColor }}
-                      onClick={() => openEdit(item)}
-                    >
-                      <MarqueeText text={item.name} />
-                    </button>
-                  )
-                })}
-                {segments.map((entry, idx) => {
-                  if (entry.type === 'now') {
-                    return (
-                      <div key={`now-${day}-${idx}`} className="schedule-now-marker" aria-label={`Agora ${entry.label}`}>
-                        <span className="schedule-now-time">Agora {entry.label}</span>
-                        <span className="schedule-now-line" />
-                      </div>
-                    )
-                  }
-
-                  if (entry.type === 'gap') {
-                    return (
-                      <div key={`gap-${day}-${idx}`} className="schedule-gap">
-                        <span className="gap-label"><RiTimeLine size={13} aria-hidden="true" /> Livre - {fmtDuration(entry.duration)}</span>
-                        <span className="gap-time">{formatMinuteClock(entry.start)}{' -> '}{formatMinuteClock(entry.end)}</span>
-                      </div>
-                    )
-                  }
-
-                  if (entry.type === 'point') {
-                    const categoryColor = getCategoryColor(entry.item.category)
-                    return (
-                      <button
-                        key={`point-${day}-${idx}`}
-                        type="button"
-                        className="schedule-untimed-row"
-                        style={{ borderLeftColor: categoryColor, color: categoryColor }}
-                        onClick={() => openEdit(entry.item)}
-                      >
-                        <span className="schedule-time-inline">{fmtTime(entry.item)}</span>
-                        <MarqueeText text={entry.item.name} />
-                      </button>
-                    )
-                  }
-
-                  return renderListCluster(entry, day, idx)
-                })}
-              </div>
-            )
-          })}
-
-          {visibleDays.length === 0 && !loading && (
-            <div className="empty-state">
-              <div className="empty-state-icon"><RiCalendarScheduleLine size={28} aria-hidden="true" /></div>
-              Nenhum item para esta semana.
-            </div>
-          )}
-        </>
-      )}
 
       {view === 'semanal' && (
         <div className="calendar-week-bars" role="grid" aria-label="Cronograma semanal em barras">

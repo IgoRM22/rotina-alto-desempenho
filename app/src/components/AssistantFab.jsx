@@ -100,6 +100,11 @@ export default function AssistantFab() {
 
   const handlePointerDown = (e) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return
+    // No toque, sem isso o navegador dispara um "clique fantasma" de
+    // compatibilidade ~300ms depois nas mesmas coordenadas — já em cima do
+    // modal recém-aberto, fora da caixa de texto — o que tira o foco e
+    // fecha o teclado quase assim que ele abre.
+    if (e.pointerType !== 'mouse') e.preventDefault()
     const rect = btnRef.current.getBoundingClientRect()
     dragRef.current = {
       startX: e.clientX,
