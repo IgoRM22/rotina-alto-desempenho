@@ -1,24 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { RiAddLine, RiCheckLine, RiCloseLine } from '@remixicon/react'
-import { listenHabits, listenHabitLogs, listenDailyLogsForDates, listenWeekFocus, saveWeekFocus, listenImportantDates } from '../services/firestore'
-import { getWeekDates, getWeekLabel, getWeekKey, dateKeyFromDate, addDays, todayKey, weekDayShortLabel } from '../utils/date'
-import { buildHabitWeekTable, buildDailyLogSeries, computeWeekCompletionPct } from '../utils/weekSummary'
+import { RiCheckLine } from '@remixicon/react'
+import { listenHabits, listenHabitLogs, listenImportantDates } from '../services/firestore'
+import { getWeekDates, getWeekLabel, dateKeyFromDate, todayKey, weekDayShortLabel } from '../utils/date'
+import { buildHabitWeekTable, computeWeekCompletionPct } from '../utils/weekSummary'
 import { expandImportantDatesForRange } from '../utils/importantDates'
 import CommitmentList from './CommitmentList'
-import WeekLineChart from './WeekLineChart'
 
 export default function RevisaoSemanal() {
   const [habits, setHabits] = useState([])
   const [habitLogs, setHabitLogs] = useState([])
-  const [dailyLogs, setDailyLogs] = useState([])
   const [importantDates, setImportantDates] = useState([])
-  const [focus, setFocus] = useState(null)
-  const [newFocusItem, setNewFocusItem] = useState('')
 
   const weekDates = useMemo(() => getWeekDates(), [])
   const weekLabel = getWeekLabel()
   const dateKeys = useMemo(() => weekDates.map(dateKeyFromDate), [weekDates])
-  const nextWeekKey = useMemo(() => getWeekKey(addDays(new Date(), 7)), [])
 
   useEffect(() => {
     const unsub = listenHabits(setHabits)
@@ -29,16 +24,6 @@ export default function RevisaoSemanal() {
     const unsub = listenHabitLogs(setHabitLogs, 14)
     return unsub
   }, [])
-
-  useEffect(() => {
-    const unsub = listenDailyLogsForDates(dateKeys, setDailyLogs)
-    return unsub
-  }, [dateKeys])
-
-  useEffect(() => {
-    const unsub = listenWeekFocus(nextWeekKey, setFocus)
-    return unsub
-  }, [nextWeekKey])
 
   useEffect(() => {
     const unsub = listenImportantDates(setImportantDates)
@@ -59,27 +44,6 @@ export default function RevisaoSemanal() {
   const todayIdx = dateKeys.indexOf(todayKey())
   const daysElapsed = todayIdx === -1 ? 7 : todayIdx + 1
   const pct = computeWeekCompletionPct(table, daysElapsed)
-
-  const logSeries = useMemo(() => buildDailyLogSeries(dailyLogs, weekDates), [dailyLogs, weekDates])
-  const chartXLabels = useMemo(() => weekDates.map((_, i) => weekDayShortLabel(i)), [weekDates])
-  const chartSeries = useMemo(() => [
-    { key: 'sleepQuality', label: 'Sono', color: 'var(--blue)', values: logSeries.sleepQuality },
-    { key: 'energy', label: 'Energia', color: 'var(--pink)', values: logSeries.energy },
-  ], [logSeries])
-  const hasLogData = chartSeries.some(s => s.values.some(v => v != null))
-
-  const focusItems = focus?.items || []
-
-  const addFocusItem = () => {
-    const text = newFocusItem.trim()
-    if (!text) return
-    saveWeekFocus(nextWeekKey, [...focusItems, { id: `${Date.now()}`, text }])
-    setNewFocusItem('')
-  }
-
-  const removeFocusItem = (id) => {
-    saveWeekFocus(nextWeekKey, focusItems.filter(i => i.id !== id))
-  }
 
   // Sem isso, a tabela cortava sáb/dom no mobile sem nenhuma pista de que
   // dava pra arrastar pra ver o resto — mesmo problema que as abas já
@@ -154,46 +118,6 @@ export default function RevisaoSemanal() {
             {weekTableFade.right && <div className="tabs-scroll-fade tabs-scroll-fade--right" aria-hidden="true" />}
           </div>
         )}
-      </section>
-
-      <section className="hoje-section">
-        <div className="hoje-section-head">
-          <h2 className="hoje-section-title">Sono &amp; energia</h2>
-        </div>
-        {hasLogData ? (
-          <WeekLineChart series={chartSeries} xLabels={chartXLabels} todayIndex={todayIdx} />
-        ) : (
-          <div className="empty-state">Nenhum registro diário essa semana.</div>
-        )}
-      </section>
-
-      <section className="hoje-section">
-        <div className="hoje-section-head">
-          <h2 className="hoje-section-title">Prioridades da semana</h2>
-        </div>
-        {focusItems.length > 0 && (
-          <ul className="nb-focus-list">
-            {focusItems.map(item => (
-              <li key={item.id}>
-                <span>{item.text}</span>
-                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => removeFocusItem(item.id)} aria-label="Remover">
-                  <RiCloseLine size={13} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="habit-add-row">
-          <input
-            value={newFocusItem}
-            onChange={e => setNewFocusItem(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addFocusItem()}
-            placeholder="Adicionar foco para a próxima semana..."
-          />
-          <button className="btn btn-primary btn-sm btn-icon" onClick={addFocusItem} aria-label="Adicionar">
-            <RiAddLine size={14} />
-          </button>
-        </div>
       </section>
     </>
   )

@@ -156,21 +156,6 @@ export const listenDailyLog = (dateKey, cb) =>
 export const saveDailyLog = (dateKey, data) =>
   setDoc(userDoc('dailyLogs', dateKey), { date: dateKey, ...data, updatedAt: serverTimestamp() }, { merge: true })
 
-export const saveDailyAnnotations = (dateKey, annotations) =>
-  setDoc(userDoc('dailyLogs', dateKey), { date: dateKey, annotations, updatedAt: serverTimestamp() }, { merge: true })
-
-export const listenDailyLogsForDates = (dateKeys, cb) => {
-  if (!dateKeys.length) { cb([]); return () => {} }
-  return onSnapshot(query(base('dailyLogs'), where(documentId(), 'in', dateKeys)), snap =>
-    cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-}
-
-// ── Week focus (editable in Revisão, shown in Hoje during that week) ────────
-export const listenWeekFocus = (weekKey, cb) =>
-  onSnapshot(userDoc('weekFocus', weekKey), snap => cb(snap.exists() ? snap.data() : null))
-
-export const saveWeekFocus = (weekKey, items) =>
-  setDoc(userDoc('weekFocus', weekKey), { items, updatedAt: serverTimestamp() }, { merge: true })
 
 // ── Goals / Metas ────────────────────────────────────────────────────────────
 export const listenGoals = (cb) =>

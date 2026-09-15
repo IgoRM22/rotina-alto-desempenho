@@ -4,7 +4,7 @@ import {
   RiAddLine, RiCheckboxBlankLine, RiTimerLine, RiArrowRightLine, RiDeleteBinLine, RiInboxLine,
 } from '@remixicon/react'
 import {
-  listenTodos, updateTodo, deleteTodo, addTodo, listenWeekFocus, listenHabits, listenHabitLogs,
+  listenTodos, updateTodo, deleteTodo, addTodo, listenHabits, listenHabitLogs,
   listenImportantDates, listenGoals, listenPrefs, listenFocusSessions, listenCharacter,
   listenDailyLog, saveDailyLog,
 } from '../services/firestore'
@@ -20,7 +20,7 @@ import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 import LevelUpToast from '../components/LevelUpToast'
 import BoltIcon from '../components/BoltIcon'
-import { todayKey, getWeekKey, dateKeyFromDate, addDays, MAX_TODAY_TASKS } from '../utils/date'
+import { todayKey, dateKeyFromDate, addDays, MAX_TODAY_TASKS } from '../utils/date'
 import { bestCurrentStreak, isDailyHabit } from '../utils/streak'
 import { expandImportantDatesForRange } from '../utils/importantDates'
 
@@ -62,7 +62,6 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [view])
   const [todos, setTodos] = useState([])
-  const [focus, setFocus] = useState(null)
   const [habits, setHabits] = useState([])
   const [habitLogs, setHabitLogs] = useState([])
   const [importantDates, setImportantDates] = useState([])
@@ -145,13 +144,6 @@ export default function Home() {
     }
   }
 
-  const weekKey = getWeekKey()
-
-  useEffect(() => {
-    const unsub = listenWeekFocus(weekKey, setFocus)
-    return unsub
-  }, [weekKey])
-
   const dateKey = todayKey()
   const now = new Date()
   const isEvening = now.getHours() >= 18 || now.getHours() < 5
@@ -183,8 +175,6 @@ export default function Home() {
   const todayTodos = todos.filter(t => t.todayDate === dateKey)
   const todayDone = todayTodos.filter(t => t.done).length
   const suggestions = todos.filter(t => !t.done && t.todayDate !== dateKey && t.dueDate && t.dueDate <= dateKey)
-  const focusItems = focus?.items || []
-
   const logsByDate = useMemo(() => new Map(habitLogs.map(l => [l.date, l.checked || {}])), [habitLogs])
   const todayHabitChecked = logsByDate.get(dateKey) || {}
   // Hábitos com meta semanal (ex: 3x por semana) não são "esperados hoje" —
@@ -425,12 +415,6 @@ export default function Home() {
             </div>
           </div>
 
-          {focusItems.length > 0 && (
-            <div className="hoje-pills reveal" style={{ '--d': 0.35 }}>
-              <span className="status-pill is-violet"><span className="dot" />{focusItems.length} priorida{focusItems.length > 1 ? 'des' : 'de'} da semana</span>
-            </div>
-          )}
-
           {signal && (
             <div className={`hoje-signal reveal ${signal.variant}`} style={{ '--d': 0.5 }}>
               <div>
@@ -542,18 +526,6 @@ export default function Home() {
               </section>
             </div>
           </div>
-
-          {focusItems.length > 0 && (
-            <section className="hoje-section">
-              <div className="hoje-section-head">
-                <h2 className="hoje-section-title">Prioridades da semana</h2>
-                <button type="button" className="hoje-section-link" onClick={() => setView('revisao')}>revisão semanal</button>
-              </div>
-              <ul className="nb-focus-list" style={{ marginBottom: 0 }}>
-                {focusItems.map(item => <li key={item.id}><span>{item.text}</span></li>)}
-              </ul>
-            </section>
-          )}
 
           {/* Fechamento do dia — só aparece à noite, é quando faz sentido
               olhar pra amanhã. De dia essas seções somem sozinhas. */}
