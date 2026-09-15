@@ -9,7 +9,6 @@ const TABS = [
   { key: 'metas', label: 'Metas', to: 'metas' },
   { key: 'habitos', label: 'Hábitos', to: 'habitos' },
   { key: 'foco', label: 'Foco', to: 'foco' },
-  { key: 'acompanhamento', label: 'Métricas', to: 'acompanhamento' },
   { key: 'alimentacao', label: 'Alimentação', to: 'alimentacao' },
 ]
 

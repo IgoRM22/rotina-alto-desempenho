@@ -1,15 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { RiCheckLine } from '@remixicon/react'
-import { listenHabits, listenHabitLogs, listenImportantDates } from '../services/firestore'
+import { RiCheckLine, RiTimeLine } from '@remixicon/react'
+import { listenHabits, listenHabitLogs, listenImportantDates, listenFocusSessions, listenGoals } from '../services/firestore'
 import { getWeekDates, getWeekLabel, dateKeyFromDate, todayKey, weekDayShortLabel } from '../utils/date'
 import { buildHabitWeekTable, computeWeekCompletionPct } from '../utils/weekSummary'
 import { expandImportantDatesForRange } from '../utils/importantDates'
 import CommitmentList from './CommitmentList'
 
+const fmtHours = (minutes) => {
+  const safe = Math.max(0, Math.round(minutes))
+  const h = Math.floor(safe / 60)
+  const m = safe % 60
+  if (h === 0) return `${m}min`
+  if (m === 0) return `${h}h`
+  return `${h}h${String(m).padStart(2, '0')}`
+}
+
 export default function RevisaoSemanal() {
   const [habits, setHabits] = useState([])
   const [habitLogs, setHabitLogs] = useState([])
   const [importantDates, setImportantDates] = useState([])
+  const [sessions, setSessions] = useState([])
+  const [goals, setGoals] = useState([])
 
   const weekDates = useMemo(() => getWeekDates(), [])
   const weekLabel = getWeekLabel()
@@ -29,6 +40,40 @@ export default function RevisaoSemanal() {
     const unsub = listenImportantDates(setImportantDates)
     return unsub
   }, [])
+
+  useEffect(() => {
+    const unsub = listenFocusSessions(setSessions, 200)
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    const unsub = listenGoals(setGoals)
+    return unsub
+  }, [])
+
+  // "Onde você vem se dedicando" — herdado da extinta tela de Métricas, só
+  // que preso à semana em revisão (sem seletor de período — aqui o período
+  // já é sempre "esta semana"). Hábito vinculado tem prioridade sobre meta
+  // por ser mais específico ("Inglês" diz mais que "Aprender idiomas").
+  const weekSessions = useMemo(() => sessions.filter(s => dateKeys.includes(s.date)), [sessions, dateKeys])
+  const weekFocusMinutes = useMemo(() => weekSessions.reduce((sum, s) => sum + (s.minutes || 0), 0), [weekSessions])
+  const dedicationRanking = useMemo(() => {
+    const habitById = new Map(habits.map(h => [h.id, h.name]))
+    const goalById = new Map(goals.map(g => [g.id, g.title]))
+    const totals = new Map()
+    weekSessions.forEach(s => {
+      const label = (s.habitId && habitById.get(s.habitId))
+        || (s.goalId && goalById.get(s.goalId))
+        || (s.category ? s.category.charAt(0).toUpperCase() + s.category.slice(1) : null)
+        || 'Sem tema'
+      totals.set(label, (totals.get(label) || 0) + (s.minutes || 0))
+    })
+    return Array.from(totals.entries())
+      .map(([label, minutes]) => ({ label, minutes }))
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 4)
+  }, [weekSessions, habits, goals])
+  const maxDedicationMinutes = dedicationRanking[0]?.minutes || 1
 
   const commitments = useMemo(
     () => expandImportantDatesForRange(importantDates, weekDates[0], weekDates[6]).map(occ => {
@@ -119,6 +164,33 @@ export default function RevisaoSemanal() {
           </div>
         )}
       </section>
+
+      {weekFocusMinutes > 0 && (
+        <section className="hoje-section">
+          <div className="hoje-section-head">
+            <h2 className="hoje-section-title">Foco da semana</h2>
+            <span className="subpage-controls-note" style={{ marginRight: 0 }}>
+              <RiTimeLine size={12} /> {fmtHours(weekFocusMinutes)} registrado
+            </span>
+          </div>
+          <div className="rank-list">
+            {dedicationRanking.map(entry => (
+              <div key={entry.label} className="rank-row">
+                <div className="rank-row-head">
+                  <span className="rank-row-label">{entry.label}</span>
+                  <span className="rank-row-value">{fmtHours(entry.minutes)}</span>
+                </div>
+                <div className="rank-bar-track">
+                  <div
+                    className="rank-bar-fill"
+                    style={{ width: `${Math.max(4, (entry.minutes / maxDedicationMinutes) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </>
   )
 }
