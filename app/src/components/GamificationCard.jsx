@@ -19,7 +19,7 @@ const MOOD = {
 // centro — o ponto de maior impacto visual do Hoje, de propósito: é o único
 // lugar do app que usa gradiente + glow, reservado pro elemento que resume
 // "como você está indo".
-export default function GamificationCard({ level, xp, xpToNext, pct, character, mood, streakDays }) {
+export default function GamificationCard({ level, xp, xpToNext, pct, character, mood, streakDays, onCharacterClick }) {
   const offset = CIRCUMFERENCE * (1 - pct / 100)
   const moodDef = mood && MOOD[mood]
 
@@ -35,13 +35,20 @@ export default function GamificationCard({ level, xp, xpToNext, pct, character, 
             strokeDashoffset={offset}
           />
         </svg>
-        <div className="gami-ring-center">
+        <button
+          type="button"
+          className="gami-ring-center"
+          onClick={onCharacterClick}
+          disabled={!onCharacterClick}
+          aria-label="Editar personagem"
+          title={onCharacterClick ? 'Editar personagem' : undefined}
+        >
           {character?.body ? (
             <PixelCharacter character={character} level={level} size={76} />
           ) : (
             <span className="gami-ring-level">{level}</span>
           )}
-        </div>
+        </button>
         <span className="gami-ring-badge" title={moodDef ? moodDef.title(streakDays) : undefined}>
           {moodDef ? <moodDef.Icon size={11} color="#fff" /> : <BoltIcon size={11} color="#fff" />}
           {level}

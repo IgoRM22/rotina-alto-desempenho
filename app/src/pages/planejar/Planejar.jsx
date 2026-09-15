@@ -17,14 +17,14 @@ export default function Planejar() {
 
   return (
     <div className="page">
+      {/* Mesmo lugar/aparência do Hoje e da Revisão Semanal — sempre antes
+          do título da tela, ver FocusShortcut.jsx. */}
+      <FocusShortcut />
+
       <div className="page-header">
         <span className="page-kicker">Organização</span>
         <h1 className="page-title">Planejar</h1>
       </div>
-
-      {/* Mesmo lugar/aparência do Hoje e da Revisão Semanal — ver
-          FocusShortcut.jsx. */}
-      <FocusShortcut />
 
       {/* Sete sub-abas era demais pra rolar horizontalmente no mobile —
           uma lista suspensa é mais rápida de usar com o polegar. No

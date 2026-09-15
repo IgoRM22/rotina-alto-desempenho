@@ -11,8 +11,9 @@ import {
 import HabitChecklist from '../components/HabitChecklist'
 import GamificationCard from '../components/GamificationCard'
 import FocusShortcut from '../components/FocusShortcut'
+import CharacterCreatorModal from '../components/CharacterCreatorModal'
 import { computeXp } from '../utils/gamification'
-import { UNLOCKS } from '../utils/character'
+import { UNLOCKS, computeBehaviorStats } from '../utils/character'
 import RevisaoSemanal from '../components/RevisaoSemanal'
 import CommitmentList from '../components/CommitmentList'
 import Tabs from '../components/Tabs'
@@ -70,6 +71,7 @@ export default function Home() {
   const [prefs, setPrefs] = useState({})
   const [focusSessions, setFocusSessions] = useState([])
   const [character, setCharacter] = useState(null)
+  const [editingCharacter, setEditingCharacter] = useState(false)
   const [levelUp, setLevelUp] = useState(null)
   const levelCheckTimer = React.useRef(null)
   const [viewingTodo, setViewingTodo] = useState(null)
@@ -109,6 +111,10 @@ export default function Home() {
   const gami = useMemo(
     () => computeXp({ todos, habitLogs, focusSessions, goals, habits }),
     [todos, habitLogs, focusSessions, goals, habits],
+  )
+  const behaviorStats = useMemo(
+    () => computeBehaviorStats({ habits, focusSessions, goals }),
+    [habits, focusSessions, goals],
   )
   // Celebração só quando o nível sobe de verdade — nunca no carregamento da
   // página. O nível calculado oscila nos primeiros instantes porque cada
@@ -366,6 +372,7 @@ export default function Home() {
             character={character}
             mood={characterMood}
             streakDays={best?.streak}
+            onCharacterClick={() => setEditingCharacter(true)}
           />
           <div className="hero">
             <div className="hero-date reveal" style={{ '--d': 0 }}>
@@ -649,6 +656,15 @@ export default function Home() {
       )}
 
       <TaskDetailModal todo={viewingTodo} onClose={() => setViewingTodo(null)} />
+      {editingCharacter && (
+        <CharacterCreatorModal
+          initial={character}
+          level={gami.level}
+          stats={behaviorStats}
+          onCreated={() => setEditingCharacter(false)}
+          onCancel={() => setEditingCharacter(false)}
+        />
+      )}
       {toast && <Toast msg={toast.msg} type={toast.type} />}
       {levelUp && (
         <LevelUpToast
