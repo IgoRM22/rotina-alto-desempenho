@@ -337,6 +337,11 @@ export default function Home() {
 
   return (
     <div className="page">
+      {/* Sempre o primeiro elemento da página — mesmo lugar em todas as 3
+          telas que levam pro Foco (Hoje, Revisão e Planejar), ver
+          FocusShortcut.jsx. */}
+      <FocusShortcut />
+
       {/* Fica fora do branch hoje/revisão de propósito: se cada visão renderizasse
           o próprio toggle dentro do seu layout, ele pulava de posição ao trocar
           (um ficava dentro do page-header, o outro solto no topo). Assim é sempre
@@ -349,10 +354,6 @@ export default function Home() {
           onChange={setView}
         />
       </div>
-
-      {/* Mesmo lugar nas duas visões (Hoje e Revisão) de propósito — ver
-          FocusShortcut.jsx. */}
-      <FocusShortcut />
 
       {view === 'revisao' ? (
         <>
