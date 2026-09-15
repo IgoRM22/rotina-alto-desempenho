@@ -187,7 +187,7 @@ export const SLOTS = ['torso', 'hat', 'feet', 'weapon', 'shield']
 // ao visual padrão (camiseta lisa / sem chapéu / bota), não progressão.
 export const STARTER_ITEMS = [
   { slot: 'torso', item: 'tshirt', label: 'Camiseta listrada' },
-  { slot: 'hat', item: 'bandana', label: 'Bandana' },
+  { slot: 'hat', item: 'cap', label: 'Chapéu de aventureiro' },
   { slot: 'feet', item: 'boots', label: 'Bota' },
   { slot: 'feet', item: 'sandals', label: 'Sandália' },
 ]
