@@ -190,6 +190,7 @@ export const STARTER_ITEMS = [
   { slot: 'hat', item: 'cap', label: 'Chapéu de aventureiro' },
   { slot: 'feet', item: 'boots', label: 'Bota' },
   { slot: 'feet', item: 'sandals', label: 'Sandália' },
+  { slot: 'weapon', item: 'dagger', label: 'Adaga' },
 ]
 
 // A peça mais forte já desbloqueada em cada slot — null pra slot ainda sem
