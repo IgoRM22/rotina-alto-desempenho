@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   RiAddLine,
   RiBookOpenLine,
@@ -14,6 +14,7 @@ import Toast from '../components/Toast'
 import Tabs from '../components/Tabs'
 import InspirationsPanel from '../components/InspirationsPanel'
 import Linkify from '../components/Linkify'
+import { ARCHIVE_NOTEBOOK_NAME } from '../hooks/useWeekArchive'
 
 const IMPORTANCE = [
   { value: 'alta', label: 'Alta' },
@@ -48,12 +49,28 @@ export default function Notes() {
   // abas de dia da Agenda.
   const nbBarRef = useRef(null)
   const [nbBarFade, setNbBarFade] = useState({ left: false, right: false })
+  const [archiveNotebookId, setArchiveNotebookId] = useState(undefined)
 
   useEffect(() => {
-    const u1 = listenNotebooks(setNotebooks)
+    // O caderno de arquivo das revisões semanais não é uma nota "de
+    // verdade" (é gerado sozinho, uma por semana) — filtrado aqui na
+    // origem pra nunca aparecer na barra de cadernos, na busca, na
+    // contagem de "Todas" nem no grid. Quem quiser ver essas revisões
+    // acessa pela própria Revisão Semanal, não por aqui.
+    const u1 = listenNotebooks((data) => {
+      setArchiveNotebookId(data.find((nb) => nb.name === ARCHIVE_NOTEBOOK_NAME)?.id ?? null)
+      setNotebooks(data.filter((nb) => nb.name !== ARCHIVE_NOTEBOOK_NAME))
+    })
     const u2 = listenNotes(setNotes)
     return () => { u1(); u2() }
   }, [])
+
+  // undefined = ainda não sabe se existe um caderno de arquivo (evita um
+  // flash mostrando as revisões antes do id resolver); null = não existe.
+  const visibleAllNotes = useMemo(
+    () => (archiveNotebookId ? notes.filter((n) => n.notebookId !== archiveNotebookId) : (archiveNotebookId === null ? notes : [])),
+    [notes, archiveNotebookId],
+  )
 
   useEffect(() => {
     const el = nbBarRef.current
@@ -75,7 +92,7 @@ export default function Notes() {
 
   const searchTerm = search.trim().toLowerCase()
 
-  const visibleNotes = notes
+  const visibleNotes = visibleAllNotes
     .filter(n => activeNb ? n.notebookId === activeNb : true)
     .filter(n => !searchTerm
       || (n.title || '').toLowerCase().includes(searchTerm)
@@ -189,7 +206,7 @@ export default function Notes() {
             className={`notebook-tab ${activeNb === null ? 'active' : ''}`}
             onClick={() => setActiveNb(null)}
           >
-            <RiBookOpenLine size={13} /> Todas <span className="nb-count">{notes.length}</span>
+            <RiBookOpenLine size={13} /> Todas <span className="nb-count">{visibleAllNotes.length}</span>
           </button>
           {notebooks.map(nb => (
             <button
@@ -200,7 +217,7 @@ export default function Notes() {
               onContextMenu={e => { e.preventDefault(); openEditNb(nb) }}
             >
               {nb.emoji} {nb.name}
-              <span className="nb-count">{notes.filter(n => n.notebookId === nb.id).length}</span>
+              <span className="nb-count">{visibleAllNotes.filter(n => n.notebookId === nb.id).length}</span>
             </button>
           ))}
           <button className="notebook-tab-add" onClick={openAddNb}>

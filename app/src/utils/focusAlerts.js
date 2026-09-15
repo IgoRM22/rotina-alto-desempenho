@@ -30,36 +30,50 @@ export const vibrateDevice = () => {
   } catch { /* iOS Safari nunca implementou a Vibration API — silenciosamente ignora */ }
 }
 
-export const notifyPhaseEnd = (title, body) => {
+// Navegadores mobile (Chrome/Android incluso, e qualquer PWA instalado) não
+// implementam o construtor `new Notification(...)` — só desktop aceita. Sem
+// isso, a notificação nunca aparecia no celular (o try/catch engolia o erro
+// silenciosamente, então nem dava pra perceber que tinha quebrado). Em
+// qualquer lugar com service worker é preciso passar pelo registro dele
+// (`showNotification`) — ver o mesmo padrão em useDeadlineNotifications.js.
+const showViaServiceWorker = async (title, options) => {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
   try {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-    new Notification(title, { body, icon: '/rotina-alto-desempenho/icons/icon-192.png', tag: 'raio-pomodoro' })
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready
+      await registration.showNotification(title, options)
+      return
+    }
+    // eslint-disable-next-line no-new
+    new Notification(title, options)
   } catch { /* notificação local é só um extra — nunca deve quebrar o timer */ }
+}
+
+export const notifyPhaseEnd = (title, body) => {
+  showViaServiceWorker(title, { body, icon: '/rotina-alto-desempenho/icons/icon-192.png', tag: 'raio-pomodoro' })
 }
 
 // Notificação do cronômetro em andamento — só funciona de verdade enquanto a
 // aba está aberta (mesmo que em segundo plano): o navegador congela o JS de
-// abas fechadas/suspensas, então isso não sobrevive fechar o app. Trocar o
-// texto de uma notificação existente com `new Notification` no mesmo `tag`
-// substitui a anterior em vez de empilhar uma nova a cada segundo.
-let liveNotification = null
-
+// abas fechadas/suspensas, então isso não sobrevive fechar o app. Mesmo
+// `tag` substitui a notificação anterior em vez de empilhar uma nova a cada
+// segundo — via service worker isso funciona pelo `tag` da própria opção,
+// sem precisar guardar referência ao objeto (que `showNotification` não
+// retorna, ao contrário do construtor `new Notification`).
 export const updateLiveFocusNotification = (title, body) => {
-  try {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-    liveNotification = new Notification(title, {
-      body,
-      icon: '/rotina-alto-desempenho/icons/icon-192.png',
-      tag: 'raio-foco-live',
-      silent: true,
-      renotify: false,
-    })
-  } catch { /* segue sem notificação — o cronômetro em tela continua valendo */ }
+  showViaServiceWorker(title, {
+    body,
+    icon: '/rotina-alto-desempenho/icons/icon-192.png',
+    tag: 'raio-foco-live',
+    silent: true,
+    renotify: false,
+  })
 }
 
 export const closeLiveFocusNotification = () => {
-  try {
-    liveNotification?.close()
-  } catch { /* nada a fazer */ }
-  liveNotification = null
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+  navigator.serviceWorker.ready
+    .then((registration) => registration.getNotifications({ tag: 'raio-foco-live' }))
+    .then((notifications) => notifications.forEach((n) => n.close()))
+    .catch(() => {})
 }

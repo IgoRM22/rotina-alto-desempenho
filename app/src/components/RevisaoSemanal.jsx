@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { RiCheckLine, RiTimeLine } from '@remixicon/react'
-import { listenHabits, listenHabitLogs, listenImportantDates, listenFocusSessions, listenGoals } from '../services/firestore'
+import {
+  listenHabits, listenHabitLogs, listenImportantDates, listenFocusSessions, listenGoals,
+  listenNotebooks, listenNotes,
+} from '../services/firestore'
 import { getWeekDates, getWeekLabel, dateKeyFromDate, todayKey, weekDayShortLabel } from '../utils/date'
 import { buildHabitWeekTable, computeWeekCompletionPct } from '../utils/weekSummary'
 import { expandImportantDatesForRange } from '../utils/importantDates'
+import { ARCHIVE_NOTEBOOK_NAME } from '../hooks/useWeekArchive'
 import CommitmentList from './CommitmentList'
 
 const fmtHours = (minutes) => {
@@ -21,6 +25,7 @@ export default function RevisaoSemanal() {
   const [importantDates, setImportantDates] = useState([])
   const [sessions, setSessions] = useState([])
   const [goals, setGoals] = useState([])
+  const [archivedReviews, setArchivedReviews] = useState([])
 
   const weekDates = useMemo(() => getWeekDates(), [])
   const weekLabel = getWeekLabel()
@@ -49,6 +54,27 @@ export default function RevisaoSemanal() {
   useEffect(() => {
     const unsub = listenGoals(setGoals)
     return unsub
+  }, [])
+
+  // O arquivo automático de revisões passadas (uma nota por semana, gerada
+  // sozinha em useWeekArchive.js) mora num caderno próprio, escondido da
+  // tela de Notas — pra não misturar com as notas de verdade da pessoa —
+  // e só aparece aqui, dentro da própria Revisão Semanal.
+  useEffect(() => {
+    let unsubNotes = () => {}
+    const unsubNb = listenNotebooks((notebooks) => {
+      const archive = notebooks.find((nb) => nb.name === ARCHIVE_NOTEBOOK_NAME)
+      unsubNotes()
+      if (!archive) { setArchivedReviews([]); unsubNotes = () => {}; return }
+      unsubNotes = listenNotes((notes) => {
+        setArchivedReviews(
+          notes
+            .filter((n) => n.notebookId === archive.id)
+            .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)),
+        )
+      })
+    })
+    return () => { unsubNb(); unsubNotes() }
   }, [])
 
   // "Onde você vem se dedicando" — herdado da extinta tela de Métricas, só
@@ -187,6 +213,22 @@ export default function RevisaoSemanal() {
                   />
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {archivedReviews.length > 0 && (
+        <section className="hoje-section">
+          <div className="hoje-section-head">
+            <h2 className="hoje-section-title">Revisões anteriores</h2>
+          </div>
+          <div className="archived-review-list">
+            {archivedReviews.map((note) => (
+              <details key={note.id} className="archived-review-item">
+                <summary>{note.title}</summary>
+                <pre className="archived-review-content">{note.content}</pre>
+              </details>
             ))}
           </div>
         </section>

@@ -12,7 +12,10 @@ import {
 import { getWeekDates, getWeekLabel, getWeekKey, dateKeyFromDate, addDays } from '../utils/date'
 import { buildHabitWeekTable, collectAnnotations, formatWeekSummaryText } from '../utils/weekSummary'
 
-const ARCHIVE_NOTEBOOK_NAME = 'Revisões Semanais'
+// Exportado — Notes.jsx filtra esse caderno da lista normal (não é uma nota
+// "de verdade", é um arquivo automático) e RevisaoSemanal.jsx o lê direto
+// pra mostrar as revisões passadas num lugar próprio, sem misturar os dois.
+export const ARCHIVE_NOTEBOOK_NAME = 'Revisões Semanais'
 
 const ensureArchiveNotebook = () => new Promise((resolve) => {
   const unsub = listenNotebooks(async (notebooks) => {

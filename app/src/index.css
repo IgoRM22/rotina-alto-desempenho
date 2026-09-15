@@ -6514,6 +6514,40 @@ body.has-modal-open .assistant-fab { display: none; }
   border-radius: 999px;
 }
 
+/* ── REVISÕES ARQUIVADAS (Revisão Semanal) ── */
+.archived-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.archived-review-item {
+  border: 1px solid var(--border);
+  background: var(--s1);
+}
+
+.archived-review-item summary {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.archived-review-item summary::-webkit-details-marker { display: none; }
+.archived-review-item summary:hover { color: var(--text); }
+
+.archived-review-content {
+  margin: 0;
+  padding: 0 14px 14px;
+  font-family: var(--ff-b);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text3);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Reforço no instante da ação (marcar hábito/concluir tarefa), não só no
    resumo depois — um "pop" curto de escala, igual em qualquer lista que
    tenha uma ação de concluir. */
