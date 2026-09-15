@@ -376,6 +376,10 @@ export default function Cronograma() {
   const [view, setView] = useState('semanal')
   const [now, setNow] = useState(new Date())
   const [planDate, setPlanDate] = useState(new Date())
+  // Dia clicado no Calendário — abre um recorte de só aquele dia (mesma
+  // ideia da visão Semanal, só que pra um único dia), em vez de precisar
+  // trocar de visão pra ver a agenda completa daquela data.
+  const [expandedDayKey, setExpandedDayKey] = useState(null)
   // O menu "..." (Clonar semana) vazava por baixo do grid da semana em
   // algumas telas — em vez de brigar com overflow/stacking do layout ao
   // redor, ele agora é desenhado direto no body via portal, sempre por cima
@@ -619,6 +623,30 @@ export default function Cronograma() {
 
     return byDay
   }, [importantDates, planWeekDates])
+
+  // Agenda de um único dia (usado pelo recorte do Calendário) — mesma lógica
+  // de "a quais dias esse item pertence" da visão Semanal, só que resolvida
+  // pra UMA data específica em vez de pra semana inteira.
+  const expandedDayAgenda = useMemo(() => {
+    if (!expandedDayKey) return null
+    const date = fromDateKey(expandedDayKey)
+    const dayName = DAYS[date.getDay()]
+    const weekMeta = getWeekMeta(date)
+
+    const dayItems = items
+      .filter((item) => {
+        if (item.planScope && item.planScope !== 'week') return false
+        const matchesWeek = item.planKey
+          ? (item.planKey === weekMeta.key || weekMeta.legacyKeys.includes(item.planKey))
+          : (weekMeta.key === currentWeekMeta.key || weekMeta.legacyKeys.includes(legacyWeekKey))
+        return matchesWeek && getItemDays(item).includes(dayName)
+      })
+      .sort((a, b) => sortKey(a) - sortKey(b))
+
+    const importantItems = expandImportantDatesForRange(importantDates, date, date)
+
+    return { date, dayName, dayItems, importantItems }
+  }, [expandedDayKey, items, importantDates, currentWeekMeta.key, legacyWeekKey])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -1209,8 +1237,8 @@ export default function Cronograma() {
                   <button
                     type="button"
                     className="month-cell-day"
-                    onClick={() => openAddImportantDate(cell.key)}
-                    title="Adicionar data importante"
+                    onClick={() => setExpandedDayKey(cell.key)}
+                    title="Ver o dia"
                   >
                     {cell.dayNumber}
                   </button>
@@ -1244,7 +1272,9 @@ export default function Cronograma() {
                     ))}
 
                     {combined.length > 3 && (
-                      <span className="month-item-more">+{combined.length - 3}</span>
+                      <button type="button" className="month-item-more" onClick={() => setExpandedDayKey(cell.key)}>
+                        +{combined.length - 3}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1438,6 +1468,48 @@ export default function Cronograma() {
               </button>
               <span>{importantTypeLabel(editingImportant.type)}</span>
             </div>
+          )}
+        </Modal>
+      )}
+
+      {expandedDayAgenda && (
+        <Modal
+          title={`${expandedDayAgenda.dayName} · ${expandedDayAgenda.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}`}
+          onClose={() => setExpandedDayKey(null)}
+          onSave={() => { setExpandedDayKey(null); openAdd(expandedDayAgenda.dayName) }}
+          saveLabel="+ Adicionar"
+          hideCancel
+        >
+          {expandedDayAgenda.importantItems.map((occ, idx) => (
+            <button
+              key={`day-imp-${occ.id}-${idx}`}
+              type="button"
+              className={`schedule-important-banner imp-${occ.type || 'importante'}`}
+              onClick={() => { setExpandedDayKey(null); openEditImportantDate(occ) }}
+            >
+              {occ.recurrence && <RiRepeat2Line size={11} aria-hidden="true" />}
+              <MarqueeText text={occ.title} />
+            </button>
+          ))}
+
+          {expandedDayAgenda.dayItems.length === 0 && expandedDayAgenda.importantItems.length === 0 ? (
+            <div className="empty-state">Nada marcado nesse dia.</div>
+          ) : (
+            expandedDayAgenda.dayItems.map((item) => {
+              const categoryColor = getCategoryColor(item.category)
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="day-detail-item"
+                  style={{ borderLeftColor: categoryColor }}
+                  onClick={() => { setExpandedDayKey(null); openEdit(item) }}
+                >
+                  <span className="day-detail-item-time">{fmtTime(item) || '—'}</span>
+                  <span className="day-detail-item-name">{item.name}</span>
+                </button>
+              )
+            })
           )}
         </Modal>
       )}

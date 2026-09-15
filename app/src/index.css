@@ -2009,9 +2009,51 @@ body::after {
 }
 
 .month-item-more {
+  appearance: none;
+  border: none;
+  background: transparent;
   font-size: 10px;
   color: var(--text3);
-  padding-left: 2px;
+  padding: 0 0 0 2px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.month-item-more:hover,
+.month-item-more:focus-visible {
+  color: var(--coral);
+  outline: none;
+}
+
+/* ── Recorte de um único dia (clicar no dia no Calendário) ── */
+.day-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--s1);
+  border: none;
+  border-left: 3px solid var(--border2);
+  color: var(--text);
+  font-size: 13px;
+  padding: 9px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+
+.day-detail-item:hover,
+.day-detail-item:focus-visible {
+  background: var(--s2);
+  outline: none;
+}
+
+.day-detail-item-time {
+  font-size: 11px;
+  color: var(--text3);
+  flex-shrink: 0;
+  min-width: 40px;
 }
 
 /* Compromissos da semana (schedule) no Calendário — cor vem da categoria do
