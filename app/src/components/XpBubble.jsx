@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useState } from 'react'
+import { RiFlashlightFill } from '@remixicon/react'
 
 const XpContext = createContext(null)
 let uid = 0
@@ -27,6 +28,7 @@ export function XpProvider({ children }) {
       <div className="xp-bubble-stack" aria-live="polite">
         {bubbles.map((b) => (
           <div key={b.id} className="xp-bubble">
+            <RiFlashlightFill size={13} className="xp-bubble-icon" aria-hidden="true" />
             <span className="xp-bubble-amount">+{b.amount} XP</span>
             {b.label && <span className="xp-bubble-label">{b.label}</span>}
           </div>
