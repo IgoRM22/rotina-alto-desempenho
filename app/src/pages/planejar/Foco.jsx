@@ -110,17 +110,6 @@ export default function Foco() {
     return () => clearInterval(timer)
   }, [running])
 
-  // "Pequenos XPs subindo" enquanto o foco tá ativo — o XP real de verdade
-  // só é gravado ao concluir a sessão (addFocusSession), isso aqui é só o
-  // popup ambiente a cada 2min (mesmo ritmo de XP_PER_FOCUS_MINUTE=0.5/min)
-  // pra sentir o progresso se acumulando durante a sessão, não só no final.
-  useEffect(() => {
-    if (!running) return
-    const timer = setInterval(() => grantXp(1, 'foco em andamento'), 120000)
-    return () => clearInterval(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running])
-
   // Notificação com o cronômetro contando em tempo real enquanto a sessão
   // está rodando — some assim que pausa, termina ou a fase muda. Não retorna
   // cleanup a cada tick: fechar e recriar a notificação todo segundo faria
@@ -163,6 +152,15 @@ export default function Foco() {
     ? session.phaseAccumulatedSec + (session.phaseStartedAt ? (Date.now() - session.phaseStartedAt) / 1000 : 0)
     : 0
   const remainingSec = isPomodoro ? Math.max(0, phaseDurationSec - phaseElapsedSec) : 0
+
+  // Contador ambiente — não é popup (empilhar um a cada 10s ficava poluído
+  // rápido), é só um número que sobe inline junto do cronômetro, puramente
+  // decorativo: sobe +1 a cada 10s pra sentir o tempo focado rendendo ALGO
+  // o tempo todo, mas o XP de verdade só é gravado no banco ao concluir a
+  // sessão/ciclo (addFocusSession) — antes disso, "session" (de onde isso é
+  // derivado) já vive só no localStorage do aparelho (ver
+  // utils/focusSession.js), nada aqui grava no Firestore.
+  const sessionAmbientXp = running ? Math.floor((isPomodoro ? phaseElapsedSec : elapsedSec) / 10) : 0
 
   const todaySessions = sessions.filter(s => s.date === today)
   const todayMinutes = todaySessions.reduce((sum, s) => sum + (s.minutes || 0), 0)
@@ -375,7 +373,17 @@ export default function Foco() {
   const phaseLabel = isPomodoro ? (session.phase === 'work' ? 'foco' : 'pausa') : null
 
   return (
-    <>
+    <div className="page">
+      {/* Fora do <Planejar> de propósito (ver isFoco em Planejar.jsx) — Foco
+          é uma tela própria agora, não mais uma sub-aba, então ganha seu
+          próprio cabeçalho simples em vez de herdar o título/abas de
+          "Planejar" (Agenda/Tarefas/Metas) por cima, que não tinham nada a
+          ver com o que a pessoa veio fazer aqui. */}
+      <div className="page-header">
+        <span className="page-kicker">Atenção</span>
+        <h1 className="page-title">Foco</h1>
+      </div>
+
       <div className="foco-wrap">
         {/* Companheiro + bateria ficam juntos nessa sub-linha de propósito —
             sem ela, o .foco-wrap empilhava tudo em coluna no mobile e o
@@ -411,6 +419,7 @@ export default function Foco() {
                 ? ` · ${session.cyclesCompleted || 0} ciclo(s) hoje`
                 : ` · ${todayMinutes + Math.floor(elapsedMin)}/${target} min hoje`}
             </small>
+            {sessionAmbientXp > 0 && <span className="foco-ambient-xp">+{sessionAmbientXp} XP</span>}
           </div>
           {session ? (
             <>
@@ -666,6 +675,6 @@ export default function Foco() {
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
-    </>
+    </div>
   )
 }

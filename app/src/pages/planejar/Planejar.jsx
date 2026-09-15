@@ -13,7 +13,15 @@ const TABS = [
 export default function Planejar() {
   const location = useLocation()
   const navigate = useNavigate()
+  // Foco não é mais uma sub-aba (ver App.jsx) — chegar lá pelo personagem,
+  // pelo FocusShortcut ou pela nav ainda passa por dentro de <Planejar>,
+  // então sem essa checagem o título "Planejar" + abas Agenda/Tarefas/
+  // Metas ficavam em cima do Foco, que deveria ser uma tela própria, sem
+  // esse cabeçalho estranho por cima.
+  const isFoco = location.pathname.endsWith('/foco')
   const current = TABS.find(t => location.pathname.endsWith(`/${t.to}`))?.key || TABS[0].key
+
+  if (isFoco) return <Outlet />
 
   return (
     <div className="page">
