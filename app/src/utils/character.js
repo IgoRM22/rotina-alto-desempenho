@@ -130,6 +130,15 @@ const feetFile = (item, bodyValue) => {
 const TORSO_BODY_SUFFIX = { male: '', muscular: '', female: '_female', teen: '_teen' }
 const torsoFile = (item, bodyValue) => `${item}${TORSO_BODY_SUFFIX[bodyValue] ?? ''}`
 
+// A fonte LPC não tem um corte de armadura próprio pra "Colosso" (só
+// male/female/teen) — emprestando o arquivo macho de novo, mas o torso do
+// Colosso é sensivelmente mais largo que o do Guerreiro, então a armadura
+// (bem mais "ajustada ao peito" que a camiseta solta) sobrava estreita
+// demais no ombro, como se fosse peça emprestada de um corpo menor. Alarga
+// só essas peças (a camiseta já cobre bem sem alargar — testado à mão).
+const MUSCULAR_ARMOR_WIDEN = 1.2
+const MUSCULAR_ARMOR_ITEMS = new Set(['leather', 'legion', 'plate'])
+
 // Roupa básica (camiseta) que todo personagem já nasce vestindo, antes de
 // desbloquear a primeira armadura no nível 2 — sem isso o boneco ficava sem
 // camisa até subir de nível, o que lia como "sem roupa" mesmo sendo só um
@@ -249,7 +258,10 @@ export function buildLayers(character, level) {
       }]
     })(),
     ...(equipped.torso
-      ? [{ src: ASSET_PATH.torso(torsoFile(equipped.torso.item, cfg.body)) }]
+      ? [{
+          src: ASSET_PATH.torso(torsoFile(equipped.torso.item, cfg.body)),
+          widen: cfg.body === 'muscular' && MUSCULAR_ARMOR_ITEMS.has(equipped.torso.item) ? MUSCULAR_ARMOR_WIDEN : undefined,
+        }]
       : character?.equipped?.torso === 'bare'
         ? []
         : [{ src: ASSET_PATH.torso(torsoFile(BASE_TORSO_ITEM, cfg.body)) }]),

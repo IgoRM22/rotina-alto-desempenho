@@ -2,9 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { RiAddLine, RiCheckLine, RiCloseLine } from '@remixicon/react'
 import { listenHabits, listenHabitLogs, listenDailyLogsForDates, listenWeekFocus, saveWeekFocus, listenImportantDates } from '../services/firestore'
 import { getWeekDates, getWeekLabel, getWeekKey, dateKeyFromDate, addDays, todayKey, weekDayShortLabel } from '../utils/date'
-import { buildHabitWeekTable, buildDailyLogSeries, collectAnnotations, computeWeekCompletionPct } from '../utils/weekSummary'
+import { buildHabitWeekTable, buildDailyLogSeries, computeWeekCompletionPct } from '../utils/weekSummary'
 import { expandImportantDatesForRange } from '../utils/importantDates'
-import Tabs from './Tabs'
 import CommitmentList from './CommitmentList'
 import WeekLineChart from './WeekLineChart'
 
@@ -15,7 +14,6 @@ export default function RevisaoSemanal() {
   const [importantDates, setImportantDates] = useState([])
   const [focus, setFocus] = useState(null)
   const [newFocusItem, setNewFocusItem] = useState('')
-  const [activeTab, setActiveTab] = useState('funcionou')
 
   const weekDates = useMemo(() => getWeekDates(), [])
   const weekLabel = getWeekLabel()
@@ -57,8 +55,6 @@ export default function RevisaoSemanal() {
   )
 
   const table = useMemo(() => buildHabitWeekTable(habits, habitLogs, weekDates), [habits, habitLogs, weekDates])
-  const funcionou = useMemo(() => collectAnnotations(dailyLogs, 'funcionou'), [dailyLogs])
-  const ajustar = useMemo(() => collectAnnotations(dailyLogs, 'ajustar'), [dailyLogs])
 
   const todayIdx = dateKeys.indexOf(todayKey())
   const daysElapsed = todayIdx === -1 ? 7 : todayIdx + 1
@@ -84,8 +80,6 @@ export default function RevisaoSemanal() {
   const removeFocusItem = (id) => {
     saveWeekFocus(nextWeekKey, focusItems.filter(i => i.id !== id))
   }
-
-  const list = activeTab === 'funcionou' ? funcionou : ajustar
 
   // Sem isso, a tabela cortava sáb/dom no mobile sem nenhuma pista de que
   // dava pra arrastar pra ver o resto — mesmo problema que as abas já
@@ -170,28 +164,6 @@ export default function RevisaoSemanal() {
           <WeekLineChart series={chartSeries} xLabels={chartXLabels} todayIndex={todayIdx} />
         ) : (
           <div className="empty-state">Nenhum registro diário essa semana.</div>
-        )}
-      </section>
-
-      <section className="hoje-section">
-        <Tabs
-          items={[{ key: 'funcionou', label: 'O que funcionou' }, { key: 'ajustar', label: 'O que ajustar' }]}
-          active={activeTab}
-          onChange={setActiveTab}
-        />
-        {list.length === 0 ? (
-          <div className="empty-state">Nada registrado ainda essa semana.</div>
-        ) : (
-          <div>
-            {list.map((item, i) => (
-              <div key={i} className="annotation-row">
-                <span className="subpage-controls-note" style={{ marginRight: 0 }}>
-                  {new Date(item.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                </span>
-                <span className="annotation-text">{item.text}</span>
-              </div>
-            ))}
-          </div>
         )}
       </section>
 

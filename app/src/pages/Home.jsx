@@ -6,13 +6,12 @@ import {
 import {
   listenTodos, updateTodo, deleteTodo, addTodo, listenWeekFocus, listenHabits, listenHabitLogs,
   listenImportantDates, listenGoals, listenPrefs, listenFocusSessions, listenCharacter,
-  listenDailyLog, saveDailyLog, saveDailyAnnotations,
+  listenDailyLog, saveDailyLog,
 } from '../services/firestore'
 import HabitChecklist from '../components/HabitChecklist'
 import GamificationCard from '../components/GamificationCard'
 import { computeXp, computeBadges } from '../utils/gamification'
 import { UNLOCKS, nextUnlock } from '../utils/character'
-import DailyLogCard from '../components/DailyLogCard'
 import RevisaoSemanal from '../components/RevisaoSemanal'
 import CommitmentList from '../components/CommitmentList'
 import Tabs from '../components/Tabs'
@@ -29,12 +28,6 @@ const WEEKDAY_LABELS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feir
 const MONTH_LABELS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
 const STALLED_GOAL_DAYS = 10
-
-const ANNOTATION_TAGS = [
-  { value: 'funcionou', label: '✅ Funcionou' },
-  { value: 'ajustar', label: '🔧 Ajustar' },
-  { value: 'rabisco', label: '📝 Rabisco' },
-]
 
 const dayOfYear = (date) => {
   const start = new Date(date.getFullYear(), 0, 0)
@@ -90,7 +83,6 @@ export default function Home() {
   const [tomorrowLog, setTomorrowLog] = useState(null)
   const [tomorrowIntentionDraft, setTomorrowIntentionDraft] = useState('')
   const [newTomorrowTask, setNewTomorrowTask] = useState('')
-  const [annotationText, setAnnotationText] = useState('')
   const [showParkingModal, setShowParkingModal] = useState(false)
   const [toast, setToast] = useState(null)
   // Só existe para a página re-renderizar e o relógio do hero avançar sozinho.
@@ -213,7 +205,6 @@ export default function Home() {
   const tomorrowTasks = todos.filter(t => t.todayDate === tomorrow)
   const tomorrowSuggestions = todos.filter(t => !t.done && t.todayDate !== tomorrow && t.dueDate && t.dueDate <= tomorrow)
   const parkingLotTasks = todos.filter(t => !t.done && !t.folderId && t.todayDate !== dateKey && t.todayDate !== tomorrow)
-  const annotations = dailyLog?.annotations || []
 
   const removeTask = (todo) => deleteTodo(todo.id)
 
@@ -256,18 +247,6 @@ export default function Home() {
   }
 
   const unmarkTomorrow = (todo) => updateTodo(todo.id, { todayDate: null })
-
-  const addAnnotation = async (tag) => {
-    const text = annotationText.trim()
-    if (!text) return
-    const next = [...annotations, { id: `${Date.now()}`, text, tag }]
-    await saveDailyAnnotations(dateKey, next)
-    setAnnotationText('')
-  }
-
-  const removeAnnotation = async (id) => {
-    await saveDailyAnnotations(dateKey, annotations.filter(a => a.id !== id))
-  }
 
   // ── Hero: melhor sequência atual + sparkline da semana ──
   const best = useMemo(
@@ -566,13 +545,6 @@ export default function Home() {
                 </div>
                 <HabitChecklist />
               </section>
-
-              <section className="hoje-section">
-                <div className="hoje-section-head">
-                  <h2 className="hoje-section-title">Registro do dia</h2>
-                </div>
-                <DailyLogCard />
-              </section>
             </div>
           </div>
 
@@ -651,42 +623,6 @@ export default function Home() {
                     </button>
                   </div>
                 )}
-              </section>
-
-              <section className="hoje-section">
-                <div className="hoje-section-head">
-                  <h2 className="hoje-section-title">Anotações</h2>
-                </div>
-                <div className="daily-log-card">
-                  <div className="field" style={{ marginBottom: 10 }}>
-                    <textarea
-                      rows={2}
-                      value={annotationText}
-                      onChange={e => setAnnotationText(e.target.value)}
-                      placeholder="O que aconteceu hoje?"
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: annotations.length ? 16 : 0 }}>
-                    {ANNOTATION_TAGS.map(tag => (
-                      <button key={tag.value} className="btn btn-ghost btn-sm" onClick={() => addAnnotation(tag.value)}>
-                        {tag.label}
-                      </button>
-                    ))}
-                  </div>
-                  {annotations.length > 0 && (
-                    <div>
-                      {annotations.map(a => (
-                        <div key={a.id} className="annotation-row">
-                          <span className={`annotation-tag annotation-tag--${a.tag}`}>{ANNOTATION_TAGS.find(t => t.value === a.tag)?.label}</span>
-                          <span className="annotation-text">{a.text}</span>
-                          <button className="btn btn-danger btn-sm btn-icon" onClick={() => removeAnnotation(a.id)} aria-label="Remover">
-                            <RiDeleteBinLine size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </section>
 
               <section className="hoje-section">
