@@ -2176,13 +2176,26 @@ body::after {
 }
 
 /* ── NOTEBOOKS BAR ── */
+/* Rola de lado em vez de quebrar linha — com vários cadernos, o wrap
+   empurrava o conteúdo pra baixo e comia a tela toda no mobile antes de
+   mostrar qualquer nota. Mesmo padrão de scroll+fade já usado nas abas de
+   dia da Agenda. */
 .notebooks-bar {
   display: flex;
   gap: 4px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 16px;
+}
+
+.notebooks-bar::-webkit-scrollbar { display: none; }
+
+.notebooks-bar .notebook-tab,
+.notebooks-bar .notebook-tab-add {
+  flex-shrink: 0;
 }
 
 /* Caderno com pergunta central vira "tema" — este card é o que separa isso
@@ -5585,6 +5598,21 @@ details > summary::marker {
 }
 
 .notes-search input:focus { border-color: var(--violet); }
+
+@media (max-width: 720px) {
+  /* Lista de notas pode ficar longa — sem a busca sempre à mão, achar uma
+     nota específica vira rolar tudo de volta pro topo toda vez. Gruda logo
+     abaixo da nav fixa (56px) enquanto rola a lista, igual busca de app de
+     notas de verdade (Notion, Apple Notes). */
+  .notes-search {
+    position: sticky;
+    top: 56px;
+    z-index: 5;
+    background: var(--bg);
+    padding: 10px 0 4px;
+    margin: 0 0 4px;
+  }
+}
 
 /* ── METAS: compromisso + hábitos vinculados ── */
 .goal-commitment {

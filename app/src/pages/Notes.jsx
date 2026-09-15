@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   RiAddLine,
   RiBookOpenLine,
@@ -42,11 +42,36 @@ export default function Notes() {
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState(null)
 
+  // Sem isso, muitos cadernos só empurravam a lista de notas pra baixo do
+  // fold no mobile (a barra quebrava linha) — com scroll horizontal, o fade
+  // nas pontas é o que avisa "tem mais pra rolar", igual já funciona nas
+  // abas de dia da Agenda.
+  const nbBarRef = useRef(null)
+  const [nbBarFade, setNbBarFade] = useState({ left: false, right: false })
+
   useEffect(() => {
     const u1 = listenNotebooks(setNotebooks)
     const u2 = listenNotes(setNotes)
     return () => { u1(); u2() }
   }, [])
+
+  useEffect(() => {
+    const el = nbBarRef.current
+    if (!el) return undefined
+    const update = () => {
+      setNbBarFade({
+        left: el.scrollLeft > 4,
+        right: el.scrollLeft < el.scrollWidth - el.clientWidth - 4,
+      })
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      el.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [notebooks])
 
   const searchTerm = search.trim().toLowerCase()
 
@@ -158,28 +183,32 @@ export default function Notes() {
       </div>
 
       {/* Notebooks bar */}
-      <div className="notebooks-bar">
-        <button
-          className={`notebook-tab ${activeNb === null ? 'active' : ''}`}
-          onClick={() => setActiveNb(null)}
-        >
-          <RiBookOpenLine size={13} /> Todas <span className="nb-count">{notes.length}</span>
-        </button>
-        {notebooks.map(nb => (
+      <div className="tabs-scroll-wrap">
+        <div className="notebooks-bar" ref={nbBarRef}>
           <button
-            key={nb.id}
-            className={`notebook-tab ${activeNb === nb.id ? 'active' : ''}`}
-            style={activeNb === nb.id ? { '--nb-color': nb.color } : {}}
-            onClick={() => setActiveNb(nb.id)}
-            onContextMenu={e => { e.preventDefault(); openEditNb(nb) }}
+            className={`notebook-tab ${activeNb === null ? 'active' : ''}`}
+            onClick={() => setActiveNb(null)}
           >
-            {nb.emoji} {nb.name}
-            <span className="nb-count">{notes.filter(n => n.notebookId === nb.id).length}</span>
+            <RiBookOpenLine size={13} /> Todas <span className="nb-count">{notes.length}</span>
           </button>
-        ))}
-        <button className="notebook-tab-add" onClick={openAddNb}>
-          <RiAddLine size={13} /> Caderno
-        </button>
+          {notebooks.map(nb => (
+            <button
+              key={nb.id}
+              className={`notebook-tab ${activeNb === nb.id ? 'active' : ''}`}
+              style={activeNb === nb.id ? { '--nb-color': nb.color } : {}}
+              onClick={() => setActiveNb(nb.id)}
+              onContextMenu={e => { e.preventDefault(); openEditNb(nb) }}
+            >
+              {nb.emoji} {nb.name}
+              <span className="nb-count">{notes.filter(n => n.notebookId === nb.id).length}</span>
+            </button>
+          ))}
+          <button className="notebook-tab-add" onClick={openAddNb}>
+            <RiAddLine size={13} /> Caderno
+          </button>
+        </div>
+        {nbBarFade.left && <div className="tabs-scroll-fade tabs-scroll-fade--left" aria-hidden="true" />}
+        {nbBarFade.right && <div className="tabs-scroll-fade tabs-scroll-fade--right" aria-hidden="true" />}
       </div>
 
       {/* Tema: quando um caderno tem pergunta central, ele vira mais que uma
@@ -373,7 +402,12 @@ export default function Notes() {
           </div>
           <div className="field">
             <label>Título</label>
-            <input value={noteForm.title} onChange={e => setNoteForm(f => ({ ...f, title: e.target.value }))} placeholder="Título da nota..." />
+            <input
+              autoFocus
+              value={noteForm.title}
+              onChange={e => setNoteForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="Título da nota..."
+            />
           </div>
           <div className="field">
             <label>Conteúdo</label>
