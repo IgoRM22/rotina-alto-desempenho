@@ -111,6 +111,8 @@ export default function Settings() {
   }
 
   const removePersonalCommitment = async (id) => {
+    const ok = await confirm('Tem certeza que deseja remover este compromisso?', { title: 'Remover compromisso', confirmLabel: 'Remover', danger: true })
+    if (!ok) return
     await savePrefs({ commitments: personalCommitments.filter(c => c.id !== id) })
     showToast('Compromisso removido.')
   }

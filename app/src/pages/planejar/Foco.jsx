@@ -16,6 +16,7 @@ import PixelCharacter from '../../components/PixelCharacter'
 import CharacterCreatorModal from '../../components/CharacterCreatorModal'
 import Toast from '../../components/Toast'
 import Modal from '../../components/Modal'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 const TARGET_OPTIONS = [30, 45, 60, 90, 120]
 const WORK_OPTIONS = [15, 20, 25, 30, 45, 50]
@@ -43,6 +44,7 @@ const fmtClock = (totalSec) => {
 
 export default function Foco() {
   const grantXp = useXp()
+  const confirm = useConfirm()
   const [goals, setGoals] = useState([])
   const [habits, setHabits] = useState([])
   const [sessions, setSessions] = useState([])
@@ -340,6 +342,8 @@ export default function Foco() {
   }, [tick])
 
   const removeSession = async (s) => {
+    const ok = await confirm('Tem certeza que deseja excluir este registro de sessão?', { title: 'Excluir registro', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
     await deleteFocusSession(s.id)
     showToast('Registro removido.')
   }

@@ -25,6 +25,7 @@ import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
 import Dropdown from '../../components/Dropdown'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 const TIMEFRAME_OPTIONS = [
   { value: 'semana', label: 'Semana' },
@@ -182,6 +183,7 @@ export default function MetasHabitos() {
 
 function MetasView({ goals, habits, habitLogs, todos, categories, showToast }) {
   const grantXp = useXp()
+  const confirm = useConfirm()
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
@@ -290,6 +292,8 @@ function MetasView({ goals, habits, habitLogs, todos, categories, showToast }) {
   }
 
   const handleDelete = async (id) => {
+    const ok = await confirm('Tem certeza que deseja excluir esta meta?', { title: 'Excluir meta', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
     await deleteGoal(id)
     showToast('Removido.')
   }

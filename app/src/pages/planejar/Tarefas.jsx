@@ -25,6 +25,7 @@ import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
 import Linkify from '../../components/Linkify'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 const PRIORITIES = [
   { value: 'alta', label: 'Alta', color: 'var(--coral)' },
@@ -39,6 +40,7 @@ const EMPTY_FOLDER_FORM = { name: '' }
 
 export default function Tarefas() {
   const grantXp = useXp()
+  const confirm = useConfirm()
   // Vinda de um link tipo "3 tarefas vencidas" (Home) — mostra só essas,
   // cruzando todas as pastas, em vez de depender da pessoa adivinhar em
   // qual pasta cada tarefa vencida caiu.
@@ -152,6 +154,8 @@ export default function Tarefas() {
   }
 
   const handleDelete = async (id) => {
+    const ok = await confirm('Tem certeza que deseja excluir esta tarefa?', { title: 'Excluir tarefa', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
     await deleteTodo(id)
     showToast('Removido.')
   }
@@ -185,6 +189,8 @@ export default function Tarefas() {
   }
 
   const handleDeleteFolder = async () => {
+    const ok = await confirm('Tem certeza que deseja excluir esta pasta? As tarefas voltam para o Parking Lot.', { title: 'Excluir pasta', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
     await deleteFolder(editingFolder.id)
     if (activeFolder === editingFolder.id) setActiveFolder('parking')
     setShowFolderModal(false)

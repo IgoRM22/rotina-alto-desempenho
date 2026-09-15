@@ -8,8 +8,10 @@ import {
 } from '../services/firestore'
 import Modal from './Modal'
 import Toast from './Toast'
+import { useConfirm } from './ConfirmDialog'
 
 export default function InspirationsPanel() {
+  const confirm = useConfirm()
   const [inspirations, setInspirations] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -50,6 +52,8 @@ export default function InspirationsPanel() {
   }
 
   const handleDelete = async (id) => {
+    const ok = await confirm('Tem certeza que deseja excluir esta inspiração?', { title: 'Excluir inspiração', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
     await deleteInspiration(id)
     showToast('Removido.')
   }

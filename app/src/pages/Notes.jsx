@@ -15,6 +15,7 @@ import Tabs from '../components/Tabs'
 import InspirationsPanel from '../components/InspirationsPanel'
 import Linkify from '../components/Linkify'
 import { ARCHIVE_NOTEBOOK_NAME } from '../hooks/useWeekArchive'
+import { useConfirm } from '../components/ConfirmDialog'
 
 const IMPORTANCE = [
   { value: 'alta', label: 'Alta' },
@@ -30,6 +31,7 @@ const EMPTY_NB = { name: '', emoji: '📓', color: NB_COLORS[0], centralQuestion
 const EMPTY_NOTE = { title: '', content: '', importance: 'media', notebookId: null }
 
 export default function Notes() {
+  const confirm = useConfirm()
   const [section, setSection] = useState('notas')
   const [notebooks, setNotebooks] = useState([])
   const [notes, setNotes] = useState([])
@@ -124,6 +126,8 @@ export default function Notes() {
   }
 
   const handleDeleteNb = async (nb) => {
+    const ok = await confirm(`Tem certeza que deseja excluir o caderno "${nb.name}" e todas as suas notas?`, { title: 'Excluir caderno', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
     await deleteNotebook(nb.id)
     await Promise.all(notes.filter(n => n.notebookId === nb.id).map(n => deleteNote(n.id)))
     if (activeNb === nb.id) setActiveNb(null)
@@ -152,7 +156,12 @@ export default function Notes() {
     } catch { showToast('Erro ao salvar.', 'error') }
   }
 
-  const handleDeleteNote = async (id) => { await deleteNote(id); showToast('Nota removida.') }
+  const handleDeleteNote = async (id) => {
+    const ok = await confirm('Tem certeza que deseja excluir esta nota?', { title: 'Excluir nota', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
+    await deleteNote(id)
+    showToast('Nota removida.')
+  }
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -420,7 +429,6 @@ export default function Notes() {
           <div className="field">
             <label>Título</label>
             <input
-              autoFocus
               value={noteForm.title}
               onChange={e => setNoteForm(f => ({ ...f, title: e.target.value }))}
               placeholder="Título da nota..."

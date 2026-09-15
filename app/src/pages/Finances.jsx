@@ -22,6 +22,7 @@ import {
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 import CountUp from '../components/CountUp'
+import { useConfirm } from '../components/ConfirmDialog'
 
 const fmtCurrency = (n) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 }).format(n || 0)
@@ -37,6 +38,7 @@ const fmtDate = (iso) => {
 
 export default function Finances() {
   const { user } = useAuth()
+  const confirm = useConfirm()
   const [data, setData] = useState({
     emergencyFund: 0,
     banks: [],
@@ -101,7 +103,9 @@ export default function Finances() {
   }
 
   const handleSaveBank = async () => {
-    const payload = { name: form.bankName, balance: parseFloat(form.bankBalance) || 0 }
+    const name = (form.bankName || '').trim()
+    if (!name) { showToast('Informe o nome do banco.', 'error'); return }
+    const payload = { name, balance: parseFloat(form.bankBalance) || 0 }
     if (editIndex !== null) {
       await updateBank(user.uid, editIndex, payload)
       showToast('Banco atualizado!')
@@ -114,9 +118,11 @@ export default function Finances() {
   }
 
   const handleSaveIncome = async () => {
+    const description = (form.incomeDesc || '').trim()
+    if (!description) { showToast('Informe a descrição da renda.', 'error'); return }
     const gross = parseFloat(form.incomeGross) || 0
     const deductions = parseFloat(form.incomeDeductions) || 0
-    const payload = { description: form.incomeDesc, gross, deductions, net: gross - deductions }
+    const payload = { description, gross, deductions, net: gross - deductions }
     if (editIndex !== null) {
       await updateIncome(user.uid, editIndex, payload)
       showToast('Renda atualizada!')
@@ -129,10 +135,12 @@ export default function Finances() {
   }
 
   const handleSaveExpense = async () => {
+    const description = (form.expenseDesc || '').trim()
+    if (!description) { showToast('Informe a descrição da despesa.', 'error'); return }
     const payload = {
-      description: form.expenseDesc,
+      description,
       amount: parseFloat(form.expenseAmount) || 0,
-      bank: form.expenseBank || '',
+      bank: (form.expenseBank || '').trim(),
     }
     if (editIndex !== null) {
       await updateFixedExpense(user.uid, editIndex, payload)
@@ -146,9 +154,13 @@ export default function Finances() {
   }
 
   const handleSaveGoal = async () => {
+    const title = (form.goalTitle || '').trim()
+    if (!title) { showToast('Informe o título da meta.', 'error'); return }
+    const targetAmount = parseFloat(form.goalAmount) || 0
+    if (targetAmount <= 0) { showToast('Informe um valor alvo maior que zero.', 'error'); return }
     const payload = {
-      title: form.goalTitle,
-      targetAmount: parseFloat(form.goalAmount) || 0,
+      title,
+      targetAmount,
       currentAmount: parseFloat(form.goalCurrent) || 0,
       targetDate: form.goalDate,
     }
@@ -185,6 +197,41 @@ export default function Finances() {
   const closeMonth = async () => {
     await saveFinanceSnapshot(user.uid, { totalBanks, totalIncome, totalExpenses, monthlyBalance })
     showToast('Mês fechado — agora dá pra comparar com o próximo.')
+  }
+
+  const handleDeleteSnapshot = async (month) => {
+    const ok = await confirm('Tem certeza que deseja remover este fechamento mensal?', { title: 'Remover fechamento', confirmLabel: 'Remover', danger: true })
+    if (!ok) return
+    await deleteFinanceSnapshot(user.uid, month)
+    showToast('Fechamento removido.')
+  }
+
+  const handleRemoveIncome = async (idx) => {
+    const ok = await confirm('Tem certeza que deseja remover esta renda?', { title: 'Remover renda', confirmLabel: 'Remover', danger: true })
+    if (!ok) return
+    await removeIncome(user.uid, idx)
+    showToast('Removido.')
+  }
+
+  const handleRemoveBank = async (idx) => {
+    const ok = await confirm('Tem certeza que deseja remover este banco?', { title: 'Remover banco', confirmLabel: 'Remover', danger: true })
+    if (!ok) return
+    await removeBank(user.uid, idx)
+    showToast('Removido.')
+  }
+
+  const handleRemoveExpense = async (idx) => {
+    const ok = await confirm('Tem certeza que deseja remover esta despesa?', { title: 'Remover despesa', confirmLabel: 'Remover', danger: true })
+    if (!ok) return
+    await removeFixedExpense(user.uid, idx)
+    showToast('Removido.')
+  }
+
+  const handleRemoveGoal = async (idx) => {
+    const ok = await confirm('Tem certeza que deseja remover esta meta financeira?', { title: 'Remover meta', confirmLabel: 'Remover', danger: true })
+    if (!ok) return
+    await removeGoal(user.uid, idx)
+    showToast('Removido.')
   }
 
   const diffVsLast = (key) => {
@@ -255,7 +302,7 @@ export default function Finances() {
                 <div className="finance-table-actions">
                   <button
                     className="btn btn-danger btn-sm btn-icon"
-                    onClick={async () => { await deleteFinanceSnapshot(user.uid, s.month); showToast('Fechamento removido.') }}
+                    onClick={() => handleDeleteSnapshot(s.month)}
                     aria-label="Remover fechamento"
                   >
                     <RiDeleteBinLine size={13} />
@@ -302,7 +349,7 @@ export default function Finances() {
                   <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit('income', idx)} aria-label="Editar">
                     <RiPencilLine size={13} />
                   </button>
-                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => { removeIncome(user.uid, idx); showToast('Removido.') }} aria-label="Remover">
+                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleRemoveIncome(idx)} aria-label="Remover">
                     <RiDeleteBinLine size={13} />
                   </button>
                 </div>
@@ -367,7 +414,7 @@ export default function Finances() {
                   <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit('bank', idx)} aria-label="Editar">
                     <RiPencilLine size={13} />
                   </button>
-                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => { removeBank(user.uid, idx); showToast('Removido.') }} aria-label="Remover">
+                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleRemoveBank(idx)} aria-label="Remover">
                     <RiDeleteBinLine size={13} />
                   </button>
                 </div>
@@ -415,7 +462,7 @@ export default function Finances() {
                   <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit('expense', idx)} aria-label="Editar">
                     <RiPencilLine size={13} />
                   </button>
-                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => { removeFixedExpense(user.uid, idx); showToast('Removido.') }} aria-label="Remover">
+                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleRemoveExpense(idx)} aria-label="Remover">
                     <RiDeleteBinLine size={13} />
                   </button>
                 </div>
@@ -483,7 +530,7 @@ export default function Finances() {
         {(data.goals || []).length > 0 ? (
           <div className="finance-goals-list">
             {data.goals.map((goal, idx) => {
-              const progress = (goal.currentAmount / goal.targetAmount) * 100
+              const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0
               const daysLeft = goal.targetDate
                 ? Math.ceil((new Date(goal.targetDate) - new Date()) / 86400000)
                 : null
@@ -507,7 +554,7 @@ export default function Finances() {
                         <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit('goal', idx)} aria-label="Editar">
                           <RiPencilLine size={13} />
                         </button>
-                        <button className="btn btn-danger btn-sm btn-icon" onClick={() => { removeGoal(user.uid, idx); showToast('Removido.') }} aria-label="Remover">
+                        <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleRemoveGoal(idx)} aria-label="Remover">
                           <RiDeleteBinLine size={13} />
                         </button>
                       </div>

@@ -31,11 +31,6 @@ const MONTH_LABELS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho'
 
 const STALLED_GOAL_DAYS = 10
 
-const dayOfYear = (date) => {
-  const start = new Date(date.getFullYear(), 0, 0)
-  return Math.floor((date - start) / 86400000)
-}
-
 // Manhã e noite são o mesmo dia visto de dois ângulos — de manhã a página
 // ajuda a entrar no dia, à noite ajuda a fechá-lo e plantar o de amanhã. Por
 // isso é a mesma tela com saudação e seções que mudam com o horário, em vez
@@ -81,7 +76,6 @@ export default function Home() {
   // central de um caderno/tema em Notas, não um campo solto sem conexão
   // com nada.
   const [dailyLog, setDailyLog] = useState(null)
-  const [intentionDraft, setIntentionDraft] = useState('')
   const [tomorrowLog, setTomorrowLog] = useState(null)
   const [tomorrowIntentionDraft, setTomorrowIntentionDraft] = useState('')
   const [newTomorrowTask, setNewTomorrowTask] = useState('')
@@ -137,14 +131,6 @@ export default function Home() {
     }, 1200)
     return () => clearTimeout(levelCheckTimer.current)
   }, [gami.level])
-
-  useEffect(() => { setIntentionDraft(dailyLog?.intention || '') }, [dailyLog])
-
-  const saveIntention = () => {
-    if (intentionDraft.trim() !== (dailyLog?.intention || '')) {
-      saveDailyLog(todayKey(), { intention: intentionDraft.trim() })
-    }
-  }
 
   const dateKey = todayKey()
   const now = new Date()
@@ -269,8 +255,6 @@ export default function Home() {
   }, [dailyHabits, logsByDate, dateKey])
 
   // ── Compromisso pessoal (Ajustes → Seus compromissos), rotaciona por dia ──
-  const commitments = Array.isArray(prefs.commitments) ? prefs.commitments.filter(c => c?.text) : []
-  const commitment = commitments.length ? commitments[dayOfYear(now) % commitments.length] : null
 
   // ── Sinal de desvio: mostra o mais urgente, mas conta quantos outros
   // também estão pedindo atenção — senão, resolver o primeiro escondia os
@@ -381,42 +365,20 @@ export default function Home() {
               <div className="hero-day">{String(now.getDate()).padStart(2, '0')}</div>
               <div className="hero-month">{MONTH_LABELS[now.getMonth()]}</div>
               <div className="hero-weekday">{WEEKDAY_LABELS[now.getDay()]}</div>
-              <div className="hero-commitment">
-                <div className="hero-commitment-label">seu compromisso</div>
-                <input
-                  className="hero-commitment-input"
-                  value={intentionDraft}
-                  onChange={e => setIntentionDraft(e.target.value)}
-                  onBlur={saveIntention}
-                  onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-                  placeholder={commitment ? `"${commitment.text}"` : 'O que merece sua atenção hoje?'}
-                />
-                {!commitment && !intentionDraft && (
-                  <Link to="/config" className="hero-commitment-hint">ou escreva seus compromissos fixos em Ajustes →</Link>
-                )}
-              </div>
             </div>
             <div className="hero-side reveal" style={{ '--d': 0.25 }}>
-              {best && best.streak > 0 ? (
+              {best && best.streak > 0 && (
                 <div className="hero-streak">
                   <BoltIcon size={16} color="var(--gold)" />
                   <span className="hero-streak-num">{best.streak}</span>
-                  <span className="hero-streak-txt">dias seguidos — {best.habit.name}</span>
-                </div>
-              ) : (
-                <div className="hero-streak">
-                  <BoltIcon size={16} color="var(--text3)" />
-                  <span className="hero-streak-txt">nenhuma sequência ativa ainda</span>
+                  <span className="hero-streak-txt">{best.habit.name}</span>
                 </div>
               )}
               {sparkPoints && (
-                <div>
-                  <div className="hero-spark-label">hábitos nos últimos 7 dias</div>
-                  <div className="hero-spark">
-                    <svg viewBox="0 0 200 50" preserveAspectRatio="none">
-                      <polyline points={sparkPoints} fill="none" stroke="var(--coral)" strokeWidth="2" />
-                    </svg>
-                  </div>
+                <div className="hero-spark">
+                  <svg viewBox="0 0 200 50" preserveAspectRatio="none">
+                    <polyline points={sparkPoints} fill="none" stroke="var(--coral)" strokeWidth="2" />
+                  </svg>
                 </div>
               )}
             </div>

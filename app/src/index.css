@@ -4883,6 +4883,20 @@ details > summary::marker {
 
 .meal-item-row:hover .meal-item-delete { opacity: 1; }
 
+.meal-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .meal-table-actions { opacity: 1; }
+  .meal-item-delete { opacity: 1; }
+  .meal-col-quantity,
+  .meal-col-type {
+    display: none;
+  }
+}
+
 .meal-item-options {
   display: flex;
   flex-direction: column;
@@ -5194,65 +5208,6 @@ details > summary::marker {
   text-transform: lowercase;
 }
 
-.hero-commitment {
-  margin-top: 20px;
-  padding-left: 14px;
-  border-left: 2px solid var(--violet);
-}
-
-.hero-commitment-label {
-  font-size: 11px;
-  color: var(--violet-text);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-
-.hero-commitment p {
-  font-family: var(--ff-s);
-  font-style: italic;
-  font-size: 17px;
-  color: var(--text2);
-  line-height: 1.4;
-}
-
-.hero-commitment a {
-  font-size: 12px;
-  color: var(--text3);
-}
-
-.hero-commitment a:hover { color: var(--violet-text); }
-
-.hero-commitment-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid transparent;
-  padding: 0 0 2px;
-  font-family: var(--ff-s);
-  font-style: italic;
-  font-size: 17px;
-  color: var(--text2);
-  line-height: 1.4;
-  transition: border-color 0.15s;
-}
-
-.hero-commitment-input::placeholder { color: var(--text3); opacity: 1; }
-
-.hero-commitment-input:focus {
-  outline: none;
-  border-bottom-color: var(--violet);
-}
-
-.hero-commitment-hint {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text3);
-}
-
-.hero-commitment-hint:hover { color: var(--violet-text); }
-
 .hero-focus-card {
   display: flex;
   align-items: center;
@@ -5343,12 +5298,6 @@ details > summary::marker {
 .hero-streak-txt {
   font-size: 12px;
   color: var(--text2);
-}
-
-.hero-spark-label {
-  font-size: 12px;
-  color: var(--text2);
-  margin-bottom: 6px;
 }
 
 .hero-spark svg {

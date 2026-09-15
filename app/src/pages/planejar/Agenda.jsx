@@ -802,6 +802,8 @@ export default function Cronograma() {
   }
 
   const handleDelete = async (id) => {
+    const ok = await confirm('Tem certeza que deseja excluir este item da agenda?', { title: 'Excluir item', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
     await deleteScheduleItem(id)
     showToast('Removido.')
   }

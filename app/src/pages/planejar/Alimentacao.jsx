@@ -232,6 +232,8 @@ export default function Alimentacao() {
   }
 
   const handleDeleteItem = async (table, itemId) => {
+    const ok = await confirm('Tem certeza que deseja excluir este item?', { title: 'Excluir item', confirmLabel: 'Excluir', danger: true })
+    if (!ok) return
     await updateMealTable(table.id, { items: (table.items || []).filter((item) => item.id !== itemId) })
   }
 
@@ -331,12 +333,13 @@ export default function Alimentacao() {
 
           {!isCollapsed && (
           <>
+          <div className="meal-table-scroll">
           <table className="meal-table">
             <thead>
               <tr>
-                <th>Quantidade</th>
+                <th className="meal-col-quantity">Quantidade</th>
                 <th>Nome / Descrição</th>
-                <th>Tipo</th>
+                <th className="meal-col-type">Tipo</th>
                 <th className="meal-col-grams">Gramas</th>
                 <th className="meal-col-actions" />
               </tr>
@@ -346,9 +349,9 @@ export default function Alimentacao() {
                 const typeInfo = getTypeInfo(item.type)
                 return (
                   <tr key={item.id} className="meal-item-row">
-                    <td>{item.quantity}</td>
+                    <td className="meal-col-quantity">{item.quantity}</td>
                     <td className="meal-col-name"><NameCell name={item.name} /></td>
-                    <td>
+                    <td className="meal-col-type">
                       {typeInfo && (
                         <span className="pill" style={{ color: typeInfo.color, background: `${typeInfo.color}22`, border: `1px solid ${typeInfo.color}55` }}>
                           {typeInfo.label}
@@ -372,6 +375,7 @@ export default function Alimentacao() {
               )}
             </tbody>
           </table>
+          </div>
 
           <div className="meal-table-footer">
             {addingItemTableId === table.id ? (
