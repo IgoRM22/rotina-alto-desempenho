@@ -2868,7 +2868,7 @@ body::after {
   .levelup-toast {
     right: 12px;
     left: 12px;
-    bottom: calc(90px + env(safe-area-inset-bottom));
+    bottom: calc(112px + env(safe-area-inset-bottom));
     max-width: none;
   }
 }
@@ -3522,7 +3522,12 @@ body::after {
   .toast-container {
     right: 12px;
     left: 12px;
-    bottom: calc(90px + env(safe-area-inset-bottom));
+    /* Nav inferior (pílula flutuante): 14px de margem + ~79px de conteúdo
+       (ícone 36px + paddings + rótulo da aba ativa) ≈ 93px até o topo dela
+       — 90px de folga aqui era menos que isso, então o toast (que ficou
+       mais alto com o ícone novo) sobrepunha a nav em vez de ficar por
+       cima dela com espaço de sobra. */
+    bottom: calc(112px + env(safe-area-inset-bottom));
     z-index: 1301;
   }
 
