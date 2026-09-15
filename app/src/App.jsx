@@ -8,8 +8,7 @@ import Home from './pages/Home'
 import Planejar from './pages/planejar/Planejar'
 import Agenda from './pages/planejar/Agenda'
 import Tarefas from './pages/planejar/Tarefas'
-import PlanejarMetas from './pages/planejar/Metas'
-import Habitos from './pages/planejar/Habitos'
+import MetasHabitos from './pages/planejar/MetasHabitos'
 import Alimentacao from './pages/planejar/Alimentacao'
 import Foco from './pages/planejar/Foco'
 import Settings from './pages/Settings'
@@ -41,8 +40,8 @@ export default function App() {
           <Route path="noturno" element={<Navigate to="/" replace />} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="tarefas" element={<Tarefas />} />
-          <Route path="metas" element={<PlanejarMetas />} />
-          <Route path="habitos" element={<Habitos />} />
+          <Route path="metas" element={<MetasHabitos />} />
+          <Route path="habitos" element={<MetasHabitos />} />
           <Route path="foco" element={<Foco />} />
           <Route path="alimentacao" element={<Alimentacao />} />
         </Route>

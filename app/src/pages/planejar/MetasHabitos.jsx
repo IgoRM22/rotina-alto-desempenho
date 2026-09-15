@@ -1,22 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   RiAddLine,
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiCheckLine,
+  RiCloseLine,
   RiDeleteBinLine,
   RiFlagLine,
   RiPencilLine,
   RiRefreshLine,
 } from '@remixicon/react'
-import { listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories, listenHabits, listenHabitLogs, listenTodos } from '../../services/firestore'
+import {
+  listenGoals, addGoal, updateGoal, deleteGoal, listenGoalCategories, listenHabits, listenHabitLogs, listenTodos,
+  addHabit, updateHabit, deleteHabit,
+} from '../../services/firestore'
 import { XP_PER_GOAL_DONE } from '../../utils/gamification'
-import { getWeekDates, dateKeyFromDate, todayKey } from '../../utils/date'
+import { getWeekDates, dateKeyFromDate, todayKey, getWeekStart, addDays } from '../../utils/date'
 import { deadlineBadge } from '../../utils/deadline'
 import { useDeadlineNotifications } from '../../hooks/useDeadlineNotifications'
+import { isDailyHabit, computeStreak, computeWeeklyStreak, weekProgress } from '../../utils/streak'
 import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
+import Dropdown from '../../components/Dropdown'
 
 const TIMEFRAME_OPTIONS = [
   { value: 'semana', label: 'Semana' },
@@ -71,7 +78,6 @@ const EMPTY_FORM = {
   quarter: INIT.quarter,
 }
 
-const PROGRESS_MARKS = [0, 25, 50, 75, 100]
 const clampProgress = (value) => Math.max(0, Math.min(100, Number(value) || 0))
 
 const fmtTimeframe = (goal) => {
@@ -84,16 +90,99 @@ const fmtTimeframe = (goal) => {
   return tf
 }
 
-export default function Metas() {
+const WEEKDAY_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+const MONTH_ABBR = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const RECENT_DAYS = 60
+const FREQUENCY_OPTIONS = [
+  { value: 7, label: 'Todos os dias' },
+  { value: 5, label: '5x por semana' },
+  { value: 4, label: '4x por semana' },
+  { value: 3, label: '3x por semana' },
+  { value: 2, label: '2x por semana' },
+  { value: 1, label: '1x por semana' },
+]
+const PERIOD_OPTIONS = [
+  { value: 14, label: '14 semanas' },
+  { value: 13, label: '3 meses' },
+  { value: 26, label: '6 meses' },
+]
+
+const heatmapLevel = (ratio) => {
+  if (ratio <= 0) return 0
+  if (ratio < 0.25) return 1
+  if (ratio < 0.5) return 2
+  if (ratio < 0.75) return 3
+  return 4
+}
+
+const habitCreatedKey = (habit) => (
+  habit.createdAt?.toDate ? dateKeyFromDate(habit.createdAt.toDate()) : null
+)
+
+const capFirst = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+
+// Metas e Hábitos viviam em abas separadas do Planejar, mas são a mesma
+// conversa (uma meta puxa hábitos, um hábito empurra uma meta) — juntar as
+// duas na mesma tela, com um seletor por dentro, evita pular de aba toda
+// hora só pra conferir os dois lados da mesma coisa.
+export default function MetasHabitos() {
+  const location = useLocation()
+  // /planejar/habitos ainda existe como rota própria (links/assistente que
+  // apontavam pra lá) — decide a aba inicial por ela, em vez de sempre cair
+  // em Metas.
+  const [subview, setSubview] = useState(location.pathname.endsWith('/habitos') ? 'habitos' : 'metas')
   const [goals, setGoals] = useState([])
   const [habits, setHabits] = useState([])
-  const [habitLogs, setHabitLogs] = useState([])
+  const [recentHabitLogs, setRecentHabitLogs] = useState([])
+  const [heatmapLogs, setHeatmapLogs] = useState([])
   const [todos, setTodos] = useState([])
   const [categories, setCategories] = useState(['projeto', 'saude', 'corp', 'estudo', 'familia', 'pessoal'])
+  const [toast, setToast] = useState(null)
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  useEffect(() => {
+    const u1 = listenGoals(setGoals)
+    const u2 = listenGoalCategories(setCategories)
+    const u3 = listenHabits(setHabits)
+    const u4 = listenHabitLogs(setRecentHabitLogs, 10)
+    const u5 = listenTodos(setTodos)
+    const u6 = listenHabitLogs(setHeatmapLogs, 400)
+    return () => { u1(); u2(); u3(); u4(); u5(); u6() }
+  }, [])
+
+  return (
+    <>
+      <Tabs
+        variant="segmented"
+        items={[{ key: 'metas', label: 'Metas' }, { key: 'habitos', label: 'Hábitos' }]}
+        active={subview}
+        onChange={setSubview}
+      />
+      <div style={{ marginTop: 20 }}>
+        {subview === 'metas' ? (
+          <MetasView
+            goals={goals} habits={habits} habitLogs={recentHabitLogs} todos={todos}
+            categories={categories} showToast={showToast}
+          />
+        ) : (
+          <HabitosView
+            habits={habits} logs={heatmapLogs} showToast={showToast}
+          />
+        )}
+      </div>
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
+    </>
+  )
+}
+
+function MetasView({ goals, habits, habitLogs, todos, categories, showToast }) {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
-  const [toast, setToast] = useState(null)
 
   const [selectedYear, setSelectedYear] = useState(INIT.year)
   const [activeFilter, setActiveFilter] = useState('Todos')
@@ -101,18 +190,6 @@ export default function Metas() {
   const [selectedMonth, setSelectedMonth] = useState(INIT.month)
   const [selectedQuarter, setSelectedQuarter] = useState(INIT.quarter)
 
-  useEffect(() => {
-    const u1 = listenGoals(setGoals)
-    const u2 = listenGoalCategories(setCategories)
-    const u3 = listenHabits(setHabits)
-    const u4 = listenHabitLogs(setHabitLogs, 10)
-    const u5 = listenTodos(setTodos)
-    return () => { u1(); u2(); u3(); u4(); u5() }
-  }, [])
-
-  // Progresso derivado das tarefas vinculadas — mostrado como sugestão, não
-  // aplicado automaticamente, pra não sobrescrever um progresso que a pessoa
-  // já vem ajustando manualmente no slider.
   const linkedTodosProgress = useMemo(() => {
     const byGoal = new Map()
     goals.forEach(g => {
@@ -124,8 +201,6 @@ export default function Metas() {
     return byGoal
   }, [goals, todos])
 
-  // Conta quantas vezes cada hábito vinculado foi cumprido na semana atual —
-  // o elo automático entre o que se faz hoje e o que se prometeu na meta.
   const habitWeekCounts = useMemo(() => {
     const logsByDate = new Map(habitLogs.map(l => [l.date, l.checked || {}]))
     const today = todayKey()
@@ -234,11 +309,6 @@ export default function Metas() {
     if (justCompleted) showToast(`🚀 Meta batida! +${XP_PER_GOAL_DONE} XP`)
   }
 
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
-  }
-
   const done = filtered.filter(g => g.done).length
 
   const periodLabel = useMemo(() => {
@@ -276,7 +346,6 @@ export default function Metas() {
         </button>
       </div>
 
-      {/* Filter tabs */}
       <Tabs
         scroll
         items={[['Todos', 'Todos'], ['semana', 'Semana'], ['mes', 'Mês'], ['trimestre', 'Trimestre'], ['ano', 'Ano'], ['longo_prazo', 'Longo Prazo']].map(([key, label]) => ({ key, label }))}
@@ -284,7 +353,6 @@ export default function Metas() {
         onChange={setActiveFilter}
       />
 
-      {/* Sub-period selectors */}
       {activeFilter === 'semana' && (
         <div className="period-nav">
           <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedWeek(w => w > 1 ? w - 1 : weeksInYear)} aria-label="Semana anterior">
@@ -540,7 +608,7 @@ export default function Metas() {
             <label>Data alvo (opcional)</label>
             <input type="date" value={form.targetDate} onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))} />
           </div>
-          <div className="field">
+          <div className="field" style={{ marginBottom: 0 }}>
             <label>Progresso: {form.progress}%</label>
             <input
               type="range"
@@ -552,16 +620,397 @@ export default function Metas() {
               className="goal-range"
               style={{ '--goal-progress': `${clampProgress(form.progress)}%` }}
             />
-            <div className="goal-progress-scale" aria-hidden="true" style={{ marginTop: 8 }}>
-              {PROGRESS_MARKS.map((mark) => (
-                <span key={mark}>{mark}</span>
-              ))}
-            </div>
           </div>
         </Modal>
       )}
+    </>
+  )
+}
 
-      {toast && <Toast msg={toast.msg} type={toast.type} />}
+function HabitosView({ habits, logs, showToast }) {
+  const [selectedId, setSelectedId] = useState(null)
+  const [periodWeeks, setPeriodWeeks] = useState(14)
+  const [selectedDayKey, setSelectedDayKey] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newFrequency, setNewFrequency] = useState(7)
+  const [editingId, setEditingId] = useState(null)
+  const [editingName, setEditingName] = useState('')
+  const [editingFrequency, setEditingFrequency] = useState(7)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+
+  useEffect(() => {
+    if (!selectedId && habits.length) setSelectedId(habits[0].id)
+  }, [habits, selectedId])
+
+  const logsByDate = useMemo(() => new Map(logs.map(l => [l.date, l.checked || {}])), [logs])
+
+  const heatmapDays = useMemo(() => {
+    const start = getWeekStart(addDays(new Date(), -(periodWeeks - 1) * 7))
+    return Array.from({ length: periodWeeks * 7 }, (_, i) => addDays(start, i))
+  }, [periodWeeks])
+
+  const today = todayKey()
+  const dailyHabits = useMemo(() => habits.filter(isDailyHabit), [habits])
+  const dailyHabitIds = useMemo(() => new Set(dailyHabits.map(h => h.id)), [dailyHabits])
+  const dailyHabitsMeta = useMemo(
+    () => dailyHabits.map(h => ({ id: h.id, createdKey: habitCreatedKey(h) })),
+    [dailyHabits],
+  )
+  const activeCountForDayKey = (dayKey) => dailyHabitsMeta.filter(h => !h.createdKey || h.createdKey <= dayKey).length
+
+  const heatmapInfo = useMemo(() => heatmapDays.map((day) => {
+    const key = dateKeyFromDate(day)
+    const isFuture = key > today
+    const dayActiveCount = activeCountForDayKey(key)
+    const hasData = dayActiveCount > 0
+    const checked = logsByDate.get(key) || {}
+    const doneHabitIds = Object.entries(checked).filter(([id, v]) => v && dailyHabitIds.has(id)).map(([id]) => id)
+    const doneCount = doneHabitIds.length
+    const ratio = hasData ? doneCount / dayActiveCount : 0
+    const level = isFuture ? -1 : (hasData ? heatmapLevel(ratio) : -2)
+    return { day, key, isFuture, hasData, dayActiveCount, doneCount, doneHabitIds, ratio, level }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [heatmapDays, logsByDate, dailyHabitIds, dailyHabitsMeta, today])
+
+  const pastDays = useMemo(() => heatmapInfo.filter(d => !d.isFuture && d.hasData), [heatmapInfo])
+  const hasEnoughData = dailyHabits.length > 0 && pastDays.length >= 5
+
+  const consistencyPct = useMemo(() => {
+    const possible = pastDays.reduce((sum, d) => sum + d.dayActiveCount, 0)
+    const done = pastDays.reduce((sum, d) => sum + d.doneCount, 0)
+    return possible > 0 ? Math.round((done / possible) * 100) : 0
+  }, [pastDays])
+
+  const activeDaysCount = useMemo(() => pastDays.filter(d => d.doneCount > 0).length, [pastDays])
+
+  const currentStreakDays = useMemo(() => {
+    let streak = 0
+    for (let i = pastDays.length - 1; i >= 0; i--) {
+      if (pastDays[i].doneCount > 0) streak += 1
+      else break
+    }
+    return streak
+  }, [pastDays])
+
+  const bestWeekPct = useMemo(() => {
+    let best = 0
+    for (let w = 0; w < periodWeeks; w++) {
+      const slice = heatmapInfo.slice(w * 7, w * 7 + 7).filter(d => !d.isFuture && d.hasData)
+      if (!slice.length) continue
+      const possible = slice.reduce((sum, d) => sum + d.dayActiveCount, 0)
+      const done = slice.reduce((sum, d) => sum + d.doneCount, 0)
+      if (possible > 0) best = Math.max(best, done / possible)
+    }
+    return Math.round(best * 100)
+  }, [heatmapInfo, periodWeeks])
+
+  const insightMessage = useMemo(() => {
+    if (pastDays.length < 14) return null
+    const avg = (arr) => {
+      const possible = arr.reduce((sum, d) => sum + d.dayActiveCount, 0)
+      if (!possible) return null
+      return arr.reduce((sum, d) => sum + d.doneCount, 0) / possible
+    }
+    const last7 = avg(pastDays.slice(-7))
+    const prior7 = avg(pastDays.slice(-14, -7))
+    if (last7 === null || prior7 === null) return null
+    const diff = last7 - prior7
+    if (diff >= 0.15) return 'Boa retomada — seu ritmo subiu nos últimos 7 dias.'
+    if (diff <= -0.15) return 'Seu ritmo caiu nos últimos 7 dias em relação à semana anterior.'
+    if (last7 >= 0.7) return 'Você está mantendo um ritmo forte.'
+    return null
+  }, [pastDays])
+
+  const monthLabelCells = useMemo(() => {
+    let lastMonth = null
+    const cells = []
+    heatmapDays.forEach((day, i) => {
+      if (i % 7 !== 0) return
+      const month = day.getMonth()
+      if (month !== lastMonth) {
+        cells.push({ col: i / 7, label: MONTH_ABBR[month] })
+        lastMonth = month
+      }
+    })
+    return cells
+  }, [heatmapDays])
+
+  const selectedDayInfo = selectedDayKey ? heatmapInfo.find(d => d.key === selectedDayKey) : null
+  const selectedDayHabitNames = selectedDayInfo
+    ? habits.filter(h => selectedDayInfo.doneHabitIds.includes(h.id)).map(h => h.name)
+    : []
+
+  const handleAdd = async () => {
+    const name = newName.trim()
+    if (!name) { setAdding(false); return }
+    await addHabit({ name, weeklyTarget: newFrequency })
+    setNewName('')
+    setNewFrequency(7)
+    setAdding(false)
+    showToast('Hábito criado!')
+  }
+
+  const startRename = (habit) => {
+    setEditingId(habit.id)
+    setEditingName(habit.name)
+    setEditingFrequency(habit.weeklyTarget || 7)
+  }
+
+  const saveRename = async () => {
+    const name = editingName.trim()
+    const habit = habits.find(h => h.id === editingId)
+    if (name) {
+      const data = habit?.scheduleItemId ? { name } : { name, weeklyTarget: editingFrequency }
+      await updateHabit(editingId, data)
+    }
+    setEditingId(null)
+  }
+
+  const confirmDeleteHabit = async () => {
+    const habit = confirmDelete
+    if (!habit) return
+    await deleteHabit(habit.id)
+    if (selectedId === habit.id) setSelectedId(null)
+    setConfirmDelete(null)
+    showToast('Hábito removido.')
+  }
+
+  const selectedHabit = habits.find(h => h.id === selectedId)
+  const recentDays = useMemo(
+    () => Array.from({ length: RECENT_DAYS }, (_, i) => addDays(new Date(), i - (RECENT_DAYS - 1))),
+    [],
+  )
+
+  return (
+    <>
+      <div className="habitos-section habit-consistency-card">
+        {dailyHabits.length === 0 ? (
+          <div className="empty-state" style={{ padding: '24px 0' }}>
+            Comece marcando um hábito diário hoje pra construir seu histórico aqui.
+          </div>
+        ) : (
+          <>
+            <div className="habit-consistency-header">
+              <div>
+                <h2 className="hoje-section-title">Seu ritmo nas últimas {PERIOD_OPTIONS.find(p => p.value === periodWeeks)?.label}</h2>
+                {hasEnoughData ? (
+                  <>
+                    <div className="habit-consistency-primary">
+                      {consistencyPct}% <span>de consistência</span>
+                    </div>
+                    <div className="habit-consistency-stats">
+                      {activeDaysCount} dias ativos · sequência atual {currentStreakDays} dia{currentStreakDays === 1 ? '' : 's'} · melhor semana {bestWeekPct}%
+                    </div>
+                  </>
+                ) : (
+                  <p className="habit-heatmap-explainer">
+                    Você tem {pastDays.length} dia{pastDays.length === 1 ? '' : 's'} registrado{pastDays.length === 1 ? '' : 's'}. O gráfico fica mais útil conforme seu histórico cresce.
+                  </p>
+                )}
+              </div>
+              <Dropdown
+                className="calendar-select"
+                value={periodWeeks}
+                options={PERIOD_OPTIONS}
+                onChange={v => { setPeriodWeeks(v); setSelectedDayKey(null) }}
+                ariaLabel="Período"
+              />
+            </div>
+
+            <div className="habit-heatmap-center">
+              <div className="habit-heatmap-row habit-heatmap-months">
+                <span className="habit-heatmap-weekdays" aria-hidden="true" style={{ visibility: 'hidden', height: 12, overflow: 'hidden' }}>D</span>
+                <div className="habit-heatmap-months-grid" style={{ gridTemplateColumns: `repeat(${periodWeeks}, 12px)` }}>
+                  {monthLabelCells.map(({ col, label }) => (
+                    <span key={col} style={{ gridColumnStart: col + 1 }}>{label}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="habit-heatmap-row habit-heatmap-wrap">
+                <div className="habit-heatmap-weekdays">
+                  {WEEKDAY_SHORT.map((d, i) => <span key={i}>{d}</span>)}
+                </div>
+                <div className="habit-heatmap-grid">
+                  {heatmapInfo.map((info, i) => {
+                    const { day, key, isFuture, hasData, dayActiveCount, doneCount, level } = info
+                    const stateClass = level >= 0 ? `level-${level}` : (level === -2 ? 'is-nodata' : 'is-future')
+                    const label = isFuture
+                      ? ''
+                      : hasData
+                        ? `${day.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })} — ${doneCount} de ${dayActiveCount} hábitos concluídos`
+                        : `${day.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })} — sem hábitos cadastrados`
+                    return (
+                      <button
+                        type="button"
+                        key={key}
+                        className={`habit-heatmap-cell wave-in ${stateClass} ${selectedDayKey === key ? 'is-selected' : ''}`}
+                        style={{ animationDelay: `${Math.floor(i / 7) * 40 + (i % 7) * 8}ms` }}
+                        title={label}
+                        aria-label={label}
+                        disabled={isFuture || !hasData}
+                        onClick={() => setSelectedDayKey(prev => (prev === key ? null : key))}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="habit-heatmap-legend">
+                <span>menos concluído</span>
+                <span className="habit-heatmap-cell level-0" />
+                <span className="habit-heatmap-cell level-1" />
+                <span className="habit-heatmap-cell level-2" />
+                <span className="habit-heatmap-cell level-3" />
+                <span className="habit-heatmap-cell level-4" />
+                <span>mais concluído</span>
+              </div>
+            </div>
+
+            {selectedDayInfo && (
+              <div className="habit-heatmap-detail">
+                <strong>{capFirst(selectedDayInfo.day.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }))}</strong>
+                <span>{selectedDayInfo.doneCount} de {selectedDayInfo.dayActiveCount} hábitos concluídos</span>
+                {selectedDayHabitNames.length > 0 && (
+                  <ul>
+                    {selectedDayHabitNames.map(name => <li key={name}>{name}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {insightMessage && <p className="habit-heatmap-insight">{insightMessage}</p>}
+          </>
+        )}
+      </div>
+
+      <div className="habitos-section">
+        <div className="hoje-section-head">
+          <h2 className="hoje-section-title">Seus hábitos</h2>
+        </div>
+        <div className="habit-manage-list">
+          {habits.map(habit => {
+            const daily = isDailyHabit(habit)
+            const streak = daily ? computeStreak(habit.id, logsByDate, today) : computeWeeklyStreak(habit.id, logsByDate, today, habit.weeklyTarget)
+            const record = daily ? Math.max(habit.bestStreak || 0, streak) : Math.max(habit.bestWeeklyStreak || 0, streak)
+            const weekDone = daily ? null : weekProgress(habit.id, logsByDate, today)
+
+            return (
+              <div key={habit.id} className={`habit-manage-row ${selectedId === habit.id ? 'active' : ''}`}>
+                {editingId === habit.id ? (
+                  <>
+                    <input
+                      className="inline-edit-input"
+                      autoFocus
+                      value={editingName}
+                      onChange={e => setEditingName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && saveRename()}
+                    />
+                    {habit.scheduleItemId ? (
+                      <span className="subpage-controls-note" style={{ marginRight: 0 }}>frequência vem da agenda</span>
+                    ) : (
+                      <Dropdown
+                        className="calendar-select"
+                        value={editingFrequency}
+                        options={FREQUENCY_OPTIONS}
+                        onChange={setEditingFrequency}
+                        ariaLabel="Frequência"
+                      />
+                    )}
+                    <button className="btn btn-primary btn-sm btn-icon" onClick={saveRename} aria-label="Salvar"><RiCheckLine size={13} /></button>
+                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setEditingId(null)} aria-label="Cancelar"><RiCloseLine size={13} /></button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="habit-manage-name" onClick={() => setSelectedId(habit.id)}>
+                      {habit.name}
+                    </button>
+                    {habit.scheduleItemId && (
+                      <span className="habit-linked-badge" title="Frequência vinculada a um item da agenda semanal">na agenda</span>
+                    )}
+                    {!daily && (
+                      <span className={`habit-week-progress ${weekDone >= habit.weeklyTarget ? 'is-met' : ''}`}>
+                        {weekDone}/{habit.weeklyTarget} semana
+                      </span>
+                    )}
+                    <span className="subpage-controls-note" style={{ marginRight: 0 }}>
+                      recorde: {record} {daily ? 'dias' : 'semanas'}
+                    </span>
+                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => startRename(habit)} aria-label="Renomear"><RiPencilLine size={13} /></button>
+                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => setConfirmDelete(habit)} aria-label="Excluir"><RiDeleteBinLine size={13} /></button>
+                  </>
+                )}
+              </div>
+            )
+          })}
+
+          {habits.length === 0 && !adding && (
+            <div className="empty-state" style={{ padding: '20px 0' }}>Nenhum hábito cadastrado ainda.</div>
+          )}
+
+          {adding ? (
+            <div className="habit-add-row">
+              <input
+                autoFocus
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                placeholder="Nome do hábito"
+              />
+              <Dropdown
+                className="calendar-select"
+                value={newFrequency}
+                options={FREQUENCY_OPTIONS}
+                onChange={setNewFrequency}
+                ariaLabel="Frequência"
+              />
+              <button className="btn btn-primary btn-sm btn-icon" onClick={handleAdd} aria-label="Salvar"><RiCheckLine size={14} /></button>
+              <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setAdding(false); setNewName(''); setNewFrequency(7) }} aria-label="Cancelar"><RiCloseLine size={14} /></button>
+            </div>
+          ) : (
+            <button className="btn btn-ghost btn-sm" style={{ marginTop: 12 }} onClick={() => setAdding(true)}>
+              <RiAddLine size={14} /> Adicionar hábito
+            </button>
+          )}
+        </div>
+      </div>
+
+      {selectedHabit && (
+        <div className="habitos-section">
+          <div className="hoje-section-head">
+            <h2 className="hoje-section-title">{selectedHabit.name}</h2>
+            <span className="subpage-controls-note" style={{ marginRight: 0 }}>últimos {RECENT_DAYS} dias</span>
+          </div>
+          <div className="habit-recent-strip">
+            {recentDays.map(day => {
+              const key = dateKeyFromDate(day)
+              const checked = !!logsByDate.get(key)?.[selectedHabit.id]
+              return (
+                <span
+                  key={key}
+                  className={`habit-dot ${checked ? 'filled' : ''}`}
+                  title={`${day.toLocaleDateString('pt-BR')}${checked ? ' — feito' : ''}`}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <Modal
+          title="Excluir hábito"
+          onClose={() => setConfirmDelete(null)}
+          onSave={confirmDeleteHabit}
+          saveLabel="Excluir"
+        >
+          <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
+            Excluir o hábito <strong>"{confirmDelete.name}"</strong>?
+            O histórico de marcações não é apagado, mas deixa de aparecer.
+          </p>
+        </Modal>
+      )}
     </>
   )
 }
