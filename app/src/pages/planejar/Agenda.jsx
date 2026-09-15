@@ -31,6 +31,7 @@ import Modal from '../../components/Modal'
 import Toast from '../../components/Toast'
 import Tabs from '../../components/Tabs'
 import MarqueeText from '../../components/MarqueeText'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 const DAYS = ['Domingo', 'Segunda', 'Ter\u00E7a', 'Quarta', 'Quinta', 'Sexta', 'S\u00E1bado']
 const DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S\u00E1b']
@@ -361,6 +362,7 @@ const insertNowMarker = (day, flow, todayDay, nowMin, nowLabel) => {
 const importantTypeLabel = (type) => IMPORTANT_TYPES.find((entry) => entry.value === type)?.label || 'Data importante'
 
 export default function Cronograma() {
+  const confirm = useConfirm()
   const [items, setItems] = useState([])
   const [habits, setHabits] = useState([])
   const [importantDates, setImportantDates] = useState([])
@@ -728,8 +730,9 @@ export default function Cronograma() {
     ).length
 
     if (existingOnTarget > 0) {
-      const proceed = window.confirm(
+      const proceed = await confirm(
         `${targetMeta.label} ja possui ${existingOnTarget} item(ns). Deseja clonar mesmo assim?`,
+        { title: 'Clonar semana', confirmLabel: 'Clonar mesmo assim', danger: false },
       )
       if (!proceed) return
     }
@@ -894,7 +897,7 @@ export default function Cronograma() {
   }
 
   const handleDeleteImportantDate = async (id) => {
-    const proceed = window.confirm('Excluir esta data importante?')
+    const proceed = await confirm('Excluir esta data importante?', { title: 'Excluir data importante', confirmLabel: 'Excluir' })
     if (!proceed) return
 
     try {

@@ -49,14 +49,14 @@ export function AuthProvider({ children }) {
             if (!active) return
 
             setUser(null)
+            // O popup nativo (window.alert) saiu daqui — a AuthScreen já
+            // mostra esse texto de forma estilizada (ver `error`), o alert
+            // só duplicava a mesma mensagem num popup do navegador que não
+            // combina com o resto do app.
             if (!accessConfig.exists) {
               setError(`Lista de acesso nao configurada em ${ACCESS_CONTROL_DOC_PATH}. Solicite ao administrador.`)
             } else {
               setError(ACCESS_DENIED_MESSAGE)
-            }
-
-            if (typeof window !== 'undefined') {
-              window.alert(ACCESS_DENIED_MESSAGE)
             }
             return
           }

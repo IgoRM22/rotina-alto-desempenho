@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { to: '/financas', end: false, icon: RiReceiptLine, label: 'Vida Prática' },
 ]
 import { useAuth } from '../context/AuthContext'
+import { useConfirm } from './ConfirmDialog'
 import BoltIcon from './BoltIcon'
 import AssistantFab from './AssistantFab'
 import WhatsNewModal from './WhatsNewModal'
@@ -23,14 +24,15 @@ import WhatsNewModal from './WhatsNewModal'
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const location = useLocation()
+  const confirm = useConfirm()
   // Só a seção de topo entra na key (ex: "/planejar"), não o caminho
   // inteiro — trocar de Noturno pra Agenda pra Tarefas é a MESMA seção,
   // então não precisa remontar tudo (cabeçalho, abas) e piscar a cada
   // clique. Só remonta de verdade ao trocar de seção (Hoje → Planejar).
   const section = '/' + (location.pathname.split('/')[1] || '')
 
-  const handleLogout = () => {
-    if (window.confirm('Tem certeza que deseja sair do app?')) logout()
+  const handleLogout = async () => {
+    if (await confirm('Tem certeza que deseja sair do app?', { title: 'Sair', confirmLabel: 'Sair' })) logout()
   }
 
   return (

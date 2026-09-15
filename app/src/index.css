@@ -489,6 +489,13 @@ body::after {
   font-weight: 400;
 }
 
+.confirm-dialog-message {
+  font-size: 13.5px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin: 0;
+}
+
 .modal-close {
   background: transparent;
   border: 1px solid transparent;

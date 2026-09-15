@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { RiAddLine, RiArrowDownSLine, RiCheckLine, RiCloseLine, RiDeleteBinLine, RiPencilLine } from '@remixicon/react'
 import { listenMealTables, addMealTable, updateMealTable, deleteMealTable } from '../../services/firestore'
 import Toast from '../../components/Toast'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 const COLLAPSED_STORAGE_KEY = 'raio-meal-tables-collapsed'
 
@@ -134,6 +135,7 @@ const NameCell = ({ name }) => {
 }
 
 export default function Alimentacao() {
+  const confirm = useConfirm()
   const [tables, setTables] = useState([])
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
@@ -209,7 +211,7 @@ export default function Alimentacao() {
   }
 
   const handleDeleteTable = async (table) => {
-    const proceed = window.confirm(`Excluir a tabela "${table.title}"? Todos os itens dela serão apagados.`)
+    const proceed = await confirm(`Excluir a tabela "${table.title}"? Todos os itens dela serão apagados.`, { title: 'Excluir tabela', confirmLabel: 'Excluir' })
     if (!proceed) return
     await deleteMealTable(table.id)
     showToast('Tabela removida.')

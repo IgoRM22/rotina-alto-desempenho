@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { ConfirmProvider } from './components/ConfirmDialog'
 import './index.css'
 
 // Sem isso, o service worker do build nunca era registrado de verdade — o
@@ -23,7 +24,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter basename="/rotina-alto-desempenho" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
-        <App />
+        <ConfirmProvider>
+          <App />
+        </ConfirmProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

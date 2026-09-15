@@ -22,10 +22,12 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { OWNER_UID } from '../config'
 import Toast from '../components/Toast'
+import { useConfirm } from '../components/ConfirmDialog'
 import { isPushSupported, getPushPermission, isPushEnabled, enablePushNotifications, disablePushNotifications, isIosNotInstalled } from '../services/push'
 
 export default function Settings() {
   const { user, logout } = useAuth()
+  const confirm = useConfirm()
   const [toast, setToast] = useState(null)
   const [importing, setImporting] = useState(false)
   const [pushEnabled, setPushEnabled] = useState(false)
@@ -121,7 +123,7 @@ export default function Settings() {
   }
 
   const removeCategory = async (cat) => {
-    const ok = window.confirm(`Apagar a categoria "${cat}"? Essa alteracao sera salva no banco de dados.`)
+    const ok = await confirm(`Apagar a categoria "${cat}"? Essa alteracao sera salva no banco de dados.`, { title: 'Apagar categoria', confirmLabel: 'Apagar' })
     if (!ok) return
     await saveTodoCategories(categories.filter(c => c !== cat))
     showToast('Categoria removida do banco de dados.')
@@ -143,8 +145,9 @@ export default function Settings() {
 
     const remaining = scheduleCategories.filter(c => c.value !== val)
     const fallback = remaining[0]?.value || 'projeto'
-    const ok = window.confirm(
-      `Apagar a categoria "${val}"?\n\nIsso remove a categoria do banco de dados e move itens existentes para "${fallback}".`,
+    const ok = await confirm(
+      `Apagar a categoria "${val}"? Isso remove a categoria do banco de dados e move itens existentes para "${fallback}".`,
+      { title: 'Apagar categoria', confirmLabel: 'Apagar' },
     )
     if (!ok) return
 
@@ -185,14 +188,14 @@ export default function Settings() {
   }
 
   const removeGoalCategory = async (cat) => {
-    const ok = window.confirm(`Apagar a categoria "${cat}"? Essa alteracao sera salva no banco de dados.`)
+    const ok = await confirm(`Apagar a categoria "${cat}"? Essa alteracao sera salva no banco de dados.`, { title: 'Apagar categoria', confirmLabel: 'Apagar' })
     if (!ok) return
     await saveGoalCategories(goalCategories.filter(c => c !== cat))
     showToast('Categoria removida do banco de dados.')
   }
 
   const handleLogout = async () => {
-    const ok = window.confirm('Deseja sair da conta agora?')
+    const ok = await confirm('Deseja sair da conta agora?', { title: 'Sair', confirmLabel: 'Sair' })
     if (!ok) return
     await logout()
   }
@@ -212,7 +215,7 @@ export default function Settings() {
   }
 
   const removeAllowedEmail = async (email) => {
-    const ok = window.confirm(`Remover acesso de "${email}"?`)
+    const ok = await confirm(`Remover acesso de "${email}"?`, { title: 'Remover acesso', confirmLabel: 'Remover' })
     if (!ok) return
     try {
       await updateAllowedEmails((accessControl?.allowedEmails ?? []).filter(e => e !== email))
@@ -248,8 +251,9 @@ export default function Settings() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const proceed = window.confirm(
+    const proceed = await confirm(
       'Importar backup pode sobrescrever dados existentes. Deseja continuar?',
+      { title: 'Importar backup', confirmLabel: 'Importar', danger: false },
     )
     if (!proceed) {
       e.target.value = ''
