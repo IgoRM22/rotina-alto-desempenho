@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -220,12 +219,9 @@ export default function HabitChecklist() {
           </button>
         </div>
       ) : (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => setAdding(true)}>
-            <RiAddLine size={14} /> Adicionar hábito
-          </button>
-          <Link to="/planejar/habitos" className="hoje-section-link">gerenciar hábitos →</Link>
-        </div>
+        <button className="btn btn-ghost btn-sm" style={{ marginTop: 12 }} onClick={() => setAdding(true)}>
+          <RiAddLine size={14} /> Adicionar hábito
+        </button>
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}

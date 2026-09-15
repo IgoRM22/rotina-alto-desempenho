@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { RiCheckLine, RiTimeLine } from '@remixicon/react'
+import { RiCheckLine, RiTimeLine, RiHistoryLine } from '@remixicon/react'
 import {
   listenHabits, listenHabitLogs, listenImportantDates, listenFocusSessions, listenGoals,
   listenNotebooks, listenNotes,
@@ -26,6 +26,11 @@ export default function RevisaoSemanal() {
   const [sessions, setSessions] = useState([])
   const [goals, setGoals] = useState([])
   const [archivedReviews, setArchivedReviews] = useState([])
+  // Com muitos meses de uso isso pode virar dezenas de linhas — mostra só
+  // as mais recentes de cara, o resto fica atrás de "ver mais" em vez de
+  // uma parede inteira de revisões desde sempre.
+  const [showAllArchived, setShowAllArchived] = useState(false)
+  const ARCHIVE_PAGE_SIZE = 6
 
   const weekDates = useMemo(() => getWeekDates(), [])
   const weekLabel = getWeekLabel()
@@ -222,15 +227,26 @@ export default function RevisaoSemanal() {
         <section className="hoje-section">
           <div className="hoje-section-head">
             <h2 className="hoje-section-title">Revisões anteriores</h2>
+            <span className="subpage-controls-note" style={{ marginRight: 0 }}>{archivedReviews.length}</span>
           </div>
           <div className="archived-review-list">
-            {archivedReviews.map((note) => (
+            {(showAllArchived ? archivedReviews : archivedReviews.slice(0, ARCHIVE_PAGE_SIZE)).map((note) => (
               <details key={note.id} className="archived-review-item">
                 <summary>{note.title}</summary>
                 <pre className="archived-review-content">{note.content}</pre>
               </details>
             ))}
           </div>
+          {!showAllArchived && archivedReviews.length > ARCHIVE_PAGE_SIZE && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm archived-review-more"
+              onClick={() => setShowAllArchived(true)}
+            >
+              <RiHistoryLine size={14} aria-hidden="true" />
+              Ver mais {archivedReviews.length - ARCHIVE_PAGE_SIZE} anteriores
+            </button>
+          )}
         </section>
       )}
     </>

@@ -286,6 +286,30 @@ export default function AssistantModal({ onClose, character, level, onEditCharac
     }
   }
 
+  // Ao abrir com o chat vazio (primeira vez, ou depois de "Limpar conversa"),
+  // o assistente puxa assunto sozinho — oi rápido, uma dica e um resumo do
+  // que ele já está vendo — em vez da pessoa precisar pensar no que
+  // perguntar pra uma tela em branco. O "pedido" que dispara isso nunca
+  // aparece como bolha de usuário (só a resposta), pra parecer iniciativa
+  // dele, não resposta a um comando.
+  useEffect(() => {
+    if (messages.length > 0 || !online) return
+    let cancelled = false
+    setLoading(true)
+    runAssistantCommand(
+      'Puxe a conversa como se fosse você chegando por conta própria: um "oi" breve, uma dica curta pro meu dia baseada no que você já está vendo, e um resumo rápido da situação de hoje (tarefas, hábitos, compromissos). Não é resposta a uma pergunta minha — é você puxando assunto primeiro. Seja caloroso, direto e breve.',
+      todayKey(), [],
+    )
+      .then((data) => {
+        if (cancelled) return
+        setMessages((prev) => [...prev, { role: 'assistant', text: data.message }])
+      })
+      .catch(() => { /* saudação proativa falhar em silêncio é melhor que abrir com um erro */ })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const submit = () => send(text.trim(), pendingImage)
 
   const pickImage = () => fileInputRef.current?.click()

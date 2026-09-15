@@ -4606,6 +4606,14 @@ details > summary::marker {
   font-size: 13px !important;
   color: var(--text) !important;
   white-space: nowrap;
+  /* Fixa a coluna de hábito — só os dias rolam de lado no mobile. Precisa
+     de fundo opaco (a seção em volta é transparente, mostra o fundo da
+     página) senão as células dos dias aparecem "por baixo" ao rolar. */
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg);
+  box-shadow: 1px 0 0 var(--border);
 }
 
 .week-table-check {
@@ -6610,6 +6618,10 @@ body.has-modal-open .assistant-fab { display: none; }
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.archived-review-more {
+  margin-top: 10px;
 }
 
 .archived-review-item {

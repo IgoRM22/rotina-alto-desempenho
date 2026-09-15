@@ -528,6 +528,7 @@ export default function Home() {
               <section className="hoje-section">
                 <div className="hoje-section-head">
                   <h2 className="hoje-section-title">Hábitos</h2>
+                  <Link to="/planejar/habitos" className="hoje-section-link">gerenciar hábitos →</Link>
                 </div>
                 <HabitChecklist />
               </section>

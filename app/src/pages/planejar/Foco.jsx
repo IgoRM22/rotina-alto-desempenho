@@ -168,9 +168,7 @@ export default function Foco() {
     ? Math.min(100, (phaseElapsedSec / phaseDurationSec) * 100)
     : Math.min(100, ((todayMinutes + elapsedMin) / target) * 100)
 
-  const activeGoals = goals.filter(g => !g.done)
   const goalTitle = (id) => goals.find(g => g.id === id)?.title || null
-  const linkedGoal = session ? goalTitle(session.goalId) : null
 
   // Hábitos tem o heatmap de 14 semanas pra dar aquele "estou mantendo isso?"
   // de relance — Foco não tinha nada parecido, só a lista plana de sessões.
@@ -192,15 +190,18 @@ export default function Foco() {
 
   const goalTotals = useMemo(() => {
     const totals = new Map()
+    // "Sem meta vinculada" saiu da lista de propósito — como a sessão nem
+    // pergunta mais por meta (removido o seletor), esse balde só ia crescer
+    // pra sempre com toda sessão nova, sem informação nenhuma.
     sessions.forEach(s => {
-      const key = s.goalId || '__none'
-      totals.set(key, (totals.get(key) || 0) + (s.minutes || 0))
+      if (!s.goalId) return
+      totals.set(s.goalId, (totals.get(s.goalId) || 0) + (s.minutes || 0))
     })
     return Array.from(totals.entries())
       .map(([goalId, minutes]) => ({
         goalId,
         minutes,
-        title: goalId === '__none' ? 'Sem meta vinculada' : (goalTitle(goalId) || 'Meta removida'),
+        title: goalTitle(goalId) || 'Meta removida',
       }))
       .sort((a, b) => b.minutes - a.minutes)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -362,14 +363,6 @@ export default function Foco() {
     showToast('Registro removido.')
   }
 
-  const changeGoal = (goalId) => {
-    if (session) setAndStore({ ...session, goalId: goalId || null })
-  }
-
-  const changeHabit = (habitId) => {
-    if (session) setAndStore({ ...session, habitId: habitId || null })
-  }
-
   const phaseLabel = isPomodoro ? (session.phase === 'work' ? 'foco' : 'pausa') : null
 
   return (
@@ -421,17 +414,8 @@ export default function Foco() {
             </small>
             {sessionAmbientXp > 0 && <span className="foco-ambient-xp">+{sessionAmbientXp} XP</span>}
           </div>
-          {session ? (
-            <>
-              {session.objective && <div className="foco-linked">{session.category ? `${session.category.toLowerCase()} · ` : ''}"{session.objective}"</div>}
-              {linkedGoal
-                ? <div className="foco-linked">vinculado a: {linkedGoal}</div>
-                : <div className="foco-linked" style={{ color: 'var(--text3)' }}>sem meta vinculada</div>}
-            </>
-          ) : (
-            <div className="foco-linked" style={{ color: 'var(--text3)' }}>
-              cada minuto focado conta para a meta que você escolher
-            </div>
+          {session?.objective && (
+            <div className="foco-linked">{session.category ? `${session.category.toLowerCase()} · ` : ''}"{session.objective}"</div>
           )}
         </div>
 
@@ -494,31 +478,7 @@ export default function Foco() {
                 </div>
               )}
 
-              <select
-                className="calendar-select"
-                style={{ height: 30, minHeight: 30 }}
-                defaultValue=""
-                id="foco-goal-select"
-              >
-                <option value="">Sem meta</option>
-                {activeGoals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-              </select>
-              <select
-                className="calendar-select"
-                style={{ height: 30, minHeight: 30 }}
-                defaultValue=""
-                id="foco-habit-select"
-              >
-                <option value="">Sem hábito</option>
-                {habits.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-              </select>
-              <button
-                className="btn btn-primary"
-                onClick={() => start(
-                  document.getElementById('foco-goal-select')?.value,
-                  document.getElementById('foco-habit-select')?.value,
-                )}
-              >
+              <button className="btn btn-primary" onClick={() => start()}>
                 <RiPlayLine size={14} /> Iniciar sessão
               </button>
             </>
@@ -526,24 +486,6 @@ export default function Foco() {
 
           {session && (
             <>
-              <select
-                className="calendar-select"
-                style={{ height: 30, minHeight: 30 }}
-                value={session.goalId || ''}
-                onChange={e => changeGoal(e.target.value)}
-              >
-                <option value="">Sem meta</option>
-                {activeGoals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-              </select>
-              <select
-                className="calendar-select"
-                style={{ height: 30, minHeight: 30 }}
-                value={session.habitId || ''}
-                onChange={e => changeHabit(e.target.value)}
-              >
-                <option value="">Sem hábito</option>
-                {habits.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-              </select>
               {running ? (
                 <button className="btn btn-ghost" onClick={pause}><RiPauseLine size={14} /> Pausar</button>
               ) : (
