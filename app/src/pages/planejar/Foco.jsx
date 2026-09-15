@@ -188,25 +188,6 @@ export default function Foco() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions, target])
 
-  const goalTotals = useMemo(() => {
-    const totals = new Map()
-    // "Sem meta vinculada" saiu da lista de propósito — como a sessão nem
-    // pergunta mais por meta (removido o seletor), esse balde só ia crescer
-    // pra sempre com toda sessão nova, sem informação nenhuma.
-    sessions.forEach(s => {
-      if (!s.goalId) return
-      totals.set(s.goalId, (totals.get(s.goalId) || 0) + (s.minutes || 0))
-    })
-    return Array.from(totals.entries())
-      .map(([goalId, minutes]) => ({
-        goalId,
-        minutes,
-        title: goalTitle(goalId) || 'Meta removida',
-      }))
-      .sort((a, b) => b.minutes - a.minutes)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions, goals])
-
   const setAndStore = (next) => { setSession(next); store(next) }
 
   const celebrate = () => {
@@ -521,7 +502,7 @@ export default function Foco() {
         </div>
       </div>
 
-      <div className="hoje-grid" style={{ gap: '0 56px' }}>
+      <div>
         <section className="hoje-section">
           <div className="hoje-section-head">
             <h2 className="hoje-section-title">Sessões recentes</h2>
@@ -545,24 +526,6 @@ export default function Foco() {
                   <button className="btn btn-danger btn-sm btn-icon" onClick={() => removeSession(s)} aria-label="Remover registro">
                     <RiDeleteBinLine size={13} />
                   </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="hoje-section">
-          <div className="hoje-section-head">
-            <h2 className="hoje-section-title">Total por meta</h2>
-          </div>
-          {goalTotals.length === 0 ? (
-            <div className="empty-state">Vincule sessões a metas para ver o acumulado.</div>
-          ) : (
-            <div>
-              {goalTotals.map(t => (
-                <div key={t.goalId} className="foco-goal-total">
-                  <span>{t.title}</span>
-                  <strong>{t.minutes >= 60 ? `${Math.floor(t.minutes / 60)}h ${t.minutes % 60}min` : `${t.minutes} min`}</strong>
                 </div>
               ))}
             </div>

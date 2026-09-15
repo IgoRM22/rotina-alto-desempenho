@@ -5999,6 +5999,15 @@ body.has-modal-open .assistant-fab { display: none; }
   margin-top: 4px;
 }
 
+/* Depois da saudação proativa, os chips entram alinhados com as bolhas de
+   mensagem (esquerda) em vez de centralizados — ali já não é mais o
+   estado "vazio", é uma sugestão de resposta dentro da conversa. */
+.assistant-suggestions--inline {
+  justify-content: flex-start;
+  padding-left: 34px;
+  margin: -4px 0 8px;
+}
+
 .assistant-suggestion-chip {
   border: 1px solid var(--border2);
   background: var(--s2);

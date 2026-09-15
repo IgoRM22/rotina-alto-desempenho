@@ -463,6 +463,21 @@ export default function AssistantModal({ onClose, character, level, onEditCharac
               </div>
             </div>
           )}
+
+          {/* As sugestões rápidas continuam aqui logo depois da saudação
+              proativa (só antes da pessoa responder qualquer coisa) — a
+              saudação sozinha tirava a graça delas, já que a tela deixava
+              de estar "vazia" quase na hora, escondendo os chips cedo
+              demais pra alguém sequer notar que existiam. */}
+          {messages.length === 1 && !loading && (
+            <div className="assistant-suggestions assistant-suggestions--inline">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} type="button" className="assistant-suggestion-chip" onClick={() => useSuggestion(s)}>
+                  {s.trim().replace(/:$/, '')}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {!online && <div className="assistant-offline">Você está offline — tente novamente em instantes.</div>}
