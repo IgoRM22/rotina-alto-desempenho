@@ -11,7 +11,7 @@ import {
 import HabitChecklist from '../components/HabitChecklist'
 import GamificationCard from '../components/GamificationCard'
 import { computeXp, computeBadges } from '../utils/gamification'
-import { UNLOCKS, nextUnlock } from '../utils/character'
+import { UNLOCKS } from '../utils/character'
 import RevisaoSemanal from '../components/RevisaoSemanal'
 import CommitmentList from '../components/CommitmentList'
 import Tabs from '../components/Tabs'
@@ -359,7 +359,6 @@ export default function Home() {
             pct={gami.pct}
             badges={badges}
             character={character}
-            nextUnlock={nextUnlock(gami.level)}
           />
           <div className="hero">
             <div className="hero-date reveal" style={{ '--d': 0 }}>

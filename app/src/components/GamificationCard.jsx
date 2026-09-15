@@ -9,7 +9,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 // centro — o ponto de maior impacto visual do Hoje, de propósito: é o único
 // lugar do app que usa gradiente + glow, reservado pro elemento que resume
 // "como você está indo" e mostra o que você já conquistou de verdade.
-export default function GamificationCard({ level, xp, xpToNext, pct, badges, character, nextUnlock }) {
+export default function GamificationCard({ level, xp, xpToNext, pct, badges, character }) {
   const offset = CIRCUMFERENCE * (1 - pct / 100)
   const earnedBadges = badges.filter((b) => b.earned)
 
@@ -44,18 +44,12 @@ export default function GamificationCard({ level, xp, xpToNext, pct, badges, cha
           <span className="gami-xp-next">faltam {xpToNext} para o nível {level + 1}</span>
         </div>
 
-        {nextUnlock && (
-          <p className="gami-next-unlock">Próximo desbloqueio: <strong>{nextUnlock.label}</strong> no nível {nextUnlock.level}</p>
-        )}
-
-        {earnedBadges.length > 0 ? (
+        {earnedBadges.length > 0 && (
           <div className="gami-badges">
             {earnedBadges.map((b) => (
               <span key={b.id} className="gami-badge is-earned" title={b.label}>{b.emoji}</span>
             ))}
           </div>
-        ) : (
-          <p className="gami-next-unlock">Suas primeiras conquistas aparecem aqui conforme você usa o app.</p>
         )}
       </div>
     </div>

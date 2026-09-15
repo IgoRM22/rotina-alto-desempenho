@@ -180,10 +180,6 @@ export function unlockedForSlot(slot, level) {
   return [...starters, ...progression]
 }
 
-export function nextUnlock(level) {
-  return UNLOCKS.filter((u) => u.level > level).sort((a, b) => a.level - b.level)[0] || null
-}
-
 // O que vestir de fato em cada slot: respeita a escolha salva em
 // character.equipped[slot] (inclusive "nenhum", pra poder tirar o capacete)
 // desde que ainda esteja desbloqueada nesse nível; sem escolha salva (ou se
