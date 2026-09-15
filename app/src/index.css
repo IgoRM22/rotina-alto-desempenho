@@ -5462,6 +5462,7 @@ details > summary::marker {
 
 .assistant-fab {
   position: fixed;
+  touch-action: none;
   right: 24px;
   bottom: calc(24px + env(safe-area-inset-bottom));
   z-index: 1250;
