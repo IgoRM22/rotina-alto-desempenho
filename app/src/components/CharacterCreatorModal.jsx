@@ -30,7 +30,11 @@ function PreviewOptionRow({ options, activeValue, onSelect, buildPreviewCharacte
           onClick={() => onSelect(opt.value)}
           title={opt.label}
         >
-          <PixelCharacter character={buildPreviewCharacter(opt.value)} level={previewLevel} size={44} animated={false} />
+          {/* variant="full" força o corpo inteiro mesmo em 44px — sem isso,
+              44 cai no limiar que troca pra zoom no rosto (ver
+              FACE_VARIANT_MAX_SIZE em PixelCharacter.jsx), cortando pés e
+              pernas fora da prévia. */}
+          <PixelCharacter character={buildPreviewCharacter(opt.value)} level={previewLevel} size={44} variant="full" animated={false} />
           <span>{opt.label}</span>
         </button>
       ))}
@@ -166,12 +170,16 @@ export default function CharacterCreatorModal({ initial, level = 1, onCreated, o
               const options = unlockedForSlot(slot, level)
               if (!options.length) return null
               const resolved = resolveEquipped(form, level)[slot]
-              // Pés não tem opção "Nenhum" (sempre calça alguma coisa) —
-              // sem escolha salva nem progressão, o boneco cai na bota por
-              // padrão (ver buildLayers em utils/character.js), então o
-              // seletor precisa começar marcado nela, não em "Nenhum".
-              const current = form.equipped?.[slot] || resolved?.item || (slot === 'feet' ? 'boots' : 'none')
-              const selectOptions = [{ value: 'none', label: 'Nenhum' }, ...options.map((o) => ({ value: o.item, label: o.label }))]
+              // Torso e pés sempre vestem alguma coisa por padrão (ver
+              // buildLayers em utils/character.js) — "Nenhum" nesses dois
+              // não muda nada de verdade, só duplicava a primeira opção com
+              // outro nome. Cabeça/arma/escudo continuam podendo ficar vazios.
+              const hasNoneOption = slot !== 'torso' && slot !== 'feet'
+              const current = form.equipped?.[slot] || resolved?.item || (slot === 'feet' ? 'boots' : (hasNoneOption ? 'none' : options[0]?.item))
+              const selectOptions = [
+                ...(hasNoneOption ? [{ value: 'none', label: 'Nenhum' }] : []),
+                ...options.map((o) => ({ value: o.item, label: o.label })),
+              ]
               return (
                 <div key={slot} style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 11, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -204,7 +212,7 @@ export default function CharacterCreatorModal({ initial, level = 1, onCreated, o
               <div key={`${u.slot}-${u.item}`} className={`battlepass-row ${earned ? 'is-earned' : ''}`}>
                 <span className="battlepass-level">{u.level}</span>
                 <div className="battlepass-preview">
-                  <PixelCharacter character={previewCharacter} level={u.level} size={36} animated={false} />
+                  <PixelCharacter character={previewCharacter} level={u.level} size={36} variant="full" animated={false} />
                 </div>
                 <span className="battlepass-label">{u.label}</span>
                 <span className="battlepass-icon">{earned ? <RiCheckLine size={14} /> : <RiLockLine size={13} />}</span>
