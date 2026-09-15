@@ -194,12 +194,7 @@ export default function Finances() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <span className="page-kicker">Gestão Financeira</span>
-        <h1 className="page-title">Finanças</h1>
-      </div>
-
+    <>
       {/* Summary row — condensed from 3 large KPI cards into one slim stats row */}
       <div className="finance-stats-grid" style={{ marginBottom: 48 }}>
         <div className="finance-stat-card">
@@ -624,6 +619,6 @@ export default function Finances() {
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
-    </div>
+    </>
   )
 }

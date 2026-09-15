@@ -9,11 +9,10 @@ import Planejar from './pages/planejar/Planejar'
 import Agenda from './pages/planejar/Agenda'
 import Tarefas from './pages/planejar/Tarefas'
 import MetasHabitos from './pages/planejar/MetasHabitos'
-import Alimentacao from './pages/planejar/Alimentacao'
 import Foco from './pages/planejar/Foco'
 import Settings from './pages/Settings'
 import Notes from './pages/Notes'
-import Finances from './pages/Finances'
+import VidaPratica from './pages/VidaPratica'
 
 export default function App() {
   const { user } = useAuth()
@@ -43,17 +42,17 @@ export default function App() {
           <Route path="metas" element={<MetasHabitos />} />
           <Route path="habitos" element={<MetasHabitos />} />
           <Route path="foco" element={<Foco />} />
-          <Route path="alimentacao" element={<Alimentacao />} />
         </Route>
 
         <Route path="/notes" element={<Notes />} />
-        <Route path="/financas" element={<Finances />} />
+        <Route path="/financas" element={<VidaPratica />} />
         <Route path="/config" element={<Settings />} />
 
         {/* redirects de rotas antigas — mantém atalhos/PWA instalado funcionando */}
         <Route path="/cronograma" element={<Navigate to="/planejar/agenda" replace />} />
         <Route path="/todos" element={<Navigate to="/planejar/tarefas" replace />} />
         <Route path="/metas" element={<Navigate to="/planejar/metas" replace />} />
+        <Route path="/planejar/alimentacao" element={<Navigate to="/financas" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

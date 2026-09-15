@@ -6,7 +6,7 @@ import {
   RiLogoutBoxRLine,
   RiSettings3Line,
   RiStickyNoteLine,
-  RiMoneyDollarCircleLine,
+  RiReceiptLine,
   RiTimerLine,
 } from '@remixicon/react'
 import { loadStoredFocusSession, startLocalPomodoroSession } from '../utils/focusSession'
@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { to: '/', end: true, icon: RiHome5Line, label: 'Hoje' },
   { to: '/planejar', end: false, icon: RiCalendarScheduleLine, label: 'Planejar' },
   { to: '/notes', end: false, icon: RiStickyNoteLine, label: 'Notas' },
-  { to: '/financas', end: false, icon: RiMoneyDollarCircleLine, label: 'Finanças' },
+  { to: '/financas', end: false, icon: RiReceiptLine, label: 'Vida Prática' },
 ]
 import { useAuth } from '../context/AuthContext'
 import BoltIcon from './BoltIcon'
@@ -62,7 +62,7 @@ export default function Layout({ children }) {
             </button>
           </li>
           <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>Notas</NavLink></li>
-          <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>Finanças</NavLink></li>
+          <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>Vida Prática</NavLink></li>
         </ul>
 
         <div className="nav-right">
@@ -139,8 +139,8 @@ export default function Layout({ children }) {
             <span className="mobile-nav-label">Notas</span>
           </NavLink></li>
           <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>
-            <span className="mobile-nav-icon"><RiMoneyDollarCircleLine size={18} aria-hidden="true" /></span>
-            <span className="mobile-nav-label">Finanças</span>
+            <span className="mobile-nav-icon"><RiReceiptLine size={18} aria-hidden="true" /></span>
+            <span className="mobile-nav-label">Vida Prática</span>
           </NavLink></li>
         </ul>
       </nav>
