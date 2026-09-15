@@ -1,5 +1,5 @@
 import React from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
   RiCalendarScheduleLine,
   RiHome5Line,
@@ -7,9 +7,7 @@ import {
   RiSettings3Line,
   RiStickyNoteLine,
   RiReceiptLine,
-  RiTimerLine,
 } from '@remixicon/react'
-import { loadStoredFocusSession, startLocalPomodoroSession } from '../utils/focusSession'
 
 const NAV_ITEMS = [
   { to: '/', end: true, icon: RiHome5Line, label: 'Hoje' },
@@ -25,17 +23,6 @@ import WhatsNewModal from './WhatsNewModal'
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
-
-  // Foco saiu do menu do Planejar — vira um atalho direto na nav: se já não
-  // tem sessão rodando, começa um pomodoro na hora (mesmo mecanismo que o
-  // assistente usa pelo chat, ver utils/focusSession.js); se já tem uma
-  // rodando, só leva pra tela de Foco em vez de substituir o que já estava
-  // em andamento.
-  const goToFocus = () => {
-    if (!loadStoredFocusSession()) startLocalPomodoroSession()
-    navigate('/planejar/foco')
-  }
   // Só a seção de topo entra na key (ex: "/planejar"), não o caminho
   // inteiro — trocar de Noturno pra Agenda pra Tarefas é a MESMA seção,
   // então não precisa remontar tudo (cabeçalho, abas) e piscar a cada
@@ -56,11 +43,6 @@ export default function Layout({ children }) {
         <ul className="nav-links">
           <li><NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>Hoje</NavLink></li>
           <li><NavLink to="/planejar" className={({ isActive }) => isActive ? 'active' : ''}>Planejar</NavLink></li>
-          <li>
-            <button type="button" className="nav-pomodoro-btn" onClick={goToFocus} title="Iniciar pomodoro">
-              <RiTimerLine size={15} aria-hidden="true" />
-            </button>
-          </li>
           <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>Notas</NavLink></li>
           <li><NavLink to="/financas" className={({ isActive }) => isActive ? 'active' : ''}>Vida Prática</NavLink></li>
         </ul>
@@ -86,21 +68,12 @@ export default function Layout({ children }) {
 
         <ul className="sidebar-links">
           {NAV_ITEMS.map(({ to, end, icon: Icon, label }) => (
-            <React.Fragment key={to}>
-              <li>
-                <NavLink to={to} end={end} className={({ isActive }) => isActive ? 'active' : ''}>
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{label}</span>
-                </NavLink>
-              </li>
-              {to === '/planejar' && (
-                <li>
-                  <button type="button" className="sidebar-footer-btn nav-pomodoro-btn" onClick={goToFocus}>
-                    <RiTimerLine size={16} aria-hidden="true" /> <span>Pomodoro</span>
-                  </button>
-                </li>
-              )}
-            </React.Fragment>
+            <li key={to}>
+              <NavLink to={to} end={end} className={({ isActive }) => isActive ? 'active' : ''}>
+                <Icon size={18} aria-hidden="true" />
+                <span>{label}</span>
+              </NavLink>
+            </li>
           ))}
         </ul>
 
@@ -130,10 +103,6 @@ export default function Layout({ children }) {
             <span className="mobile-nav-icon"><RiCalendarScheduleLine size={18} aria-hidden="true" /></span>
             <span className="mobile-nav-label">Planejar</span>
           </NavLink></li>
-          <li><button type="button" className="mobile-nav-pomodoro" onClick={goToFocus}>
-            <span className="mobile-nav-icon"><RiTimerLine size={18} aria-hidden="true" /></span>
-            <span className="mobile-nav-label">Pomodoro</span>
-          </button></li>
           <li><NavLink to="/notes" className={({ isActive }) => isActive ? 'active' : ''}>
             <span className="mobile-nav-icon"><RiStickyNoteLine size={18} aria-hidden="true" /></span>
             <span className="mobile-nav-label">Notas</span>

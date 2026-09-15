@@ -10,7 +10,7 @@ import {
 } from '../services/firestore'
 import HabitChecklist from '../components/HabitChecklist'
 import GamificationCard from '../components/GamificationCard'
-import { computeXp, computeBadges } from '../utils/gamification'
+import { computeXp } from '../utils/gamification'
 import { UNLOCKS } from '../utils/character'
 import RevisaoSemanal from '../components/RevisaoSemanal'
 import CommitmentList from '../components/CommitmentList'
@@ -109,11 +109,6 @@ export default function Home() {
     () => computeXp({ todos, habitLogs, focusSessions, goals, habits }),
     [todos, habitLogs, focusSessions, goals, habits],
   )
-  const badges = useMemo(
-    () => computeBadges({ todos, habits, focusSessions, goals }),
-    [todos, habits, focusSessions, goals],
-  )
-
   // Celebração só quando o nível sobe de verdade — nunca no carregamento da
   // página. O nível calculado oscila nos primeiros instantes porque cada
   // listener (tarefas, hábitos, foco, metas) chega em momento diferente do
@@ -244,6 +239,12 @@ export default function Home() {
     [dailyHabits, logsByDate, dateKey],
   )
 
+  // "Mood" do personagem no card de nível — uma leitura só de "como vai o
+  // dia", nunca as duas ao mesmo tempo: tudo feito bate qualquer sequência.
+  const characterMood = (allTasksDone && dailyHabits.length > 0 && habitsDone === dailyHabits.length)
+    ? 'complete'
+    : (best && best.streak >= 3 ? 'streak' : null)
+
   const sparkPoints = useMemo(() => {
     if (!dailyHabits.length) return null
     const days = Array.from({ length: 7 }, (_, i) => dateKeyFromDate(addDays(now, i - 6)))
@@ -357,8 +358,9 @@ export default function Home() {
             xp={gami.xp}
             xpToNext={gami.xpToNext}
             pct={gami.pct}
-            badges={badges}
             character={character}
+            mood={characterMood}
+            streakDays={best?.streak}
           />
           <div className="hero">
             <div className="hero-date reveal" style={{ '--d': 0 }}>

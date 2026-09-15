@@ -1,20 +1,30 @@
 import React from 'react'
+import { RiFireFill, RiSparklingFill } from '@remixicon/react'
 import PixelCharacter from './PixelCharacter'
 import BoltIcon from './BoltIcon'
 
 const RADIUS = 46
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
+// mood conta uma coisa só, de relance, sobre COMO vai o dia — não é mais
+// um selo de conquista solto (o "fogo desconectado de tudo" que existia
+// antes): agora o mesmo ícone que muda o selo do nível também tinge o anel
+// inteiro, então a cor e o ícone contam a mesma história junto.
+const MOOD = {
+  streak: { Icon: RiFireFill, title: (n) => `sequência de ${n} dia${n === 1 ? '' : 's'} — hoje ainda não marcado` },
+  complete: { Icon: RiSparklingFill, title: () => 'tudo em dia hoje' },
+}
+
 // Cartão de nível/XP com anel de progresso e o personagem em pixel art no
 // centro — o ponto de maior impacto visual do Hoje, de propósito: é o único
 // lugar do app que usa gradiente + glow, reservado pro elemento que resume
-// "como você está indo" e mostra o que você já conquistou de verdade.
-export default function GamificationCard({ level, xp, xpToNext, pct, badges, character }) {
+// "como você está indo".
+export default function GamificationCard({ level, xp, xpToNext, pct, character, mood, streakDays }) {
   const offset = CIRCUMFERENCE * (1 - pct / 100)
-  const earnedBadges = badges.filter((b) => b.earned)
+  const moodDef = mood && MOOD[mood]
 
   return (
-    <div className="gami-card reveal" style={{ '--d': 0.08 }}>
+    <div className={`gami-card reveal ${moodDef ? `gami-card--${mood}` : ''}`} style={{ '--d': 0.08 }}>
       <div className="gami-ring-wrap">
         <svg className="gami-ring" viewBox="0 0 108 108">
           <circle className="gami-ring-bg" cx="54" cy="54" r={RADIUS} />
@@ -32,8 +42,8 @@ export default function GamificationCard({ level, xp, xpToNext, pct, badges, cha
             <span className="gami-ring-level">{level}</span>
           )}
         </div>
-        <span className="gami-ring-badge">
-          <BoltIcon size={11} color="#fff" />
+        <span className="gami-ring-badge" title={moodDef ? moodDef.title(streakDays) : undefined}>
+          {moodDef ? <moodDef.Icon size={11} color="#fff" /> : <BoltIcon size={11} color="#fff" />}
           {level}
         </span>
       </div>
@@ -43,14 +53,6 @@ export default function GamificationCard({ level, xp, xpToNext, pct, badges, cha
           <span className="gami-xp-num">{xp.toLocaleString('pt-BR')} XP</span>
           <span className="gami-xp-next">faltam {xpToNext} para o nível {level + 1}</span>
         </div>
-
-        {earnedBadges.length > 0 && (
-          <div className="gami-badges">
-            {earnedBadges.map((b) => (
-              <span key={b.id} className="gami-badge is-earned" title={b.label}>{b.emoji}</span>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

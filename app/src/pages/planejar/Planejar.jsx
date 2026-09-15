@@ -1,6 +1,6 @@
 import React from 'react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { RiArrowDownSLine } from '@remixicon/react'
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
+import { RiArrowDownSLine, RiTimerLine } from '@remixicon/react'
 import Tabs from '../../components/Tabs'
 
 const TABS = [
@@ -16,9 +16,18 @@ export default function Planejar() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <span className="page-kicker">Organização</span>
-        <h1 className="page-title">Planejar</h1>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <span className="page-kicker">Organização</span>
+          <h1 className="page-title">Planejar</h1>
+        </div>
+        <Link to="/planejar/foco" className="hero-focus-card">
+          <span className="hero-focus-icon"><RiTimerLine size={20} /></span>
+          <span className="hero-focus-text">
+            <span className="hero-focus-title">Iniciar foco</span>
+            <span className="hero-focus-sub">cada minuto conta para uma meta</span>
+          </span>
+        </Link>
       </div>
 
       {/* Sete sub-abas era demais pra rolar horizontalmente no mobile —

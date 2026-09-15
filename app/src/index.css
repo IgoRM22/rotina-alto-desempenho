@@ -239,25 +239,6 @@ body::after {
   background: var(--s2);
 }
 
-.nav-pomodoro-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text3);
-  padding: 6px 8px;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: color .2s, background .2s;
-}
-
-.nav-pomodoro-btn:hover {
-  color: var(--coral);
-  background: var(--s2);
-}
-
 .nav-right {
   display: flex;
   align-items: center;
@@ -2808,7 +2789,7 @@ body::after {
 
 .mobile-nav-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   list-style: none;
   padding: 6px;
   gap: 2px;
@@ -2818,12 +2799,7 @@ body::after {
   min-width: 0;
 }
 
-.mobile-nav-list a,
-.mobile-nav-list button {
-  appearance: none;
-  border: none;
-  background: transparent;
-  width: 100%;
+.mobile-nav-list a {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2833,12 +2809,10 @@ body::after {
   border-radius: 18px;
   text-decoration: none;
   color: var(--text3);
-  cursor: pointer;
   transition: color .2s;
 }
 
-.mobile-nav-list a:hover,
-.mobile-nav-list button:hover {
+.mobile-nav-list a:hover {
   color: var(--text2);
 }
 
@@ -6647,12 +6621,28 @@ body.has-modal-open .assistant-fab { display: none; }
   box-shadow: 0 3px 8px rgba(224,100,69,.45);
 }
 
-.gami-next-unlock {
-  font-size: 11.5px;
-  color: var(--text3);
+/* mood: mesma cor tinge o anel inteiro E o selo do nível — uma coisa só,
+   não um selo solto competindo com o resto do card (era esse o "fogo
+   desconectado de tudo" apontado). */
+.gami-card--streak {
+  background: radial-gradient(120% 140% at 0% 0%, rgba(214,165,76,.2), var(--s1) 60%);
+  border-color: rgba(214,165,76,.3);
+}
+.gami-card--streak .gami-ring-fg { stroke: var(--gold); }
+.gami-card--streak .gami-ring-badge {
+  background: linear-gradient(180deg, #e3b85f, var(--gold));
+  box-shadow: 0 3px 8px rgba(214,165,76,.45);
 }
 
-.gami-next-unlock strong { color: var(--text2); font-weight: 500; }
+.gami-card--complete {
+  background: radial-gradient(120% 140% at 0% 0%, rgba(143,174,131,.2), var(--s1) 60%);
+  border-color: rgba(143,174,131,.3);
+}
+.gami-card--complete .gami-ring-fg { stroke: var(--sage); }
+.gami-card--complete .gami-ring-badge {
+  background: linear-gradient(180deg, #a3c494, var(--sage));
+  box-shadow: 0 3px 8px rgba(143,174,131,.45);
+}
 
 .gami-info {
   display: flex;
@@ -6679,32 +6669,6 @@ body.has-modal-open .assistant-fab { display: none; }
   font-size: 11.5px;
   color: var(--text3);
 }
-
-.gami-badges {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.gami-badge {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 14px;
-  background: var(--s2);
-  border: 1px solid var(--border2);
-  cursor: default;
-}
-
-.gami-badge.is-earned {
-  background: rgba(214,165,76,.14);
-  border-color: rgba(214,165,76,.4);
-  filter: drop-shadow(0 0 3px rgba(214,165,76,.35));
-}
-
 
 @media (max-width: 560px) {
   .gami-card { gap: 14px; padding: 16px; }
