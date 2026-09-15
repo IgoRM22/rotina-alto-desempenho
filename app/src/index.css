@@ -443,7 +443,15 @@ body::after {
 /* ── MODAL ── */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* "inset:0" (ou 100vh) mede contra a viewport de LAYOUT do celular, que
+     pode ser mais alta que a área realmente visível (barra de endereço,
+     gestos do sistema) — isso centralizava o modal mais pra baixo do que
+     a tela visível, cortando os botões no rodapé. 100dvh acompanha a
+     área visível de verdade. */
+  height: 100dvh;
   background: rgba(10,9,8,.82);
   /* Sem backdrop-filter animado por trás de outro elemento com blur (a nav)
      — essa combinação pisca em várias GPUs de celular. Um fundo mais escuro
@@ -5842,7 +5850,10 @@ body.has-modal-open .assistant-fab { display: none; }
 
 .assistant-modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100dvh;
   z-index: 1400;
   background: rgba(0,0,0,.7);
   display: flex;
