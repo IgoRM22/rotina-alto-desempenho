@@ -34,11 +34,15 @@ const MAX_STORED_MESSAGES = 60
 // reabrir o chat, em vez de sumir sempre que a página recarrega.
 const MAX_STORED_IMAGES = 4
 
+// Guardado junto com a data do dia em que foi escrito — reabrir o chat
+// num dia novo começa do zero, como se a conversa de ontem nunca tivesse
+// acontecido, em vez de arrastar o histórico indefinidamente.
 const loadStoredMessages = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed : []
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed || parsed.date !== todayKey()) return []
+    return Array.isArray(parsed.messages) ? parsed.messages : []
   } catch {
     return []
   }
@@ -64,12 +68,12 @@ const dropOldImages = (messages) => {
 const storeMessages = (messages) => {
   const trimmed = messages.slice(-MAX_STORED_MESSAGES)
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dropOldImages(trimmed)))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: todayKey(), messages: dropOldImages(trimmed) }))
   } catch {
     try {
       // Cota estourou mesmo com o corte — tenta de novo sem nenhuma imagem,
       // já que o texto sozinho é o que realmente não pode se perder.
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed.map(({ image, ...rest }) => rest)))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: todayKey(), messages: trimmed.map(({ image, ...rest }) => rest) }))
     } catch {
       // localStorage indisponível (aba privada) — histórico só não persiste, sem quebrar o chat
     }
