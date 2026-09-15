@@ -445,13 +445,6 @@ export default function Finances() {
           Se você tivesse que esticar sua reserva por esse período, quanto sobraria por mês — e como isso se compara aos seus R$ {fmtCurrencyInt(totalExpenses)}/mês de gastos hoje.
         </p>
         <div className="finance-stats-grid">
-          <div className="finance-stat-card">
-            <span className="finance-stat-label">Total Acumulado</span>
-            <span className="finance-stat-value">{fmtCurrency(data.emergencyFund)}</span>
-            {totalExpenses > 0 && (
-              <span className="finance-stat-sub">seus gastos: {fmtCurrency(totalExpenses)}/mês</span>
-            )}
-          </div>
           {[
             { label: 'Esticando por 3 meses', months: 3 },
             { label: 'Esticando por 6 meses', months: 6 },

@@ -425,14 +425,9 @@ export default function Home() {
             </div>
           </div>
 
-          {(todayTodos.length > 0 || habits.length > 0) && (
+          {focusItems.length > 0 && (
             <div className="hoje-pills reveal" style={{ '--d': 0.35 }}>
-              {todayTodos.length > 0 && (
-                <span className="status-pill is-coral"><span className="dot" />{todayDone}/{todayTodos.length} tarefas hoje</span>
-              )}
-              {focusItems.length > 0 && (
-                <span className="status-pill is-violet"><span className="dot" />{focusItems.length} priorida{focusItems.length > 1 ? 'des' : 'de'} da semana</span>
-              )}
+              <span className="status-pill is-violet"><span className="dot" />{focusItems.length} priorida{focusItems.length > 1 ? 'des' : 'de'} da semana</span>
             </div>
           )}
 

@@ -270,9 +270,11 @@ export default function Tarefas() {
                 <div className="todo-meta">
                   {todo.category && <span className={`pill pill-${todo.category}`}>{todo.category}</span>}
                   {todo.priority && (
-                    <span style={{ color: PRIORITIES.find(p => p.value === todo.priority)?.color || 'var(--text3)', fontSize: 11 }}>
-                      {todo.priority}
-                    </span>
+                    <span
+                      className="todo-priority-dot"
+                      style={{ background: PRIORITIES.find(p => p.value === todo.priority)?.color || 'var(--text3)' }}
+                      title={`Prioridade ${PRIORITIES.find(p => p.value === todo.priority)?.label?.toLowerCase() || todo.priority}`}
+                    />
                   )}
                   {todo.dueDate && !todo.done && (
                     <>

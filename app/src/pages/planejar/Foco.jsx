@@ -478,35 +478,44 @@ export default function Foco() {
         </div>
       </div>
 
-      <div className="subpage-controls" style={{ marginBottom: 12, flexWrap: 'wrap', gap: '8px 16px' }}>
-        <span className="subpage-controls-note">alvo diário (livre)</span>
-        <select
-          className="calendar-select"
-          value={target}
-          onChange={e => savePrefs({ focusDailyTarget: Number(e.target.value) })}
-        >
-          {TARGET_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
-        </select>
-      </div>
+      {/* Alvo diário e durações do pomodoro raramente mudam depois de
+          ajustadas uma vez — deixá-las sempre visíveis pesava a tela com
+          config pouco usada. Escondidas atrás de um <details>, igual ao
+          seletor de mês/ano do Calendário (mesmo padrão já usado no app). */}
+      <details className="foco-settings">
+        <summary className="foco-settings-summary">Configurações do foco</summary>
+        <div className="foco-settings-panel">
+          <div className="subpage-controls" style={{ flexWrap: 'wrap', gap: '8px 16px' }}>
+            <span className="subpage-controls-note">alvo diário (livre)</span>
+            <select
+              className="calendar-select"
+              value={target}
+              onChange={e => savePrefs({ focusDailyTarget: Number(e.target.value) })}
+            >
+              {TARGET_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
+            </select>
+          </div>
 
-      <div className="subpage-controls" style={{ marginBottom: 32, flexWrap: 'wrap', gap: '8px 16px' }}>
-        <span className="subpage-controls-note">pomodoro: foco</span>
-        <select
-          className="calendar-select"
-          value={workMin}
-          onChange={e => savePrefs({ pomodoroWork: Number(e.target.value) })}
-        >
-          {WORK_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
-        </select>
-        <span className="subpage-controls-note">pausa</span>
-        <select
-          className="calendar-select"
-          value={breakMin}
-          onChange={e => savePrefs({ pomodoroBreak: Number(e.target.value) })}
-        >
-          {BREAK_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
-        </select>
-      </div>
+          <div className="subpage-controls" style={{ flexWrap: 'wrap', gap: '8px 16px' }}>
+            <span className="subpage-controls-note">pomodoro: foco</span>
+            <select
+              className="calendar-select"
+              value={workMin}
+              onChange={e => savePrefs({ pomodoroWork: Number(e.target.value) })}
+            >
+              {WORK_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
+            </select>
+            <span className="subpage-controls-note">pausa</span>
+            <select
+              className="calendar-select"
+              value={breakMin}
+              onChange={e => savePrefs({ pomodoroBreak: Number(e.target.value) })}
+            >
+              {BREAK_OPTIONS.map(v => <option key={v} value={v}>{v} min</option>)}
+            </select>
+          </div>
+        </div>
+      </details>
 
       <div className="hoje-grid" style={{ gap: '0 56px' }}>
         <section className="hoje-section">

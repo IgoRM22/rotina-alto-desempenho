@@ -744,6 +744,17 @@ body::after {
   grid-template-columns: 1fr auto;
 }
 
+/* Prioridade vira um pontinho de cor em vez de mais um rótulo de texto na
+   linha de metadados — a cor já diz "alta/média/baixa" de relance, e o
+   title cobre quem precisa do texto (leitor de tela, tooltip). */
+.todo-priority-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .todo-item:last-child { border-bottom: none; }
 
 .todo-check {
@@ -811,6 +822,7 @@ body::after {
   color: var(--text3);
   margin-top: 4px;
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
@@ -4837,6 +4849,50 @@ details > summary::marker {
   .subpage-controls { justify-content: flex-start; }
   .month-calendar-picker-panel { right: auto; left: 0; transform: none; }
   .calendar-bar-overflow-panel { left: auto; right: 0; }
+}
+
+/* ── FOCO: configurações colapsadas (alvo diário, pomodoro) ── */
+.foco-settings {
+  margin-bottom: 32px;
+}
+
+.foco-settings-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.foco-settings-summary::-webkit-details-marker { display: none; }
+
+.foco-settings-summary::before {
+  content: '▸';
+  display: inline-block;
+  transition: transform .15s ease;
+}
+
+.foco-settings[open] .foco-settings-summary::before {
+  transform: rotate(90deg);
+}
+
+.foco-settings-summary:hover {
+  color: var(--text2);
+}
+
+.foco-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  background: var(--s1);
 }
 
 .planejar-subnav-select-wrap {

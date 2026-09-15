@@ -363,10 +363,9 @@ export default function Metas() {
 
               {goal.description && <p className="goal-desc">{goal.description}</p>}
 
-              {(goal.linkedHabitIds || []).length > 0 && (
+              {((goal.linkedHabitIds || []).length > 0 || linkedTodosProgress.get(goal.id)) && (
                 <div className="goal-linked-habits">
-                  <span>hábitos vinculados:</span>
-                  {goal.linkedHabitIds.map(hid => {
+                  {(goal.linkedHabitIds || []).map(hid => {
                     const habit = habits.find(h => h.id === hid)
                     if (!habit) return null
                     return (
@@ -375,23 +374,21 @@ export default function Metas() {
                       </span>
                     )
                   })}
-                </div>
-              )}
-
-              {linkedTodosProgress.get(goal.id) && (
-                <div className="goal-linked-habits">
-                  <span>tarefas vinculadas:</span>
-                  <span className="goal-linked-habit">
-                    {linkedTodosProgress.get(goal.id).done}/{linkedTodosProgress.get(goal.id).total} concluídas
-                  </span>
-                  {linkedTodosProgress.get(goal.id).pct !== clampProgress(goal.progress) && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => updateProgress(goal, linkedTodosProgress.get(goal.id).pct)}
-                    >
-                      usar {linkedTodosProgress.get(goal.id).pct}% das tarefas
-                    </button>
+                  {linkedTodosProgress.get(goal.id) && (
+                    <>
+                      <span className="goal-linked-habit">
+                        {linkedTodosProgress.get(goal.id).done}/{linkedTodosProgress.get(goal.id).total} tarefas concluídas
+                      </span>
+                      {linkedTodosProgress.get(goal.id).pct !== clampProgress(goal.progress) && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => updateProgress(goal, linkedTodosProgress.get(goal.id).pct)}
+                        >
+                          usar {linkedTodosProgress.get(goal.id).pct}% das tarefas
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -411,12 +408,6 @@ export default function Metas() {
                   className="goal-range"
                   style={{ '--goal-progress': `${clampProgress(goal.progress)}%` }}
                 />
-              </div>
-
-              <div className="goal-progress-scale" aria-hidden="true">
-                {PROGRESS_MARKS.map((mark) => (
-                  <span key={mark}>{mark}</span>
-                ))}
               </div>
             </div>
           )
