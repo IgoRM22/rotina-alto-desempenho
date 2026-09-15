@@ -3,7 +3,7 @@ import { RiCheckLine, RiLockLine, RiShuffleLine } from '@remixicon/react'
 import { saveCharacter } from '../services/firestore'
 import {
   BODY_TYPES, HAIR_STYLES, SKIN_TONES, HAIR_COLORS, DEFAULT_CHARACTER,
-  SLOTS, UNLOCKS, unlockedForSlot, resolveEquipped,
+  SLOTS, UNLOCKS, BEHAVIOR_UNLOCKS, unlockedForSlot, resolveEquipped,
 } from '../utils/character'
 import PixelCharacter from './PixelCharacter'
 import Modal from './Modal'
@@ -46,7 +46,7 @@ function PreviewOptionRow({ options, activeValue, onSelect, buildPreviewCharacte
 // a pessoa cria seu personagem de RPG — corpo, cabelo e cores agora, o resto
 // (armadura, capacete, arma, escudo) vai sendo revelado conforme ela sobe
 // de nível de verdade usando o app (ver utils/character.js: UNLOCKS).
-export default function CharacterCreatorModal({ initial, level = 1, onCreated, onCancel }) {
+export default function CharacterCreatorModal({ initial, level = 1, stats, onCreated, onCancel }) {
   const isEditing = !!onCancel
   const [form, setForm] = useState({ ...DEFAULT_CHARACTER, ...initial })
   const [saving, setSaving] = useState(false)
@@ -161,13 +161,13 @@ export default function CharacterCreatorModal({ initial, level = 1, onCreated, o
 
       <div className="field">
         <label>Equipamento</label>
-          {SLOTS.every((slot) => unlockedForSlot(slot, level).length === 0) ? (
+          {SLOTS.every((slot) => unlockedForSlot(slot, level, stats).length === 0) ? (
             <p className="character-creator-intro" style={{ margin: 0 }}>
               Ainda nada desbloqueado — suba de nível pra ganhar a primeira peça.
             </p>
           ) : (
             SLOTS.map((slot) => {
-              const options = unlockedForSlot(slot, level)
+              const options = unlockedForSlot(slot, level, stats)
               if (!options.length) return null
               const resolved = resolveEquipped(form, level)[slot]
               // Torso e pés sempre vestem alguma coisa por padrão (ver
@@ -203,6 +203,7 @@ export default function CharacterCreatorModal({ initial, level = 1, onCreated, o
         <div className="battlepass-list">
           {UNLOCKS.map((u) => {
             const earned = level >= u.level
+            const altUnlock = !earned ? BEHAVIOR_UNLOCKS.find((b) => b.item === u.item) : null
             // Personagem isolado só com ESTA peça (as outras "nenhum"), pra
             // dar pra ver exatamente o item, sem o resto do equipamento
             // atual competindo com a prévia. Corpo/cor seguem o form atual,
@@ -214,7 +215,10 @@ export default function CharacterCreatorModal({ initial, level = 1, onCreated, o
                 <div className="battlepass-preview">
                   <PixelCharacter character={previewCharacter} level={u.level} size={36} variant="full" animated={false} />
                 </div>
-                <span className="battlepass-label">{u.label}</span>
+                <span className="battlepass-label">
+                  {u.label}
+                  {altUnlock && <span className="battlepass-alt"> ou {altUnlock.requirementLabel}</span>}
+                </span>
                 <span className="battlepass-icon">{earned ? <RiCheckLine size={14} /> : <RiLockLine size={13} />}</span>
               </div>
             )

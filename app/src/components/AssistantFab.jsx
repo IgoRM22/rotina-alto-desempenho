@@ -6,6 +6,7 @@ import {
   listenCharacter, listenTodos, listenHabits, listenHabitLogs, listenFocusSessions, listenGoals,
 } from '../services/firestore'
 import { computeXp } from '../utils/gamification'
+import { computeBehaviorStats } from '../utils/character'
 
 const STORAGE_KEY = 'raiodesk-assistant-fab-pos'
 const FAB_SIZE = 64
@@ -74,6 +75,13 @@ export default function AssistantFab() {
   const level = useMemo(
     () => computeXp({ todos, habitLogs, focusSessions, goals, habits }).level,
     [todos, habitLogs, focusSessions, goals, habits],
+  )
+
+  // Pra oferecer peças desbloqueadas por comportamento (sequência de
+  // hábitos, horas de foco, metas batidas) no editor, não só por nível.
+  const behaviorStats = useMemo(
+    () => computeBehaviorStats({ habits, focusSessions, goals }),
+    [habits, focusSessions, goals],
   )
 
   useEffect(() => {
@@ -182,6 +190,7 @@ export default function AssistantFab() {
         <CharacterCreatorModal
           initial={character}
           level={level}
+          stats={behaviorStats}
           onCreated={() => setEditingCharacter(false)}
           onCancel={() => setEditingCharacter(false)}
         />

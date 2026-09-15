@@ -699,6 +699,12 @@ body::after {
   color: var(--text);
 }
 
+.battlepass-alt {
+  color: var(--text3);
+  font-size: 11px;
+  font-style: italic;
+}
+
 .battlepass-icon {
   display: flex;
   align-items: center;
@@ -5396,6 +5402,27 @@ details > summary::marker {
   background: var(--s1);
   margin-bottom: 32px;
   flex-wrap: wrap;
+}
+
+/* Personagem "presente" durante a sessão — parado quando não tem foco
+   rodando, com um leve glow quando tem, pra reforçar que aquele tempo
+   junto é o que enche a barrinha de carga ao lado. */
+.foco-companion {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  transition: border-color .3s ease, box-shadow .3s ease;
+}
+
+.foco-companion.is-active {
+  border-color: rgba(224,100,69,.55);
+  box-shadow: 0 0 0 4px rgba(224,100,69,.1);
 }
 
 .foco-charge {

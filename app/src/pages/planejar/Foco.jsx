@@ -3,13 +3,14 @@ import { RiDeleteBinLine, RiPauseLine, RiPlayLine, RiStopLine } from '@remixicon
 import {
   listenGoals, listenFocusSessions, addFocusSession, deleteFocusSession,
   listenPrefs, savePrefs, listenNotebooks, addNote, addTodo,
-  listenHabits, setHabitChecked,
+  listenHabits, setHabitChecked, listenCharacter, listenTodos, listenHabitLogs,
 } from '../../services/firestore'
 import { todayKey, dateKeyFromDate, addDays } from '../../utils/date'
 import { playChime, vibrateDevice, notifyPhaseEnd, updateLiveFocusNotification, closeLiveFocusNotification } from '../../utils/focusAlerts'
 import { loadStoredFocusSession, storeFocusSession, listenLocalFocusSession } from '../../utils/focusSession'
-import { XP_PER_FOCUS_MINUTE } from '../../utils/gamification'
+import { XP_PER_FOCUS_MINUTE, computeXp } from '../../utils/gamification'
 import BoltIcon from '../../components/BoltIcon'
+import PixelCharacter from '../../components/PixelCharacter'
 import Toast from '../../components/Toast'
 import Modal from '../../components/Modal'
 
@@ -42,6 +43,9 @@ export default function Foco() {
   const [habits, setHabits] = useState([])
   const [sessions, setSessions] = useState([])
   const [prefs, setPrefs] = useState({})
+  const [character, setCharacter] = useState(null)
+  const [todos, setTodos] = useState([])
+  const [habitLogs, setHabitLogs] = useState([])
   // Livre: { mode: 'livre', startedAt: ms | null (pausado), accumulatedSec, goalId }
   // Pomodoro: { mode: 'pomodoro', phase: 'work'|'break', phaseStartedAt: ms | null,
   //             phaseAccumulatedSec, cyclesCompleted, goalId }
@@ -69,8 +73,18 @@ export default function Foco() {
     // depois de sair e voltar pra rota.
     const u5 = listenLocalFocusSession(setSession)
     const u6 = listenHabits(setHabits)
-    return () => { u1(); u2(); u3(); u4(); u5(); u6() }
+    const u7 = listenCharacter(setCharacter)
+    const u8 = listenTodos(setTodos)
+    const u9 = listenHabitLogs(setHabitLogs, 60)
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9() }
   }, [])
+
+  // Personagem "presente" enquanto o foco roda — mesmo cálculo de nível
+  // usado no Hoje/bolinha do assistente (ver utils/gamification.js).
+  const level = useMemo(
+    () => computeXp({ todos, habitLogs, focusSessions: sessions, goals, habits }).level,
+    [todos, habitLogs, sessions, goals, habits],
+  )
 
   useEffect(() => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
@@ -341,6 +355,12 @@ export default function Foco() {
   return (
     <>
       <div className="foco-wrap">
+        {character?.body && (
+          <div className={`foco-companion ${running ? 'is-active' : ''}`} title={running ? `${character.name || 'seu personagem'} tá na dele` : undefined}>
+            <PixelCharacter character={character} level={level} size={72} animated={running} />
+          </div>
+        )}
+
         <div className={`foco-charge ${running ? 'is-active' : ''}`}>
           <div className="foco-charge-fill" style={{ height: `${chargePct}%` }} />
           <BoltIcon size={22} color="var(--text)" />

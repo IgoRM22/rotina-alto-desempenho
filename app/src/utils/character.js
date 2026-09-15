@@ -91,6 +91,39 @@ export const UNLOCKS = [
   { level: 15, slot: 'hat', item: 'wizard', label: 'Chapéu de mago' },
 ]
 
+// Caminho alternativo pra algumas das MESMAS peças de UNLOCKS — não é peça
+// nova (não existe arte nova pra baixar com segurança), é permitir ganhar
+// a peça por COMPORTAMENTO em vez de só acumular XP. `stat` aponta pra uma
+// chave de computeBehaviorStats(); `test` decide se aquele valor já cumpre
+// o requisito. Só listadas peças cujo desbloqueio por nível normal é tarde
+// o bastante pra a rota alternativa valer a pena (level 2/3/7).
+export const BEHAVIOR_UNLOCKS = [
+  {
+    slot: 'torso', item: 'leather', label: 'Armadura de couro',
+    stat: 'bestStreakDays', test: (v) => v >= 7, requirementLabel: '7 dias de sequência',
+  },
+  {
+    slot: 'hat', item: 'hood', label: 'Capuz',
+    stat: 'focusHours', test: (v) => v >= 5, requirementLabel: '5h de foco acumuladas',
+  },
+  {
+    slot: 'shield', item: 'round', label: 'Escudo redondo',
+    stat: 'goalsDone', test: (v) => v >= 1, requirementLabel: '1ª meta concluída',
+  },
+]
+
+// A partir dos mesmos dados que várias telas já carregam (hábitos, sessões
+// de foco, metas) — nenhuma leitura nova no Firestore, só soma o que já
+// existe. Usa recordes PERSISTIDOS (bestStreak) em vez da sequência atual —
+// uma vez conquistado, continua contando mesmo que a sequência quebre
+// depois (senão a peça "sumiria" do editor se a pessoa perdesse o ritmo).
+export function computeBehaviorStats({ habits = [], focusSessions = [], goals = [] } = {}) {
+  const bestStreakDays = habits.reduce((max, h) => Math.max(max, h.bestStreak || 0), 0)
+  const focusHours = focusSessions.reduce((sum, s) => sum + (s.minutes || 0), 0) / 60
+  const goalsDone = goals.filter((g) => g.done).length
+  return { bestStreakDays, focusHours, goalsDone }
+}
+
 // import.meta.env.BASE_URL já vem com "/" no final (config `base` do Vite,
 // ver vite.config.js) — sem isso, um caminho absoluto "/lpc/..." ignora a
 // base e busca na raiz do domínio em vez de dentro do app.
@@ -170,13 +203,19 @@ export function equipmentForLevel(level) {
   return bySlot
 }
 
-// Todas as peças de um slot já desbloqueadas nesse nível, da mais fraca pra
-// mais forte — é a lista que vira o seletor em "Equipamento". Os estilos
-// iniciais (STARTER_ITEMS) sempre aparecem primeiro, disponíveis desde o
-// nível 1.
-export function unlockedForSlot(slot, level) {
+// Todas as peças de um slot já desbloqueadas — por nível OU por
+// comportamento (stats) — da mais fraca pra mais forte. É a lista que vira
+// o seletor em "Equipamento". Os estilos iniciais (STARTER_ITEMS) sempre
+// aparecem primeiro, disponíveis desde o nível 1. `stats` é opcional —
+// omitido, só considera o caminho normal por nível.
+export function unlockedForSlot(slot, level, stats) {
   const starters = STARTER_ITEMS.filter((s) => s.slot === slot)
-  const progression = UNLOCKS.filter((u) => u.slot === slot && u.level <= level).sort((a, b) => a.level - b.level)
+  const byLevel = UNLOCKS.filter((u) => u.slot === slot && u.level <= level)
+  const unlockedItems = new Set(byLevel.map((u) => u.item))
+  const byBehavior = stats
+    ? BEHAVIOR_UNLOCKS.filter((b) => b.slot === slot && !unlockedItems.has(b.item) && b.test(stats[b.stat] ?? 0))
+    : []
+  const progression = [...byLevel, ...byBehavior].sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
   return [...starters, ...progression]
 }
 
@@ -193,8 +232,14 @@ export function resolveEquipped(character, level) {
     const pick = chosen[slot]
     if (pick === 'none' || pick === 'bare') { result[slot] = null; return }
     if (pick) {
+      // Não re-checa nível/comportamento aqui de propósito: o editor só
+      // oferece a escolha quando já desbloqueada (por nível OU stats), e
+      // XP/recordes nunca diminuem — então uma vez salva, a escolha vale
+      // em qualquer lugar que desenhe o personagem, mesmo sem os stats de
+      // comportamento à mão (ex: avatar do assistente).
       const match = UNLOCKS.find((u) => u.slot === slot && u.item === pick && u.level <= level)
         || STARTER_ITEMS.find((s) => s.slot === slot && s.item === pick)
+        || BEHAVIOR_UNLOCKS.find((b) => b.slot === slot && b.item === pick)
       if (match) { result[slot] = match; return }
     }
     result[slot] = auto[slot] || null
