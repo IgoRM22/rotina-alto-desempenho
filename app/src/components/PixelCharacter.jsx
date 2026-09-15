@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { FRAME_SIZE, FRAME_ROW, FACE_CROP, BODY_CROP, LEG_TINT_Y, buildLayers } from '../utils/character'
+import { FRAME_SIZE, FRAME_COLS, FRAME_ROW, FACE_CROP, BODY_CROP, LEG_TINT_Y, buildLayers } from '../utils/character'
 
 const ROWS_PER_SHEET = 4
 
@@ -214,14 +214,23 @@ const MIN_SIZE_TO_ANIMATE = 40
 // vira ruído; melhor um "retrato" com zoom no rosto, que se reconhece de longe.
 const FACE_VARIANT_MAX_SIZE = 44
 
-export default function PixelCharacter({ character, level = 1, size = 40, animated = true, variant, className = '' }) {
+// A folha "walk" já baixada tem 9 quadros de passada por linha (FRAME_COLS)
+// — até agora só o quadro 0 (parado) era usado, com um bob de respiração por
+// cima. "walk" percorre os 9 quadros de verdade, andando no lugar — pensado
+// pro companheiro do Foco (personagem "trabalhando" enquanto o cronômetro
+// roda), sem precisar baixar nenhum asset novo pra isso.
+const WALK_FRAME_MS = 110
+
+export default function PixelCharacter({ character, level = 1, size = 40, animated = true, motion = 'breathe', variant, className = '' }) {
   const canvasRef = useRef(null)
   const imagesRef = useRef([])
   const breathingRef = useRef(false)
+  const walkFrameRef = useRef(0)
 
   const resolvedVariant = variant || (size <= FACE_VARIANT_MAX_SIZE ? 'face' : 'full')
   const crop = resolvedVariant === 'face' ? FACE_CROP : BODY_CROP
   const shouldAnimate = animated && size >= MIN_SIZE_TO_ANIMATE
+  const isWalking = shouldAnimate && motion === 'walk'
 
   useEffect(() => {
     let cancelled = false
@@ -253,29 +262,38 @@ export default function PixelCharacter({ character, level = 1, size = 40, animat
     const canvas = canvasRef.current
     if (!canvas || !imagesRef.current.length) return
     const scaleY = canvas.height / crop.h
-    const breathPx = breathingRef.current ? BREATH_OFFSET_PX * scaleY : 0
+    const breathPx = (!isWalking && breathingRef.current) ? BREATH_OFFSET_PX * scaleY : 0
+    const frameX = isWalking ? walkFrameRef.current * FRAME_SIZE + crop.x : crop.x
     const ctx = canvas.getContext('2d')
     ctx.imageSmoothingEnabled = false
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     imagesRef.current.forEach((img) => {
       ctx.drawImage(
         img,
-        crop.x, FRAME_ROW * FRAME_SIZE + crop.y, crop.w, crop.h,
+        frameX, FRAME_ROW * FRAME_SIZE + crop.y, crop.w, crop.h,
         0, breathPx, canvas.width, canvas.height,
       )
     })
   }
 
   useEffect(() => {
+    walkFrameRef.current = 0
     draw()
     if (!shouldAnimate) { breathingRef.current = false; return undefined }
+    if (isWalking) {
+      const id = setInterval(() => {
+        walkFrameRef.current = (walkFrameRef.current + 1) % FRAME_COLS
+        draw()
+      }, WALK_FRAME_MS)
+      return () => clearInterval(id)
+    }
     const id = setInterval(() => {
       breathingRef.current = !breathingRef.current
       draw()
     }, BREATH_INTERVAL_MS)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldAnimate, resolvedVariant, character, level])
+  }, [shouldAnimate, isWalking, resolvedVariant, character, level])
 
   return (
     <canvas

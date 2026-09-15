@@ -5216,6 +5216,16 @@ details > summary::marker {
   transition: background .2s, transform .15s;
 }
 
+/* Usado por FocusShortcut.jsx como bloco solto (Hoje/Revisão/Planejar), não
+   mais só como item dentro de um flex pai que já limitava sua largura —
+   sem isso "display:flex" de um <a> vira caixa de bloco e estica pra
+   ocupar a largura inteira da página. */
+.focus-shortcut {
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 32px;
+}
+
 .hero-focus-card:hover {
   background: linear-gradient(135deg, var(--coral-dim), var(--coral-dim));
   transform: translateY(-1px);
@@ -5404,10 +5414,23 @@ details > summary::marker {
   flex-wrap: wrap;
 }
 
+/* Fica junto com .foco-charge nessa sub-linha própria — o .foco-wrap vira
+   coluna no mobile (ver media query abaixo), e sem essa sub-linha o
+   personagem subia pra cima da bateria em vez de ficar ao lado dela. */
+.foco-charge-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
 /* Personagem "presente" durante a sessão — parado quando não tem foco
-   rodando, com um leve glow quando tem, pra reforçar que aquele tempo
-   junto é o que enche a barrinha de carga ao lado. */
+   rodando, andando no lugar (variant="walk", ver PixelCharacter.jsx) com
+   leve glow quando tem, pra reforçar que aquele tempo junto é o que enche
+   a barrinha de carga ao lado. Clicável: abre o editor do personagem. */
 .foco-companion {
+  appearance: none;
+  cursor: pointer;
   flex-shrink: 0;
   width: 72px;
   height: 72px;
@@ -5418,6 +5441,10 @@ details > summary::marker {
   background: var(--s2);
   border: 1px solid var(--border2);
   transition: border-color .3s ease, box-shadow .3s ease;
+}
+
+.foco-companion:hover {
+  border-color: var(--text3);
 }
 
 .foco-companion.is-active {

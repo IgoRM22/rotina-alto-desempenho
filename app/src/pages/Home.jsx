@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  RiAddLine, RiCheckboxBlankLine, RiTimerLine, RiArrowRightLine, RiDeleteBinLine, RiInboxLine,
+  RiAddLine, RiCheckboxBlankLine, RiArrowRightLine, RiDeleteBinLine, RiInboxLine,
 } from '@remixicon/react'
 import {
   listenTodos, updateTodo, deleteTodo, addTodo, listenHabits, listenHabitLogs,
@@ -10,6 +10,7 @@ import {
 } from '../services/firestore'
 import HabitChecklist from '../components/HabitChecklist'
 import GamificationCard from '../components/GamificationCard'
+import FocusShortcut from '../components/FocusShortcut'
 import { computeXp } from '../utils/gamification'
 import { UNLOCKS } from '../utils/character'
 import RevisaoSemanal from '../components/RevisaoSemanal'
@@ -343,6 +344,10 @@ export default function Home() {
         />
       </div>
 
+      {/* Mesmo lugar nas duas visões (Hoje e Revisão) de propósito — ver
+          FocusShortcut.jsx. */}
+      <FocusShortcut />
+
       {view === 'revisao' ? (
         <>
           <div className="page-header">
@@ -384,13 +389,6 @@ export default function Home() {
               </div>
             </div>
             <div className="hero-side reveal" style={{ '--d': 0.25 }}>
-              <Link to="/planejar/foco" className="hero-focus-card">
-                <span className="hero-focus-icon"><RiTimerLine size={20} /></span>
-                <span className="hero-focus-text">
-                  <span className="hero-focus-title">Iniciar foco</span>
-                  <span className="hero-focus-sub">cada minuto conta para uma meta</span>
-                </span>
-              </Link>
               {best && best.streak > 0 ? (
                 <div className="hero-streak">
                   <BoltIcon size={16} color="var(--gold)" />

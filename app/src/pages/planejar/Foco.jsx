@@ -9,8 +9,10 @@ import { todayKey, dateKeyFromDate, addDays } from '../../utils/date'
 import { playChime, vibrateDevice, notifyPhaseEnd, updateLiveFocusNotification, closeLiveFocusNotification } from '../../utils/focusAlerts'
 import { loadStoredFocusSession, storeFocusSession, listenLocalFocusSession } from '../../utils/focusSession'
 import { XP_PER_FOCUS_MINUTE, computeXp } from '../../utils/gamification'
+import { computeBehaviorStats } from '../../utils/character'
 import BoltIcon from '../../components/BoltIcon'
 import PixelCharacter from '../../components/PixelCharacter'
+import CharacterCreatorModal from '../../components/CharacterCreatorModal'
 import Toast from '../../components/Toast'
 import Modal from '../../components/Modal'
 
@@ -44,6 +46,7 @@ export default function Foco() {
   const [sessions, setSessions] = useState([])
   const [prefs, setPrefs] = useState({})
   const [character, setCharacter] = useState(null)
+  const [editingCharacter, setEditingCharacter] = useState(false)
   const [todos, setTodos] = useState([])
   const [habitLogs, setHabitLogs] = useState([])
   // Livre: { mode: 'livre', startedAt: ms | null (pausado), accumulatedSec, goalId }
@@ -84,6 +87,10 @@ export default function Foco() {
   const level = useMemo(
     () => computeXp({ todos, habitLogs, focusSessions: sessions, goals, habits }).level,
     [todos, habitLogs, sessions, goals, habits],
+  )
+  const behaviorStats = useMemo(
+    () => computeBehaviorStats({ habits, focusSessions: sessions, goals }),
+    [habits, sessions, goals],
   )
 
   useEffect(() => {
@@ -355,15 +362,25 @@ export default function Foco() {
   return (
     <>
       <div className="foco-wrap">
-        {character?.body && (
-          <div className={`foco-companion ${running ? 'is-active' : ''}`} title={running ? `${character.name || 'seu personagem'} tá na dele` : undefined}>
-            <PixelCharacter character={character} level={level} size={72} animated={running} />
-          </div>
-        )}
+        {/* Companheiro + bateria ficam juntos nessa sub-linha de propósito —
+            sem ela, o .foco-wrap empilhava tudo em coluna no mobile e o
+            personagem subia pra cima da bateria em vez de ficar ao lado. */}
+        <div className="foco-charge-row">
+          {character?.body && (
+            <button
+              type="button"
+              className={`foco-companion ${running ? 'is-active' : ''}`}
+              onClick={() => setEditingCharacter(true)}
+              title={`Editar personagem${running ? ` — ${character.name || 'ele'} tá na dele` : ''}`}
+            >
+              <PixelCharacter character={character} level={level} size={72} motion="walk" animated={running} />
+            </button>
+          )}
 
-        <div className={`foco-charge ${running ? 'is-active' : ''}`}>
-          <div className="foco-charge-fill" style={{ height: `${chargePct}%` }} />
-          <BoltIcon size={22} color="var(--text)" />
+          <div className={`foco-charge ${running ? 'is-active' : ''}`}>
+            <div className="foco-charge-fill" style={{ height: `${chargePct}%` }} />
+            <BoltIcon size={22} color="var(--text)" />
+          </div>
         </div>
 
         <div className="foco-info">
@@ -620,6 +637,16 @@ export default function Foco() {
             <textarea rows={2} value={nextStepDraft} onChange={e => setNextStepDraft(e.target.value)} placeholder="Opcional — vira uma tarefa" />
           </div>
         </Modal>
+      )}
+
+      {editingCharacter && (
+        <CharacterCreatorModal
+          initial={character}
+          level={level}
+          stats={behaviorStats}
+          onCreated={() => setEditingCharacter(false)}
+          onCancel={() => setEditingCharacter(false)}
+        />
       )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
