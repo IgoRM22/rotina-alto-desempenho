@@ -6,7 +6,7 @@ import {
 import {
   listenTodos, updateTodo, deleteTodo, addTodo, listenHabits, listenHabitLogs,
   listenImportantDates, listenGoals, listenPrefs, listenFocusSessions, listenCharacter,
-  listenDailyLog, saveDailyLog,
+  listenDailyLog, saveDailyLog, listenSchedule, listenScheduleCategories,
 } from '../services/firestore'
 import HabitChecklist from '../components/HabitChecklist'
 import GamificationCard from '../components/GamificationCard'
@@ -25,6 +25,8 @@ import BoltIcon from '../components/BoltIcon'
 import { todayKey, dateKeyFromDate, addDays, MAX_TODAY_TASKS } from '../utils/date'
 import { bestCurrentStreak, isDailyHabit } from '../utils/streak'
 import { expandImportantDatesForRange } from '../utils/importantDates'
+import { scheduleForDate, itemTimeLabel } from '../utils/schedule'
+import { colorForCategory, DEFAULT_CATEGORIES } from '../utils/categoryColors'
 
 const WEEKDAY_LABELS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
 const MONTH_LABELS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
@@ -66,6 +68,8 @@ export default function Home() {
   const [prefs, setPrefs] = useState({})
   const [focusSessions, setFocusSessions] = useState([])
   const [character, setCharacter] = useState(null)
+  const [schedule, setSchedule] = useState([])
+  const [scheduleCategories, setScheduleCategories] = useState(DEFAULT_CATEGORIES)
   const [editingCharacter, setEditingCharacter] = useState(false)
   const [levelUp, setLevelUp] = useState(null)
   const levelCheckTimer = React.useRef(null)
@@ -99,7 +103,9 @@ export default function Home() {
     const u7 = listenDailyLog(todayKey(), setDailyLog)
     const u8 = listenFocusSessions(setFocusSessions, 500)
     const u9 = listenCharacter(setCharacter)
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9() }
+    const u10 = listenSchedule(setSchedule)
+    const u11 = listenScheduleCategories(setScheduleCategories)
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); u10(); u11() }
   }, [])
 
   const gami = useMemo(
@@ -177,6 +183,8 @@ export default function Home() {
   const allTasksDone = todayTodos.length > 0 && todayDone === todayTodos.length
   const todayCommitments = expandImportantDatesForRange(importantDates, now, tomorrowDate)
     .map(occ => ({ ...occ, tag: dateKeyFromDate(occ.occurrenceStart) === dateKey ? 'hoje' : 'amanhã' }))
+
+  const todaySchedule = scheduleForDate(schedule, now)
 
   // ── Fechamento do dia / planejamento de amanhã (herdado do antigo Noturno) ──
   const todayPending = todayTodos.filter(t => !t.done)
@@ -403,6 +411,31 @@ export default function Home() {
                 <Link to="/planejar/agenda" className="hoje-section-link">ver agenda</Link>
               </div>
               <CommitmentList items={todayCommitments} />
+            </section>
+          )}
+
+          {todaySchedule.length > 0 && (
+            <section className="hoje-section">
+              <div className="hoje-section-head">
+                <h2 className="hoje-section-title">Agenda de hoje</h2>
+                <Link to="/planejar/agenda" className="hoje-section-link">ver agenda</Link>
+              </div>
+              <div className="commitment-list">
+                {todaySchedule.map(item => (
+                  <div key={item.id} className="commitment-row">
+                    <span
+                      className="commitment-badge"
+                      style={{ borderColor: colorForCategory(item.category, scheduleCategories) }}
+                    >
+                      {itemTimeLabel(item) || 'dia todo'}
+                    </span>
+                    <div className="commitment-body">
+                      <div className="commitment-title">{item.name}</div>
+                      {item.description && <div className="commitment-desc">{item.description}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
